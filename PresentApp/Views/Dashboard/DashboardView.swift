@@ -23,6 +23,12 @@ struct DashboardView: View {
             .padding(20)
         }
         .navigationTitle("Dashboard")
+        .alert(appState.isLongBreak ? "Time for a Long Break!" : "Take a Short Break",
+               isPresented: Bindable(appState).showBreakSuggestion) {
+            Button("OK") { appState.dismissBreakSuggestion() }
+        } message: {
+            Text("You've earned a \(appState.suggestedBreakMinutes)-minute break. Step away and recharge.")
+        }
     }
 
     // MARK: - Current Session Card

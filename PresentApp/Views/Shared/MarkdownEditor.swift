@@ -1,0 +1,136 @@
+import SwiftUI
+import AppKit
+
+struct MarkdownEditor: NSViewRepresentable {
+    @Binding var text: String
+    var isEditable: Bool = true
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let scrollView = NSTextView.scrollablePlainDocumentContentTextView()
+        let textView = scrollView.documentView as! NSTextView
+
+        textView.delegate = context.coordinator
+        textView.isEditable = isEditable
+        textView.isRichText = false
+        textView.allowsUndo = true
+        textView.usesFindPanel = true
+        textView.isAutomaticQuoteSubstitutionEnabled = false
+        textView.isAutomaticDashSubstitutionEnabled = false
+        textView.isAutomaticTextReplacementEnabled = false
+        textView.font = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
+        textView.textColor = NSColor.textColor
+        textView.backgroundColor = NSColor.textBackgroundColor
+        textView.textContainerInset = NSSize(width: 8, height: 8)
+
+        textView.string = text
+        context.coordinator.applyHighlighting(to: textView)
+
+        return scrollView
+    }
+
+    func updateNSView(_ scrollView: NSScrollView, context: Context) {
+        guard let textView = scrollView.documentView as? NSTextView else { return }
+        if textView.string != text {
+            let selectedRanges = textView.selectedRanges
+            textView.string = text
+            textView.selectedRanges = selectedRanges
+            context.coordinator.applyHighlighting(to: textView)
+        }
+        textView.isEditable = isEditable
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(text: $text)
+    }
+
+    final class Coordinator: NSObject, NSTextViewDelegate {
+        var text: Binding<String>
+
+        init(text: Binding<String>) {
+            self.text = text
+        }
+
+        func textDidChange(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else { return }
+            text.wrappedValue = textView.string
+            applyHighlighting(to: textView)
+        }
+
+        @MainActor func applyHighlighting(to textView: NSTextView) {
+            guard let textStorage = textView.textStorage else { return }
+            let fullRange = NSRange(location: 0, length: textStorage.length)
+            let content = textStorage.string
+
+            // Reset to base style
+            let baseFont = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
+            textStorage.beginEditing()
+            textStorage.addAttribute(.font, value: baseFont, range: fullRange)
+            textStorage.addAttribute(.foregroundColor, value: NSColor.textColor, range: fullRange)
+
+            let lines = content as NSString
+
+            // Heading patterns
+            applyPattern(#"^#{1,3}\s+.*$"#, to: textStorage, in: lines,
+                        attributes: [
+                            .font: NSFont.monospacedSystemFont(ofSize: 15, weight: .bold),
+                            .foregroundColor: NSColor.labelColor
+                        ])
+
+            // Bold **text** or __text__
+            applyPattern(#"(\*\*|__)(.*?)\1"#, to: textStorage, in: lines,
+                        attributes: [.font: NSFont.monospacedSystemFont(ofSize: 13, weight: .bold)])
+
+            // Italic *text* or _text_ (not preceded by * or _)
+            applyPattern(#"(?<![*_])([*_])(?![*_])(.*?)\1(?![*_])"#, to: textStorage, in: lines,
+                        attributes: [.font: NSFont.monospacedSystemFont(ofSize: 13, weight: .regular).withTraits(.italicFontMask)])
+
+            // Inline code `text`
+            applyPattern(#"`[^`]+`"#, to: textStorage, in: lines,
+                        attributes: [
+                            .foregroundColor: NSColor.systemPink,
+                            .font: NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+                        ])
+
+            // Fenced code blocks ```
+            applyPattern(#"```[\s\S]*?```"#, to: textStorage, in: lines,
+                        attributes: [
+                            .foregroundColor: NSColor.systemGreen,
+                            .font: NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+                        ])
+
+            // Links [text](url)
+            applyPattern(#"\[([^\]]+)\]\([^\)]+\)"#, to: textStorage, in: lines,
+                        attributes: [.foregroundColor: NSColor.linkColor])
+
+            // Checklist items - [ ] and - [x]
+            applyPattern(#"^- \[[ xX]\]"#, to: textStorage, in: lines,
+                        attributes: [.foregroundColor: NSColor.systemBlue])
+
+            // List markers (- or * or numbers)
+            applyPattern(#"^[\t ]*[-*]\s"#, to: textStorage, in: lines,
+                        attributes: [.foregroundColor: NSColor.secondaryLabelColor])
+            applyPattern(#"^[\t ]*\d+\.\s"#, to: textStorage, in: lines,
+                        attributes: [.foregroundColor: NSColor.secondaryLabelColor])
+
+            textStorage.endEditing()
+        }
+
+        private func applyPattern(_ pattern: String, to textStorage: NSTextStorage, in string: NSString,
+                                  attributes: [NSAttributedString.Key: Any]) {
+            guard let regex = try? NSRegularExpression(pattern: pattern, options: [.anchorsMatchLines]) else { return }
+            let fullRange = NSRange(location: 0, length: string.length)
+            regex.enumerateMatches(in: string as String, range: fullRange) { match, _, _ in
+                if let range = match?.range {
+                    textStorage.addAttributes(attributes, range: range)
+                }
+            }
+        }
+    }
+}
+
+private extension NSFont {
+    func withTraits(_ traits: NSFontTraitMask) -> NSFont {
+        let descriptor = fontDescriptor.withSymbolicTraits(NSFontDescriptor.SymbolicTraits(rawValue: UInt32(traits.rawValue)))
+        return NSFont(descriptor: descriptor, size: pointSize) ?? self
+    }
+}

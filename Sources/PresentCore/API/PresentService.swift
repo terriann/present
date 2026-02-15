@@ -181,6 +181,51 @@ public final class PresentService: PresentAPI, Sendable {
         }
     }
 
+    public func listSessions(from startDate: Date, to endDate: Date, type: SessionType? = nil, activityId: Int64? = nil, includeArchived: Bool = true) async throws -> [(Session, Activity)] {
+        try await dbWriter.read { db in
+            var conditions = ["s.startedAt >= ?", "s.startedAt < ?", "s.state IN (?, ?)"]
+            var arguments: [any DatabaseValueConvertible] = [startDate, endDate, SessionState.completed.rawValue, SessionState.cancelled.rawValue]
+
+            if let type {
+                conditions.append("s.sessionType = ?")
+                arguments.append(type.rawValue)
+            }
+            if let activityId {
+                conditions.append("s.activityId = ?")
+                arguments.append(activityId)
+            }
+            if !includeArchived {
+                conditions.append("a.isArchived = 0")
+            }
+
+            let sql = """
+                SELECT s.*, a.id AS a_id, a.title AS a_title, a.externalId AS a_externalId,
+                       a.link AS a_link, a.notes AS a_notes, a.isArchived AS a_isArchived,
+                       a.createdAt AS a_createdAt, a.updatedAt AS a_updatedAt
+                FROM session s
+                INNER JOIN activity a ON a.id = s.activityId
+                WHERE \(conditions.joined(separator: " AND "))
+                ORDER BY s.startedAt DESC
+                """
+
+            let rows = try Row.fetchAll(db, sql: sql, arguments: StatementArguments(arguments))
+            return rows.map { row in
+                let session = try! Session(row: row)
+                let activity = Activity(
+                    id: row["a_id"],
+                    title: row["a_title"],
+                    externalId: row["a_externalId"],
+                    link: row["a_link"],
+                    notes: row["a_notes"],
+                    isArchived: row["a_isArchived"],
+                    createdAt: row["a_createdAt"],
+                    updatedAt: row["a_updatedAt"]
+                )
+                return (session, activity)
+            }
+        }
+    }
+
     // MARK: - Activities
 
     public func createActivity(_ input: CreateActivityInput) async throws -> Activity {
@@ -449,6 +494,19 @@ public final class PresentService: PresentAPI, Sendable {
             try ActivityTag
                 .filter(ActivityTag.Columns.activityId == activityId && ActivityTag.Columns.tagId == tagId)
                 .deleteAll(db)
+        }
+    }
+
+    public func tagsForActivity(activityId: Int64) async throws -> [Tag] {
+        try await dbWriter.read { db in
+            let sql = """
+                SELECT t.*
+                FROM tag t
+                INNER JOIN activity_tag at ON at.tagId = t.id
+                WHERE at.activityId = ?
+                ORDER BY t.name
+                """
+            return try Tag.fetchAll(db, sql: sql, arguments: [activityId])
         }
     }
 

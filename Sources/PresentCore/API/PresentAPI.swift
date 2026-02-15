@@ -8,6 +8,7 @@ public protocol PresentAPI: Sendable {
     func stopSession() async throws -> Session
     func cancelSession() async throws
     func currentSession() async throws -> (Session, Activity)?
+    func listSessions(from: Date, to: Date, type: SessionType?, activityId: Int64?, includeArchived: Bool) async throws -> [(Session, Activity)]
 
     // Activities
     func createActivity(_ input: CreateActivityInput) async throws -> Activity
@@ -29,6 +30,7 @@ public protocol PresentAPI: Sendable {
     func listTags() async throws -> [Tag]
     func tagActivity(activityId: Int64, tagId: Int64) async throws
     func untagActivity(activityId: Int64, tagId: Int64) async throws
+    func tagsForActivity(activityId: Int64) async throws -> [Tag]
 
     // Reports
     func dailySummary(date: Date, includeArchived: Bool) async throws -> DailySummary

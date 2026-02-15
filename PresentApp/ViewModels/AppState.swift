@@ -20,6 +20,13 @@ final class AppState {
 
     var timerElapsedSeconds: Int = 0
     private var timerTask: Task<Void, Never>?
+    private var timerCompletionHandled = false
+
+    // MARK: - Break Suggestion
+
+    var showBreakSuggestion = false
+    var suggestedBreakMinutes: Int = 5
+    var isLongBreak = false
 
     // MARK: - Navigation
 
@@ -81,6 +88,7 @@ final class AppState {
             fatalError("Failed to initialize database: \(error)")
         }
         service = PresentService(databasePool: dbManager.writer)
+        NotificationManager.shared.requestPermission()
         startObservations()
         startIPCServer()
         loadInitialData()
@@ -112,7 +120,7 @@ final class AppState {
             todayActivities = summary.activities
 
             recentActivities = try await service.recentActivities(limit: 6)
-            allActivities = try await service.listActivities(includeArchived: false)
+            allActivities = try await service.listActivities(includeArchived: true)
             allTags = try await service.listTags()
         } catch {
             print("Error refreshing data: \(error)")
@@ -130,6 +138,7 @@ final class AppState {
             )
             currentSession = session
             currentActivity = try await service.getActivity(id: activityId)
+            timerCompletionHandled = false
             startTimer()
             await refreshAll()
         } catch {
@@ -159,10 +168,18 @@ final class AppState {
 
     func stopSession() async {
         do {
-            _ = try await service.stopSession()
+            let stoppedSession = try await service.stopSession()
+            let activity = currentActivity
             currentSession = nil
             currentActivity = nil
             stopTimer()
+
+            // For rhythm sessions, suggest a break
+            if stoppedSession.sessionType == .rhythm, let index = stoppedSession.rhythmSessionIndex {
+                await suggestBreak(sessionIndex: index)
+            }
+
+            _ = activity
             await refreshAll()
         } catch {
             print("Error stopping session: \(error)")
@@ -197,6 +214,17 @@ final class AppState {
                 guard let session = self.currentSession, session.state == .running else { return }
                 let elapsed = Int(Date().timeIntervalSince(session.startedAt)) - session.totalPausedSeconds
                 self.timerElapsedSeconds = max(0, elapsed)
+
+                // Check for countdown timer completion
+                if !self.timerCompletionHandled,
+                   let timerMinutes = session.timerLengthMinutes,
+                   (session.sessionType == .rhythm || session.sessionType == .timebound) {
+                    let totalSeconds = timerMinutes * 60
+                    if self.timerElapsedSeconds >= totalSeconds {
+                        self.timerCompletionHandled = true
+                        await self.handleTimerCompletion()
+                    }
+                }
             }
         }
     }
@@ -207,11 +235,48 @@ final class AppState {
         timerElapsedSeconds = 0
     }
 
+    private func handleTimerCompletion() async {
+        guard let activity = currentActivity, let session = currentSession else { return }
+
+        // Send notification
+        NotificationManager.shared.sendTimerCompleted(
+            activityTitle: activity.title,
+            sessionType: session.sessionType
+        )
+
+        // Auto-stop the session
+        await stopSession()
+    }
+
+    // MARK: - Break Suggestions
+
+    private func suggestBreak(sessionIndex: Int) async {
+        let isLong = sessionIndex >= Constants.rhythmCycleLength
+
+        let breakKey = isLong ? PreferenceKey.longBreakMinutes : PreferenceKey.shortBreakMinutes
+        let defaultBreak = isLong ? Constants.longBreakMinutes : Constants.shortBreakMinutes
+        let breakMinutes: Int
+        if let val = try? await service.getPreference(key: breakKey) {
+            breakMinutes = Int(val) ?? defaultBreak
+        } else {
+            breakMinutes = defaultBreak
+        }
+
+        self.isLongBreak = isLong
+        self.suggestedBreakMinutes = breakMinutes
+        self.showBreakSuggestion = true
+
+        NotificationManager.shared.sendBreakSuggestion(isLongBreak: isLong, breakMinutes: breakMinutes)
+    }
+
+    func dismissBreakSuggestion() {
+        showBreakSuggestion = false
+    }
+
     // MARK: - Database Observation
 
     private func startObservations() {
         observationTask = Task {
-            // Poll for changes periodically (works with both DatabasePool and DatabaseQueue)
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(2))
                 guard !Task.isCancelled else { break }

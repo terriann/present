@@ -6,16 +6,30 @@ struct ActivitiesListView: View {
     @State private var showingCreateSheet = false
     @State private var showArchived = false
     @State private var selectedActivity: Activity?
+    @State private var searchText = ""
 
     var body: some View {
         VStack(spacing: 0) {
             // Toolbar
             HStack {
+                HStack {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(.secondary)
+                    TextField("Search activities...", text: $searchText)
+                        .textFieldStyle(.plain)
+                }
+                .padding(6)
+                .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
+                .frame(maxWidth: 200)
+
                 Toggle("Show archived", isOn: $showArchived)
+
                 Spacer()
+
                 Text("\(displayedActivities.count) activities")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+
                 Button {
                     showingCreateSheet = true
                 } label: {
@@ -27,16 +41,34 @@ struct ActivitiesListView: View {
 
             Divider()
 
-            if displayedActivities.isEmpty {
-                ContentUnavailableView(
-                    "No Activities",
-                    systemImage: "tray",
-                    description: Text("Create an activity to start tracking time.")
-                )
-            } else {
-                List(displayedActivities, selection: $selectedActivity) { activity in
-                    ActivityRow(activity: activity)
-                        .tag(activity)
+            HSplitView {
+                // Activity list
+                if displayedActivities.isEmpty {
+                    ContentUnavailableView(
+                        "No Activities",
+                        systemImage: "tray",
+                        description: Text("Create an activity to start tracking time.")
+                    )
+                    .frame(minWidth: 250)
+                } else {
+                    List(displayedActivities, selection: $selectedActivity) { activity in
+                        ActivityRow(activity: activity)
+                            .tag(activity)
+                    }
+                    .frame(minWidth: 250, maxWidth: 350)
+                }
+
+                // Detail view
+                if let activity = selectedActivity {
+                    ActivityDetailView(activity: activity)
+                        .id(activity.id)
+                        .environment(appState)
+                } else {
+                    ContentUnavailableView(
+                        "Select an Activity",
+                        systemImage: "tray",
+                        description: Text("Choose an activity from the list to view its details.")
+                    )
                 }
             }
         }
@@ -48,19 +80,19 @@ struct ActivitiesListView: View {
             await appState.refreshAll()
         }
         .onChange(of: showArchived) {
-            Task { await loadActivities() }
+            Task { await appState.refreshAll() }
         }
     }
 
     private var displayedActivities: [Activity] {
-        if showArchived {
-            return appState.allActivities
+        var activities = appState.allActivities
+        if !showArchived {
+            activities = activities.filter { !$0.isArchived }
         }
-        return appState.allActivities.filter { !$0.isArchived }
-    }
-
-    private func loadActivities() async {
-        await appState.refreshAll()
+        if !searchText.isEmpty {
+            activities = activities.filter { $0.title.localizedCaseInsensitiveContains(searchText) }
+        }
+        return activities
     }
 }
 

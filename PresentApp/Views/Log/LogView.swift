@@ -3,7 +3,7 @@ import PresentCore
 
 struct LogView: View {
     @Environment(AppState.self) private var appState
-    @State private var sessions: [Session] = []
+    @State private var sessionEntries: [(Session, Activity)] = []
     @State private var searchText = ""
     @State private var selectedType: SessionType?
     @State private var dateFrom: Date = Calendar.current.date(byAdding: .day, value: -7, to: Date())!
@@ -11,7 +11,6 @@ struct LogView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Filter bar
             LogFilterBar(
                 searchText: $searchText,
                 selectedType: $selectedType,
@@ -22,15 +21,15 @@ struct LogView: View {
 
             Divider()
 
-            if sessions.isEmpty {
+            if filteredEntries.isEmpty {
                 ContentUnavailableView(
                     "No Sessions",
                     systemImage: "list.bullet.clipboard",
                     description: Text("Completed sessions will appear here.")
                 )
             } else {
-                List(sessions) { session in
-                    SessionRow(session: session, activityTitle: activityTitle(for: session))
+                List(filteredEntries, id: \.0.id) { session, activity in
+                    SessionRow(session: session, activityTitle: activity.title)
                 }
             }
         }
@@ -38,17 +37,36 @@ struct LogView: View {
         .task {
             await loadSessions()
         }
+        .onChange(of: selectedType) {
+            Task { await loadSessions() }
+        }
+        .onChange(of: dateFrom) {
+            Task { await loadSessions() }
+        }
+        .onChange(of: dateTo) {
+            Task { await loadSessions() }
+        }
     }
 
-    private func activityTitle(for session: Session) -> String {
-        appState.allActivities.first { $0.id == session.activityId }?.title ?? "Unknown"
+    private var filteredEntries: [(Session, Activity)] {
+        if searchText.isEmpty {
+            return sessionEntries
+        }
+        return sessionEntries.filter { _, activity in
+            activity.title.localizedCaseInsensitiveContains(searchText)
+        }
     }
 
     private func loadSessions() async {
         do {
-            let summary = try await appState.service.dailySummary(date: Date(), includeArchived: true)
-            // For now, load today's data — full filtering will be added in Phase 3
-            _ = summary
+            let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: dateTo))!
+            sessionEntries = try await appState.service.listSessions(
+                from: Calendar.current.startOfDay(for: dateFrom),
+                to: endOfDay,
+                type: selectedType,
+                activityId: nil,
+                includeArchived: true
+            )
         } catch {
             print("Error loading sessions: \(error)")
         }
