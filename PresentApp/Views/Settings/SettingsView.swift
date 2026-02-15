@@ -463,9 +463,9 @@ struct AboutTab: View {
         VStack(spacing: 16) {
             Spacer()
 
-            Image(systemName: "clock.fill")
-                .font(.system(size: 48))
-                .foregroundStyle(.tint)
+            Image(nsImage: NSApplication.shared.applicationIconImage)
+                .resizable()
+                .frame(width: 96, height: 96)
 
             Text("Present")
                 .font(.title.bold())
