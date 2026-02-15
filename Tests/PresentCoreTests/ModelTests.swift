@@ -49,11 +49,11 @@ struct ModelTests {
     }
 
     @Test func preferenceKeyDefaults() {
-        #expect(PreferenceKey.defaults.count == 6)
         let keys = PreferenceKey.defaults.map(\.0)
         #expect(keys.contains(PreferenceKey.defaultRhythmMinutes))
-        #expect(keys.contains(PreferenceKey.shortBreakMinutes))
         #expect(keys.contains(PreferenceKey.longBreakMinutes))
+        #expect(keys.contains(PreferenceKey.rhythmDurationOptions))
+        #expect(!keys.contains("shortBreakMinutes"))
     }
 
     @Test func timeFormattingDuration() {

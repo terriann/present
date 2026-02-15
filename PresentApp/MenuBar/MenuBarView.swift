@@ -6,7 +6,8 @@ struct MenuBarView: View {
     @Environment(\.openWindow) private var openWindow
     @State private var searchText = ""
     @State private var selectedSessionType: SessionType = .work
-    @State private var timerMinutes: Int = 25
+    @State private var selectedRhythmOption: RhythmOption?
+    @State private var timeboundMinutes: Int = 25
     @State private var newActivityTitle = ""
     @State private var editingActivity: Activity?
 
@@ -82,11 +83,11 @@ struct MenuBarView: View {
                     session: suggestion.session
                 ) {
                     Task {
-                        let minutes = suggestion.session.timerLengthMinutes
                         await appState.startSession(
                             activityId: suggestion.activity.id!,
                             type: suggestion.session.sessionType,
-                            timerMinutes: minutes
+                            timerMinutes: suggestion.session.timerLengthMinutes,
+                            breakMinutes: suggestion.session.breakMinutes
                         )
                     }
                 }
@@ -127,12 +128,12 @@ struct MenuBarView: View {
             // Duration controls for rhythm/timebound
             if selectedSessionType == .rhythm {
                 HStack(spacing: 4) {
-                    ForEach([25, 30, 45], id: \.self) { mins in
-                        let isSelected = timerMinutes == mins
+                    ForEach(appState.rhythmDurationOptions, id: \.self) { option in
+                        let isSelected = selectedRhythmOption == option
                         Button {
-                            timerMinutes = mins
+                            selectedRhythmOption = option
                         } label: {
-                            Text("\(mins) min")
+                            Text("\(option.focusMinutes) min (\(option.breakMinutes)m)")
                                 .font(.caption2.weight(isSelected ? .semibold : .regular))
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 3)
@@ -149,7 +150,7 @@ struct MenuBarView: View {
                     Text("Duration:")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    TextField("", value: $timerMinutes, format: .number)
+                    TextField("", value: $timeboundMinutes, format: .number)
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 48)
                         .font(.caption)
@@ -195,8 +196,7 @@ struct MenuBarView: View {
                 ForEach(activities) { activity in
                     QuickStartRow(activity: activity, onTap: {
                         Task {
-                            let minutes: Int? = (selectedSessionType == .rhythm || selectedSessionType == .timebound) ? timerMinutes : nil
-                            await appState.startSession(activityId: activity.id!, type: selectedSessionType, timerMinutes: minutes)
+                            await startSessionForType(activityId: activity.id!)
                         }
                     }, onEdit: {
                         editingActivity = activity
@@ -218,16 +218,49 @@ struct MenuBarView: View {
                                 CreateActivityInput(title: newActivityTitle.trimmingCharacters(in: .whitespaces))
                             ) else { return }
                             newActivityTitle = ""
-                            let minutes: Int? = (selectedSessionType == .rhythm || selectedSessionType == .timebound) ? timerMinutes : nil
-                            await appState.startSession(activityId: activity.id!, type: selectedSessionType, timerMinutes: minutes)
+                            await startSessionForType(activityId: activity.id!)
                         }
                     }
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
         }
+        .onAppear {
+            if selectedRhythmOption == nil || !appState.rhythmDurationOptions.contains(where: { $0 == selectedRhythmOption }) {
+                selectedRhythmOption = appState.rhythmDurationOptions.first
+            }
+        }
+        .onChange(of: appState.rhythmDurationOptions) {
+            if selectedRhythmOption == nil || !appState.rhythmDurationOptions.contains(where: { $0 == selectedRhythmOption }) {
+                selectedRhythmOption = appState.rhythmDurationOptions.first
+            }
+        }
         .sheet(item: $editingActivity) { activity in
             ActivityFormSheet(mode: .edit(activity))
+        }
+    }
+
+    private func startSessionForType(activityId: Int64) async {
+        switch selectedSessionType {
+        case .rhythm:
+            let option = selectedRhythmOption ?? appState.rhythmDurationOptions.first
+            await appState.startSession(
+                activityId: activityId,
+                type: .rhythm,
+                timerMinutes: option?.focusMinutes,
+                breakMinutes: option?.breakMinutes
+            )
+        case .timebound:
+            await appState.startSession(
+                activityId: activityId,
+                type: .timebound,
+                timerMinutes: timeboundMinutes
+            )
+        default:
+            await appState.startSession(
+                activityId: activityId,
+                type: selectedSessionType
+            )
         }
     }
 

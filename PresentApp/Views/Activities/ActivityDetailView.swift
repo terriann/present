@@ -12,7 +12,8 @@ struct ActivityDetailView: View {
     @State private var archiveResult: ArchiveResult?
     @State private var showingDeleteConfirm = false
     @State private var selectedSessionType: SessionType = .work
-    @State private var timerMinutes: Int = 25
+    @State private var selectedRhythmOption: RhythmOption?
+    @State private var timeboundMinutes: Int = 25
 
     init(activity: Activity) {
         _activity = State(initialValue: activity)
@@ -107,6 +108,14 @@ struct ActivityDetailView: View {
         }
         .task {
             await loadDetails()
+            if selectedRhythmOption == nil || !appState.rhythmDurationOptions.contains(where: { $0 == selectedRhythmOption }) {
+                selectedRhythmOption = appState.rhythmDurationOptions.first
+            }
+        }
+        .onChange(of: appState.rhythmDurationOptions) {
+            if selectedRhythmOption == nil || !appState.rhythmDurationOptions.contains(where: { $0 == selectedRhythmOption }) {
+                selectedRhythmOption = appState.rhythmDurationOptions.first
+            }
         }
         .onChange(of: showingEditSheet) {
             if !showingEditSheet {
@@ -163,12 +172,12 @@ struct ActivityDetailView: View {
 
                     if selectedSessionType == .rhythm {
                         HStack(spacing: 4) {
-                            ForEach([25, 30, 45], id: \.self) { mins in
-                                let isSelected = timerMinutes == mins
+                            ForEach(appState.rhythmDurationOptions, id: \.self) { option in
+                                let isSelected = selectedRhythmOption == option
                                 Button {
-                                    timerMinutes = mins
+                                    selectedRhythmOption = option
                                 } label: {
-                                    Text("\(mins) min")
+                                    Text("\(option.focusMinutes) min (\(option.breakMinutes)m)")
                                         .font(.caption2.weight(isSelected ? .semibold : .regular))
                                         .padding(.horizontal, 8)
                                         .padding(.vertical, 3)
@@ -183,7 +192,7 @@ struct ActivityDetailView: View {
                             Text("Duration:")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                            TextField("", value: $timerMinutes, format: .number)
+                            TextField("", value: $timeboundMinutes, format: .number)
                                 .textFieldStyle(.roundedBorder)
                                 .frame(width: 48)
                                 .font(.caption)
@@ -195,8 +204,27 @@ struct ActivityDetailView: View {
 
                     Button("Start Session") {
                         Task {
-                            let minutes: Int? = (selectedSessionType == .rhythm || selectedSessionType == .timebound) ? timerMinutes : nil
-                            await appState.startSession(activityId: activity.id!, type: selectedSessionType, timerMinutes: minutes)
+                            switch selectedSessionType {
+                            case .rhythm:
+                                let option = selectedRhythmOption ?? appState.rhythmDurationOptions.first
+                                await appState.startSession(
+                                    activityId: activity.id!,
+                                    type: .rhythm,
+                                    timerMinutes: option?.focusMinutes,
+                                    breakMinutes: option?.breakMinutes
+                                )
+                            case .timebound:
+                                await appState.startSession(
+                                    activityId: activity.id!,
+                                    type: .timebound,
+                                    timerMinutes: timeboundMinutes
+                                )
+                            default:
+                                await appState.startSession(
+                                    activityId: activity.id!,
+                                    type: selectedSessionType
+                                )
+                            }
                         }
                     }
                     .buttonStyle(.borderedProminent)

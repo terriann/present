@@ -16,6 +16,7 @@ final class AppState {
     var allActivities: [Activity] = []
     var allTags: [Tag] = []
     var recentSessionSuggestion: (session: Session, activity: Activity)?
+    var rhythmDurationOptions: [RhythmOption] = Constants.defaultRhythmDurationOptions
 
     // MARK: - Timer
 
@@ -143,6 +144,11 @@ final class AppState {
             recentActivities = try await service.recentActivities(limit: 6)
             allActivities = try await service.listActivities(includeArchived: true)
             allTags = try await service.listTags()
+
+            if let optionsStr = try? await service.getPreference(key: PreferenceKey.rhythmDurationOptions) {
+                let parsed: [RhythmOption] = PreferenceKey.parseRhythmOptions(optionsStr)
+                rhythmDurationOptions = parsed.isEmpty ? Constants.defaultRhythmDurationOptions : parsed
+            }
         } catch {
             print("Error refreshing data: \(error)")
         }
@@ -150,12 +156,13 @@ final class AppState {
 
     // MARK: - Session Actions
 
-    func startSession(activityId: Int64, type: SessionType, timerMinutes: Int? = nil) async {
+    func startSession(activityId: Int64, type: SessionType, timerMinutes: Int? = nil, breakMinutes: Int? = nil) async {
         do {
             let session = try await service.startSession(
                 activityId: activityId,
                 type: type,
-                timerMinutes: timerMinutes
+                timerMinutes: timerMinutes,
+                breakMinutes: breakMinutes
             )
             currentSession = session
             currentActivity = try await service.getActivity(id: activityId)
@@ -199,7 +206,7 @@ final class AppState {
 
             // For rhythm sessions, suggest a break
             if stoppedSession.sessionType == .rhythm, let index = stoppedSession.rhythmSessionIndex {
-                await suggestBreak(sessionIndex: index)
+                await suggestBreak(session: stoppedSession, sessionIndex: index)
             }
 
             _ = activity
@@ -277,7 +284,7 @@ final class AppState {
 
     // MARK: - Break Suggestions
 
-    private func suggestBreak(sessionIndex: Int) async {
+    private func suggestBreak(session: Session, sessionIndex: Int) async {
         let cycleLength: Int
         if let val = try? await service.getPreference(key: PreferenceKey.rhythmCycleLength) {
             cycleLength = Int(val) ?? Constants.rhythmCycleLength
@@ -286,13 +293,17 @@ final class AppState {
         }
         let isLong = sessionIndex >= cycleLength
 
-        let breakKey = isLong ? PreferenceKey.longBreakMinutes : PreferenceKey.shortBreakMinutes
-        let defaultBreak = isLong ? Constants.longBreakMinutes : Constants.shortBreakMinutes
         let breakMinutes: Int
-        if let val = try? await service.getPreference(key: breakKey) {
-            breakMinutes = Int(val) ?? defaultBreak
+        if isLong {
+            // Long break: use global preference
+            if let val = try? await service.getPreference(key: PreferenceKey.longBreakMinutes) {
+                breakMinutes = Int(val) ?? Constants.longBreakMinutes
+            } else {
+                breakMinutes = Constants.longBreakMinutes
+            }
         } else {
-            breakMinutes = defaultBreak
+            // Short break: use session's paired break duration, fall back to default
+            breakMinutes = session.breakMinutes ?? Constants.defaultShortBreakMinutes
         }
 
         self.isLongBreak = isLong

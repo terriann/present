@@ -16,9 +16,6 @@ struct DatabaseManagerTests {
             let pref = try Preference.fetchOne(db, key: PreferenceKey.defaultRhythmMinutes)
             #expect(pref?.value == "25")
 
-            let breakPref = try Preference.fetchOne(db, key: PreferenceKey.shortBreakMinutes)
-            #expect(breakPref?.value == "5")
-
             let longBreak = try Preference.fetchOne(db, key: PreferenceKey.longBreakMinutes)
             #expect(longBreak?.value == "15")
         }

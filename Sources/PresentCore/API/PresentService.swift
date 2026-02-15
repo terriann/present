@@ -41,7 +41,7 @@ public final class PresentService: PresentAPI, Sendable {
 
     // MARK: - Sessions
 
-    public func startSession(activityId: Int64, type: SessionType, timerMinutes: Int? = nil, plannedStart: Date? = nil, plannedEnd: Date? = nil) async throws -> Session {
+    public func startSession(activityId: Int64, type: SessionType, timerMinutes: Int? = nil, breakMinutes: Int? = nil, plannedStart: Date? = nil, plannedEnd: Date? = nil) async throws -> Session {
         try await dbWriter.write { db in
             // Check no active session
             let active = try Session
@@ -71,8 +71,9 @@ public final class PresentService: PresentAPI, Sendable {
                 createdAt: now
             )
 
-            // For rhythm sessions, determine the session index
+            // For rhythm sessions, store break duration and determine the session index
             if type == .rhythm {
+                session.breakMinutes = breakMinutes
                 let lastRhythm = try Session
                     .filter(Session.Columns.sessionType == SessionType.rhythm.rawValue)
                     .filter(Session.Columns.state == SessionState.completed.rawValue)

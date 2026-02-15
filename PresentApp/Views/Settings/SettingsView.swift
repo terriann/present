@@ -249,42 +249,102 @@ struct GeneralSettingsTab: View {
 struct RhythmSettingsTab: View {
     @Environment(AppState.self) private var appState
     @State private var defaultMinutes = 25
-    @State private var shortBreak = 5
     @State private var longBreak = 15
     @State private var cycleLength = 4
+    @State private var durationOptions: [RhythmOption] = Constants.defaultRhythmDurationOptions
+    @State private var newFocusText = ""
+    @State private var newBreakText = ""
+    @State private var durationValidationError: String?
 
     var body: some View {
         Form {
             Section {
-                Picker("Default duration", selection: $defaultMinutes) {
-                    Text("25 minutes").tag(25)
-                    Text("30 minutes").tag(30)
-                    Text("45 minutes").tag(45)
+                ForEach(durationOptions, id: \.self) { option in
+                    HStack {
+                        Text("\(option.focusMinutes) min focus / \(option.breakMinutes) min break")
+                            .monospacedDigit()
+                        Spacer()
+                        Button {
+                            removeDurationOption(option)
+                        } label: {
+                            Image(systemName: "minus.circle.fill")
+                                .foregroundStyle(.red)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(durationOptions.count <= 1)
+                    }
                 }
 
-                Stepper(value: $shortBreak, in: 1...30) {
+                if durationOptions.count < Constants.maxRhythmDurationOptions {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            TextField("Focus", text: $newFocusText)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 100)
+                                .fixedSize()
+
+                            Text("min  /")
+                                .fixedSize()
+                                .foregroundStyle(.secondary)
+
+                            TextField("Break", text: $newBreakText)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 100)
+                                .fixedSize()
+                                .onSubmit { addDurationOption() }
+
+                            Text("min")
+                                .fixedSize()
+                                .foregroundStyle(.secondary)
+
+                            Spacer()
+
+                            Button {
+                                addDurationOption()
+                            } label: {
+                                Image(systemName: "plus.circle.fill")
+                                    .foregroundStyle(Color.accentColor)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(newFocusText.isEmpty || newBreakText.isEmpty)
+                        }
+
+                        if let error = durationValidationError {
+                            Text(error)
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                        }
+                    }
+                }
+            } header: {
+                Text("Duration Options")
+            } footer: {
+                Text("Up to \(Constants.maxRhythmDurationOptions) focus/break pairs. Focus: \(Constants.rhythmDurationRange.lowerBound)\u{2013}\(Constants.rhythmDurationRange.upperBound) min, break: \(Constants.breakDurationRange.lowerBound)\u{2013}\(Constants.breakDurationRange.upperBound) min.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
+                Picker("Default duration", selection: $defaultMinutes) {
+                    ForEach(durationOptions, id: \.self) { option in
+                        Text("\(option.focusMinutes) min (\(option.breakMinutes)m break)").tag(option.focusMinutes)
+                    }
+                }
+
+                Stepper(value: $cycleLength, in: 2...8) {
                     HStack {
-                        Text("Short break")
+                        Text("Long break after")
                         Spacer()
-                        Text("\(shortBreak) minutes")
+                        Text("\(cycleLength) sessions")
                             .foregroundStyle(.secondary)
                             .monospacedDigit()
                     }
                 }
                 Stepper(value: $longBreak, in: 5...60) {
                     HStack {
-                        Text("Long break")
+                        Text("Long break duration")
                         Spacer()
                         Text("\(longBreak) minutes")
-                            .foregroundStyle(.secondary)
-                            .monospacedDigit()
-                    }
-                }
-                Stepper(value: $cycleLength, in: 2...8) {
-                    HStack {
-                        Text("Long break after")
-                        Spacer()
-                        Text("\(cycleLength) sessions")
                             .foregroundStyle(.secondary)
                             .monospacedDigit()
                     }
@@ -297,18 +357,80 @@ struct RhythmSettingsTab: View {
         .padding()
         .onAppear { loadSettings() }
         .onChange(of: defaultMinutes) { saveSettings() }
-        .onChange(of: shortBreak) { saveSettings() }
         .onChange(of: longBreak) { saveSettings() }
         .onChange(of: cycleLength) { saveSettings() }
     }
 
+    // MARK: - Duration Option Actions
+
+    private func addDurationOption() {
+        durationValidationError = nil
+        guard let focus = Int(newFocusText.trimmingCharacters(in: .whitespaces)) else {
+            durationValidationError = "Enter focus minutes"
+            return
+        }
+        guard let breakMins = Int(newBreakText.trimmingCharacters(in: .whitespaces)) else {
+            durationValidationError = "Enter break minutes"
+            return
+        }
+        guard Constants.rhythmDurationRange.contains(focus) else {
+            durationValidationError = "Focus: \(Constants.rhythmDurationRange.lowerBound)\u{2013}\(Constants.rhythmDurationRange.upperBound)"
+            return
+        }
+        guard Constants.breakDurationRange.contains(breakMins) else {
+            durationValidationError = "Break: \(Constants.breakDurationRange.lowerBound)\u{2013}\(Constants.breakDurationRange.upperBound)"
+            return
+        }
+        guard !durationOptions.contains(where: { $0.focusMinutes == focus }) else {
+            durationValidationError = "Focus duration exists"
+            return
+        }
+        let option = RhythmOption(focusMinutes: focus, breakMinutes: breakMins)
+        durationOptions.append(option)
+        durationOptions.sort { $0.focusMinutes < $1.focusMinutes }
+        newFocusText = ""
+        newBreakText = ""
+        saveDurationOptions()
+    }
+
+    private func removeDurationOption(_ option: RhythmOption) {
+        guard durationOptions.count > 1 else { return }
+        durationOptions.removeAll { $0 == option }
+        // If default is no longer in the list, reset it
+        if !durationOptions.contains(where: { $0.focusMinutes == defaultMinutes }) {
+            defaultMinutes = durationOptions.first?.focusMinutes ?? Constants.defaultRhythmMinutes
+        }
+        saveDurationOptions()
+        saveSettings()
+    }
+
+    private func saveDurationOptions() {
+        let serialized = PreferenceKey.serializeRhythmOptions(durationOptions)
+        Task {
+            try? await appState.service.setPreference(
+                key: PreferenceKey.rhythmDurationOptions,
+                value: serialized
+            )
+            await appState.refreshAll()
+        }
+    }
+
+    // MARK: - Settings
+
     private func loadSettings() {
         Task {
+            if let val = try? await appState.service.getPreference(key: PreferenceKey.rhythmDurationOptions) {
+                let parsed = PreferenceKey.parseRhythmOptions(val)
+                if !parsed.isEmpty {
+                    durationOptions = parsed
+                }
+            }
             if let val = try? await appState.service.getPreference(key: PreferenceKey.defaultRhythmMinutes) {
                 defaultMinutes = Int(val) ?? 25
             }
-            if let val = try? await appState.service.getPreference(key: PreferenceKey.shortBreakMinutes) {
-                shortBreak = Int(val) ?? 5
+            // Ensure default is in the options list
+            if !durationOptions.contains(where: { $0.focusMinutes == defaultMinutes }) {
+                defaultMinutes = durationOptions.first?.focusMinutes ?? Constants.defaultRhythmMinutes
             }
             if let val = try? await appState.service.getPreference(key: PreferenceKey.longBreakMinutes) {
                 longBreak = Int(val) ?? 15
@@ -322,7 +444,6 @@ struct RhythmSettingsTab: View {
     private func saveSettings() {
         Task {
             try? await appState.service.setPreference(key: PreferenceKey.defaultRhythmMinutes, value: "\(defaultMinutes)")
-            try? await appState.service.setPreference(key: PreferenceKey.shortBreakMinutes, value: "\(shortBreak)")
             try? await appState.service.setPreference(key: PreferenceKey.longBreakMinutes, value: "\(longBreak)")
             try? await appState.service.setPreference(key: PreferenceKey.rhythmCycleLength, value: "\(cycleLength)")
         }

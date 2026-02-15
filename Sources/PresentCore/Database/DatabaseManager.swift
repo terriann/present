@@ -96,6 +96,24 @@ public final class DatabaseManager: Sendable {
             }
         }
 
+        migrator.registerMigration("v2-add-session-break-minutes") { db in
+            try db.alter(table: "session") { t in
+                t.add(column: "breakMinutes", .integer)
+            }
+
+            // Update rhythmDurationOptions to new colon-pair format
+            try db.execute(
+                sql: "UPDATE preference SET value = ? WHERE key = ? AND value = ?",
+                arguments: ["25:5,30:5,45:10", PreferenceKey.rhythmDurationOptions, "25,30,45"]
+            )
+
+            // Remove deprecated shortBreakMinutes preference
+            try db.execute(
+                sql: "DELETE FROM preference WHERE key = ?",
+                arguments: ["shortBreakMinutes"]
+            )
+        }
+
         try migrator.migrate(writer)
     }
 }

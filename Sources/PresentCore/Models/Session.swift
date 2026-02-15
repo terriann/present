@@ -15,6 +15,7 @@ public struct Session: Codable, Sendable, Identifiable, Equatable {
     public var state: SessionState
     public var totalPausedSeconds: Int
     public var lastPausedAt: Date?
+    public var breakMinutes: Int?
     public var createdAt: Date
 
     public init(
@@ -31,6 +32,7 @@ public struct Session: Codable, Sendable, Identifiable, Equatable {
         state: SessionState = .running,
         totalPausedSeconds: Int = 0,
         lastPausedAt: Date? = nil,
+        breakMinutes: Int? = nil,
         createdAt: Date = Date()
     ) {
         self.id = id
@@ -46,6 +48,7 @@ public struct Session: Codable, Sendable, Identifiable, Equatable {
         self.state = state
         self.totalPausedSeconds = totalPausedSeconds
         self.lastPausedAt = lastPausedAt
+        self.breakMinutes = breakMinutes
         self.createdAt = createdAt
     }
 }
@@ -67,6 +70,7 @@ extension Session: FetchableRecord, PersistableRecord {
         static let state = Column(CodingKeys.state)
         static let totalPausedSeconds = Column(CodingKeys.totalPausedSeconds)
         static let lastPausedAt = Column(CodingKeys.lastPausedAt)
+        static let breakMinutes = Column(CodingKeys.breakMinutes)
         static let createdAt = Column(CodingKeys.createdAt)
     }
 

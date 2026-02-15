@@ -7,7 +7,8 @@ struct SessionTypePickerSheet: View {
 
     let activity: Activity
     @State private var selectedType: SessionType = .work
-    @State private var timerMinutes: Int = 25
+    @State private var selectedRhythmOption: RhythmOption?
+    @State private var timeboundMinutes: Int = 25
 
     var body: some View {
         VStack(spacing: 16) {
@@ -27,16 +28,16 @@ struct SessionTypePickerSheet: View {
             .pickerStyle(.segmented)
 
             if selectedType == .rhythm {
-                Picker("Duration", selection: $timerMinutes) {
-                    Text("25 min").tag(25)
-                    Text("30 min").tag(30)
-                    Text("45 min").tag(45)
+                Picker("Duration", selection: $selectedRhythmOption) {
+                    ForEach(appState.rhythmDurationOptions, id: \.self) { option in
+                        Text("\(option.focusMinutes) min (\(option.breakMinutes)m)").tag(Optional(option))
+                    }
                 }
                 .pickerStyle(.segmented)
             } else if selectedType == .timebound {
                 HStack {
                     Text("Duration:")
-                    TextField("Minutes", value: $timerMinutes, format: .number)
+                    TextField("Minutes", value: $timeboundMinutes, format: .number)
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 80)
                     Text("min")
@@ -51,8 +52,27 @@ struct SessionTypePickerSheet: View {
 
                 Button("Start") {
                     Task {
-                        let minutes: Int? = (selectedType == .rhythm || selectedType == .timebound) ? timerMinutes : nil
-                        await appState.startSession(activityId: activity.id!, type: selectedType, timerMinutes: minutes)
+                        switch selectedType {
+                        case .rhythm:
+                            let option = selectedRhythmOption ?? appState.rhythmDurationOptions.first
+                            await appState.startSession(
+                                activityId: activity.id!,
+                                type: .rhythm,
+                                timerMinutes: option?.focusMinutes,
+                                breakMinutes: option?.breakMinutes
+                            )
+                        case .timebound:
+                            await appState.startSession(
+                                activityId: activity.id!,
+                                type: .timebound,
+                                timerMinutes: timeboundMinutes
+                            )
+                        default:
+                            await appState.startSession(
+                                activityId: activity.id!,
+                                type: selectedType
+                            )
+                        }
                         dismiss()
                     }
                 }
@@ -62,5 +82,10 @@ struct SessionTypePickerSheet: View {
         }
         .padding(20)
         .frame(width: 300)
+        .onAppear {
+            if selectedRhythmOption == nil || !appState.rhythmDurationOptions.contains(where: { $0 == selectedRhythmOption }) {
+                selectedRhythmOption = appState.rhythmDurationOptions.first
+            }
+        }
     }
 }

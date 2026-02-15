@@ -23,21 +23,69 @@ extension Preference: FetchableRecord, PersistableRecord {
 public enum PreferenceKey {
     public static let externalIdBaseUrl = "externalIdBaseUrl"
     public static let defaultRhythmMinutes = "defaultRhythmMinutes"
-    public static let shortBreakMinutes = "shortBreakMinutes"
     public static let longBreakMinutes = "longBreakMinutes"
     public static let rhythmCycleLength = "rhythmCycleLength"
     public static let notificationSound = "notificationSound"
     public static let soundEffectsEnabled = "soundEffectsEnabled"
     public static let includeArchivedInReports = "includeArchivedInReports"
+    public static let rhythmDurationOptions = "rhythmDurationOptions"
 
     public static let defaults: [(String, String)] = [
         (externalIdBaseUrl, ""),
         (defaultRhythmMinutes, "25"),
-        (shortBreakMinutes, "5"),
         (longBreakMinutes, "15"),
         (rhythmCycleLength, "4"),
         (notificationSound, "1"),
         (soundEffectsEnabled, "1"),
         (includeArchivedInReports, "0"),
+        (rhythmDurationOptions, "25:5,30:5,45:10"),
     ]
+
+    /// Parse a serialized string of rhythm duration options into sorted, validated RhythmOption pairs.
+    /// Supports legacy format ("25,30,45") and new format ("25:5,30:5,45:10").
+    public static func parseRhythmOptions(_ value: String) -> [RhythmOption] {
+        let isLegacy = !value.contains(":")
+
+        let items = value.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        var seen = Set<Int>()
+        var result: [RhythmOption] = []
+
+        for item in items {
+            let option: RhythmOption?
+            if isLegacy {
+                // Legacy format: plain integers, default break to 5
+                if let focus = Int(item), Constants.rhythmDurationRange.contains(focus) {
+                    option = RhythmOption(focusMinutes: focus, breakMinutes: Constants.defaultShortBreakMinutes)
+                } else {
+                    option = nil
+                }
+            } else {
+                // New format: "focus:break"
+                let parts = item.split(separator: ":").map { $0.trimmingCharacters(in: .whitespaces) }
+                if parts.count == 2,
+                   let focus = Int(parts[0]), Constants.rhythmDurationRange.contains(focus),
+                   let breakMins = Int(parts[1]), Constants.breakDurationRange.contains(breakMins) {
+                    option = RhythmOption(focusMinutes: focus, breakMinutes: breakMins)
+                } else {
+                    option = nil
+                }
+            }
+
+            if let opt = option, !seen.contains(opt.focusMinutes) {
+                seen.insert(opt.focusMinutes)
+                result.append(opt)
+            }
+        }
+
+        result.sort { $0.focusMinutes < $1.focusMinutes }
+        return Array(result.prefix(Constants.maxRhythmDurationOptions))
+    }
+
+    /// Serialize rhythm duration options to colon-pair format: "25:5,30:5,45:10".
+    public static func serializeRhythmOptions(_ options: [RhythmOption]) -> String {
+        options
+            .sorted { $0.focusMinutes < $1.focusMinutes }
+            .map { "\($0.focusMinutes):\($0.breakMinutes)" }
+            .joined(separator: ",")
+    }
 }

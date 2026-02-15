@@ -295,9 +295,6 @@ struct BulkOperationTests {
         let rhythm = try await service.getPreference(key: PreferenceKey.defaultRhythmMinutes)
         #expect(rhythm == "25")
 
-        let shortBreak = try await service.getPreference(key: PreferenceKey.shortBreakMinutes)
-        #expect(shortBreak == "5")
-
         let longBreak = try await service.getPreference(key: PreferenceKey.longBreakMinutes)
         #expect(longBreak == "15")
 
