@@ -154,16 +154,13 @@ public final class PresentService: PresentAPI, Sendable {
 
     public func cancelSession() async throws {
         try await dbWriter.write { db in
-            guard var session = try Session
+            guard let session = try Session
                 .filter(Session.Columns.state == SessionState.running.rawValue || Session.Columns.state == SessionState.paused.rawValue)
                 .fetchOne(db) else {
                 throw PresentError.noActiveSession
             }
 
-            session.state = .cancelled
-            session.endedAt = Date()
-            session.durationSeconds = 0
-            try session.update(db)
+            try session.delete(db)
         }
     }
 

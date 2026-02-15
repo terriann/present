@@ -42,15 +42,17 @@ struct SessionControls: View {
                 .buttonStyle(.plain)
                 .help("Stop session")
 
-                Button {
-                    Task { await appState.cancelSession() }
-                } label: {
-                    Image(systemName: "xmark.circle")
-                        .font(.title2)
-                        .foregroundStyle(.secondary)
+                if appState.timerElapsedSeconds <= 10 {
+                    Button {
+                        Task { await appState.cancelSession() }
+                    } label: {
+                        Image(systemName: "trash")
+                            .font(.title2)
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Discard session")
                 }
-                .buttonStyle(.plain)
-                .help("Cancel session")
             }
         }
     }
