@@ -5,8 +5,6 @@ struct MenuBarView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.openWindow) private var openWindow
     @State private var searchText = ""
-    @State private var showingSessionTypeSheet = false
-    @State private var selectedActivity: Activity?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -97,15 +95,11 @@ struct MenuBarView: View {
             } else {
                 ForEach(activities) { activity in
                     QuickStartRow(activity: activity) {
-                        selectedActivity = activity
-                        showingSessionTypeSheet = true
+                        Task {
+                            await appState.startSession(activityId: activity.id!, type: .work)
+                        }
                     }
                 }
-            }
-        }
-        .sheet(isPresented: $showingSessionTypeSheet) {
-            if let activity = selectedActivity {
-                SessionTypePickerSheet(activity: activity)
             }
         }
     }
