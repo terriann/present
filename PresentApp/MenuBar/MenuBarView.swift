@@ -249,6 +249,7 @@ struct MenuBarView: View {
         openWindow(id: "main")
         NSApplication.shared.activate(ignoringOtherApps: true)
     }
+
 }
 
 // MARK: - Clear Search Button

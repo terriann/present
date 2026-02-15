@@ -3,25 +3,35 @@ import PresentCore
 
 struct SettingsView: View {
     @Environment(AppState.self) private var appState
+    @State private var selectedTab = SettingsTab.general
+
+    private enum SettingsTab: Hashable {
+        case general, rhythm, notifications, about
+    }
 
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             GeneralSettingsTab()
                 .environment(appState)
                 .tabItem { Label("General", systemImage: "gear") }
+                .tag(SettingsTab.general)
 
             RhythmSettingsTab()
                 .environment(appState)
                 .tabItem { Label("Rhythm", systemImage: "timer") }
+                .tag(SettingsTab.rhythm)
 
             NotificationSettingsTab()
                 .environment(appState)
                 .tabItem { Label("Notifications", systemImage: "bell") }
+                .tag(SettingsTab.notifications)
 
             AboutTab()
                 .tabItem { Label("About", systemImage: "info.circle") }
+                .tag(SettingsTab.about)
         }
         .frame(width: 450, height: 300)
+        .onAppear { selectedTab = .general }
     }
 }
 
