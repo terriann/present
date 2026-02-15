@@ -208,6 +208,7 @@ struct AboutTab: View {
 struct NotificationSettingsTab: View {
     @Environment(AppState.self) private var appState
     @State private var soundEnabled = true
+    @State private var soundEffectsEnabled = true
 
     var body: some View {
         Form {
@@ -222,6 +223,23 @@ struct NotificationSettingsTab: View {
                         }
                     }
             }
+
+            Section("Sound Effects") {
+                Toggle("Play UI sound effects", isOn: $soundEffectsEnabled)
+                    .onChange(of: soundEffectsEnabled) {
+                        SoundManager.shared.isEnabled = soundEffectsEnabled
+                        Task {
+                            try? await appState.service.setPreference(
+                                key: PreferenceKey.soundEffectsEnabled,
+                                value: soundEffectsEnabled ? "1" : "0"
+                            )
+                        }
+                    }
+
+                Text("Sounds for session completion, cancellation, and break suggestions.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
         .padding()
@@ -229,6 +247,9 @@ struct NotificationSettingsTab: View {
             Task {
                 if let val = try? await appState.service.getPreference(key: PreferenceKey.notificationSound) {
                     soundEnabled = val == "1"
+                }
+                if let val = try? await appState.service.getPreference(key: PreferenceKey.soundEffectsEnabled) {
+                    soundEffectsEnabled = val == "1"
                 }
             }
         }

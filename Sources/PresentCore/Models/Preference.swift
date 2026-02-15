@@ -27,6 +27,7 @@ public enum PreferenceKey {
     public static let longBreakMinutes = "longBreakMinutes"
     public static let rhythmCycleLength = "rhythmCycleLength"
     public static let notificationSound = "notificationSound"
+    public static let soundEffectsEnabled = "soundEffectsEnabled"
     public static let includeArchivedInReports = "includeArchivedInReports"
 
     public static let defaults: [(String, String)] = [
@@ -36,6 +37,7 @@ public enum PreferenceKey {
         (longBreakMinutes, "15"),
         (rhythmCycleLength, "4"),
         (notificationSound, "1"),
+        (soundEffectsEnabled, "1"),
         (includeArchivedInReports, "0"),
     ]
 }

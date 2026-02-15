@@ -93,6 +93,7 @@ final class AppState {
         }
         service = PresentService(databasePool: dbManager.writer)
         NotificationManager.shared.requestPermission()
+        SoundManager.shared.configure(service: service)
         startObservations()
         startIPCServer()
         loadInitialData()
@@ -152,6 +153,7 @@ final class AppState {
             currentActivity = try await service.getActivity(id: activityId)
             timerCompletionHandled = false
             startTimer()
+            SoundManager.shared.play(.blow)
             await refreshAll()
         } catch {
             print("Error starting session: \(error)")
@@ -173,6 +175,7 @@ final class AppState {
             let session = try await service.resumeSession()
             currentSession = session
             startTimer()
+            SoundManager.shared.play(.blow)
         } catch {
             print("Error resuming session: \(error)")
         }
@@ -204,6 +207,7 @@ final class AppState {
             currentSession = nil
             currentActivity = nil
             stopTimer()
+            SoundManager.shared.play(.dip)
             await refreshAll()
         } catch {
             print("Error cancelling session: \(error)")
@@ -252,11 +256,12 @@ final class AppState {
     private func handleTimerCompletion() async {
         guard let activity = currentActivity, let session = currentSession else { return }
 
-        // Send notification
+        // Send notification and play completion sound
         NotificationManager.shared.sendTimerCompleted(
             activityTitle: activity.title,
             sessionType: session.sessionType
         )
+        SoundManager.shared.play(.shimmer)
 
         // Auto-stop the session
         await stopSession()
@@ -286,6 +291,7 @@ final class AppState {
         self.suggestedBreakMinutes = breakMinutes
         self.showBreakSuggestion = true
 
+        SoundManager.shared.play(.approach)
         NotificationManager.shared.sendBreakSuggestion(isLongBreak: isLong, breakMinutes: breakMinutes)
     }
 

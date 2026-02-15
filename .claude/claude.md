@@ -78,6 +78,14 @@ CLI Commands ──────────────────────�
 - Magic numbers extracted to `Constants.swift` with `public static let`.
 - Preference keys in `PreferenceKey` enum with static lets.
 
+### Sound Design
+- Four semantic sounds: `.approach` (attention needed), `.blow` (activation/beginning), `.dip` (negative/destructive), `.shimmer` (positive).
+- Always use `SoundManager.shared.play(.effect)` — never load audio files directly.
+- Sounds reinforce UX but are not excessive — reserved for **meaningful state transitions** only.
+- Good: session start/resume, session complete, cancel/discard, break suggestions.
+- Bad: button clicks, tab switches, selection changes, hover states, opening/closing panels.
+- Controlled by `soundEffectsEnabled` preference (separate from notification sounds).
+
 ## Conventional Commits
 
 Use [Conventional Commits](https://www.conventionalcommits.org/) format: `type(scope): description`
@@ -120,6 +128,7 @@ Use [Conventional Commits](https://www.conventionalcommits.org/) format: `type(s
 | `notes` | Markdown notes editor |
 | `tags` | Tag management |
 | `notifications` | System notifications |
+| `sound` | SoundManager and sound effects |
 | `settings` | Preferences and settings views |
 | `appstate` | AppState ViewModel, observation |
 | `ci` | GitHub Actions, workflows |
