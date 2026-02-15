@@ -85,18 +85,46 @@ struct RhythmSettingsTab: View {
     @State private var defaultMinutes = 25
     @State private var shortBreak = 5
     @State private var longBreak = 15
+    @State private var cycleLength = 4
 
     var body: some View {
         Form {
-            Section("Rhythm Session Defaults") {
+            Section {
                 Picker("Default duration", selection: $defaultMinutes) {
                     Text("25 minutes").tag(25)
                     Text("30 minutes").tag(30)
                     Text("45 minutes").tag(45)
                 }
 
-                Stepper("Short break: \(shortBreak) min", value: $shortBreak, in: 1...30)
-                Stepper("Long break: \(longBreak) min", value: $longBreak, in: 5...60)
+                Stepper(value: $shortBreak, in: 1...30) {
+                    HStack {
+                        Text("Short break")
+                        Spacer()
+                        Text("\(shortBreak) minutes")
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+                }
+                Stepper(value: $longBreak, in: 5...60) {
+                    HStack {
+                        Text("Long break")
+                        Spacer()
+                        Text("\(longBreak) minutes")
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+                }
+                Stepper(value: $cycleLength, in: 2...8) {
+                    HStack {
+                        Text("Long break after")
+                        Spacer()
+                        Text("\(cycleLength) sessions")
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+                }
+            } header: {
+                Text("Rhythm Session Defaults")
             }
         }
         .formStyle(.grouped)
@@ -105,6 +133,7 @@ struct RhythmSettingsTab: View {
         .onChange(of: defaultMinutes) { saveSettings() }
         .onChange(of: shortBreak) { saveSettings() }
         .onChange(of: longBreak) { saveSettings() }
+        .onChange(of: cycleLength) { saveSettings() }
     }
 
     private func loadSettings() {
@@ -118,6 +147,9 @@ struct RhythmSettingsTab: View {
             if let val = try? await appState.service.getPreference(key: PreferenceKey.longBreakMinutes) {
                 longBreak = Int(val) ?? 15
             }
+            if let val = try? await appState.service.getPreference(key: PreferenceKey.rhythmCycleLength) {
+                cycleLength = Int(val) ?? 4
+            }
         }
     }
 
@@ -126,6 +158,7 @@ struct RhythmSettingsTab: View {
             try? await appState.service.setPreference(key: PreferenceKey.defaultRhythmMinutes, value: "\(defaultMinutes)")
             try? await appState.service.setPreference(key: PreferenceKey.shortBreakMinutes, value: "\(shortBreak)")
             try? await appState.service.setPreference(key: PreferenceKey.longBreakMinutes, value: "\(longBreak)")
+            try? await appState.service.setPreference(key: PreferenceKey.rhythmCycleLength, value: "\(cycleLength)")
         }
     }
 }

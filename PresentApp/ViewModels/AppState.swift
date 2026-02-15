@@ -265,7 +265,13 @@ final class AppState {
     // MARK: - Break Suggestions
 
     private func suggestBreak(sessionIndex: Int) async {
-        let isLong = sessionIndex >= Constants.rhythmCycleLength
+        let cycleLength: Int
+        if let val = try? await service.getPreference(key: PreferenceKey.rhythmCycleLength) {
+            cycleLength = Int(val) ?? Constants.rhythmCycleLength
+        } else {
+            cycleLength = Constants.rhythmCycleLength
+        }
+        let isLong = sessionIndex >= cycleLength
 
         let breakKey = isLong ? PreferenceKey.longBreakMinutes : PreferenceKey.shortBreakMinutes
         let defaultBreak = isLong ? Constants.longBreakMinutes : Constants.shortBreakMinutes
