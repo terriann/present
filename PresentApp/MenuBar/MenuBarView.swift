@@ -4,12 +4,24 @@ import PresentCore
 struct MenuBarView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.colorScheme) private var colorScheme
     @State private var searchText = ""
     @State private var selectedSessionType: SessionType = .work
     @State private var selectedRhythmOption: RhythmOption?
     @State private var timeboundMinutes: Int = 25
     @State private var newActivityTitle = ""
     @State private var editingActivity: Activity?
+
+    private var sessionGradientOpacity: Double {
+        if appState.isSessionRunning { return 0.2 }
+        if appState.isSessionActive { return 0.1 }
+        return 0
+    }
+
+    private var sessionGradientColors: [Color] {
+        let midLight = colorScheme == .dark ? Color.gray.opacity(0.3) : Color.white
+        return [.cyan, midLight, .mint, Color(hue: 0.45, saturation: 0.6, brightness: 0.55)]
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -33,6 +45,16 @@ struct MenuBarView: View {
             }
         }
         .frame(width: 320)
+        .background {
+            LinearGradient(
+                colors: sessionGradientColors,
+                startPoint: UnitPoint(x: 0, y: 0.1),
+                endPoint: UnitPoint(x: 1, y: 0.8)
+            )
+            .opacity(sessionGradientOpacity)
+        }
+        .animation(.easeInOut(duration: 0.5), value: appState.isSessionActive)
+        .animation(.easeInOut(duration: 0.3), value: appState.isSessionRunning)
     }
 
     // MARK: - Current Session
