@@ -5,6 +5,8 @@ struct MenuBarView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.openWindow) private var openWindow
     @State private var searchText = ""
+    @State private var selectedSessionType: SessionType = .work
+    @State private var timerMinutes: Int = 25
 
     var body: some View {
         VStack(spacing: 0) {
@@ -72,8 +74,69 @@ struct MenuBarView: View {
 
     // MARK: - Quick Start
 
+    private let menuBarSessionTypes: [SessionType] = SessionType.allCases.filter { $0 != .timebox }
+
     private var quickStartSection: some View {
         VStack(alignment: .leading, spacing: 0) {
+            // Session type tabs (timebox excluded — needs dedicated page)
+            HStack(spacing: 4) {
+                ForEach(menuBarSessionTypes, id: \.self) { type in
+                    let isSelected = selectedSessionType == type
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            selectedSessionType = type
+                        }
+                    } label: {
+                        Text(SessionTypeConfig.config(for: type).displayName)
+                            .font(.caption.weight(isSelected ? .semibold : .regular))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(isSelected ? Color.accentColor.opacity(0.15) : Color.clear, in: Capsule())
+                            .foregroundStyle(isSelected ? Color.accentColor : .secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+
+            // Duration controls for rhythm/timebound
+            if selectedSessionType == .rhythm {
+                HStack(spacing: 4) {
+                    ForEach([25, 30, 45], id: \.self) { mins in
+                        let isSelected = timerMinutes == mins
+                        Button {
+                            timerMinutes = mins
+                        } label: {
+                            Text("\(mins) min")
+                                .font(.caption2.weight(isSelected ? .semibold : .regular))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .background(isSelected ? Color.accentColor.opacity(0.12) : Color.secondary.opacity(0.08), in: Capsule())
+                                .foregroundStyle(isSelected ? Color.accentColor : .secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.bottom, 6)
+            } else if selectedSessionType == .timebound {
+                HStack(spacing: 4) {
+                    Text("Duration:")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    TextField("", value: $timerMinutes, format: .number)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 48)
+                        .font(.caption)
+                    Text("min")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 12)
+                .padding(.bottom, 6)
+            }
+
             // Search
             HStack {
                 Image(systemName: "magnifyingglass")
@@ -96,7 +159,8 @@ struct MenuBarView: View {
                 ForEach(activities) { activity in
                     QuickStartRow(activity: activity) {
                         Task {
-                            await appState.startSession(activityId: activity.id!, type: .work)
+                            let minutes: Int? = (selectedSessionType == .rhythm || selectedSessionType == .timebound) ? timerMinutes : nil
+                            await appState.startSession(activityId: activity.id!, type: selectedSessionType, timerMinutes: minutes)
                         }
                     }
                 }
