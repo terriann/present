@@ -63,8 +63,6 @@ public final class DatabaseManager: Sendable {
                 t.column("sessionType", .text).notNull()
                 t.column("startedAt", .datetime).notNull()
                 t.column("endedAt", .datetime)
-                t.column("plannedStart", .datetime)
-                t.column("plannedEnd", .datetime)
                 t.column("durationSeconds", .integer)
                 t.column("timerLengthMinutes", .integer)
                 t.column("rhythmSessionIndex", .integer)
@@ -112,6 +110,16 @@ public final class DatabaseManager: Sendable {
                 sql: "DELETE FROM preference WHERE key = ?",
                 arguments: ["shortBreakMinutes"]
             )
+        }
+
+        migrator.registerMigration("v3-remove-timebox-fields") { db in
+            let columns = try db.columns(in: "session").map(\.name)
+            if columns.contains("plannedStart") || columns.contains("plannedEnd") {
+                try db.alter(table: "session") { t in
+                    if columns.contains("plannedStart") { t.drop(column: "plannedStart") }
+                    if columns.contains("plannedEnd") { t.drop(column: "plannedEnd") }
+                }
+            }
         }
 
         try migrator.migrate(writer)

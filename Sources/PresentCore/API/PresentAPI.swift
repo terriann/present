@@ -2,7 +2,7 @@ import Foundation
 
 public protocol PresentAPI: Sendable {
     // Sessions
-    func startSession(activityId: Int64, type: SessionType, timerMinutes: Int?, breakMinutes: Int?, plannedStart: Date?, plannedEnd: Date?) async throws -> Session
+    func startSession(activityId: Int64, type: SessionType, timerMinutes: Int?, breakMinutes: Int?) async throws -> Session
     func pauseSession() async throws -> Session
     func resumeSession() async throws -> Session
     func stopSession() async throws -> Session

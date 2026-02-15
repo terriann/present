@@ -7,8 +7,6 @@ public struct Session: Codable, Sendable, Identifiable, Equatable {
     public var sessionType: SessionType
     public var startedAt: Date
     public var endedAt: Date?
-    public var plannedStart: Date?
-    public var plannedEnd: Date?
     public var durationSeconds: Int?
     public var timerLengthMinutes: Int?
     public var rhythmSessionIndex: Int?
@@ -24,8 +22,6 @@ public struct Session: Codable, Sendable, Identifiable, Equatable {
         sessionType: SessionType,
         startedAt: Date = Date(),
         endedAt: Date? = nil,
-        plannedStart: Date? = nil,
-        plannedEnd: Date? = nil,
         durationSeconds: Int? = nil,
         timerLengthMinutes: Int? = nil,
         rhythmSessionIndex: Int? = nil,
@@ -40,8 +36,6 @@ public struct Session: Codable, Sendable, Identifiable, Equatable {
         self.sessionType = sessionType
         self.startedAt = startedAt
         self.endedAt = endedAt
-        self.plannedStart = plannedStart
-        self.plannedEnd = plannedEnd
         self.durationSeconds = durationSeconds
         self.timerLengthMinutes = timerLengthMinutes
         self.rhythmSessionIndex = rhythmSessionIndex
@@ -62,8 +56,6 @@ extension Session: FetchableRecord, PersistableRecord {
         static let sessionType = Column(CodingKeys.sessionType)
         static let startedAt = Column(CodingKeys.startedAt)
         static let endedAt = Column(CodingKeys.endedAt)
-        static let plannedStart = Column(CodingKeys.plannedStart)
-        static let plannedEnd = Column(CodingKeys.plannedEnd)
         static let durationSeconds = Column(CodingKeys.durationSeconds)
         static let timerLengthMinutes = Column(CodingKeys.timerLengthMinutes)
         static let rhythmSessionIndex = Column(CodingKeys.rhythmSessionIndex)

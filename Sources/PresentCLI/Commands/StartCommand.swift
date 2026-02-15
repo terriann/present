@@ -10,7 +10,7 @@ struct StartCommand: AsyncParsableCommand {
     @Argument(help: "Activity name (creates if it doesn't exist).")
     var activityName: String
 
-    @Option(name: .long, help: "Session type: work, rhythm, timebound, timebox.")
+    @Option(name: .long, help: "Session type: work, rhythm, timebound.")
     var type: String = "work"
 
     @Option(name: .long, help: "Timer duration in minutes (for rhythm/timebound).")
@@ -21,7 +21,7 @@ struct StartCommand: AsyncParsableCommand {
 
     func run() async throws {
         guard let sessionType = SessionType(rawValue: type) else {
-            print("Invalid session type: \(type). Use: work, rhythm, timebound, timebox.")
+            print("Invalid session type: \(type). Use: work, rhythm, timebound.")
             throw ExitCode.failure
         }
 
@@ -63,9 +63,7 @@ struct StartCommand: AsyncParsableCommand {
             activityId: activity.id!,
             type: sessionType,
             timerMinutes: minutes,
-            breakMinutes: resolvedBreakMinutes,
-            plannedStart: nil,
-            plannedEnd: nil
+            breakMinutes: resolvedBreakMinutes
         )
 
         let config = SessionTypeConfig.config(for: session.sessionType)

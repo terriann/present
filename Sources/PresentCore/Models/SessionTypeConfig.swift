@@ -21,11 +21,6 @@ public struct SessionTypeConfig: Sendable {
             displayName: "Timebound",
             description: "Set a fixed amount of time to focus. A gentle alert lets you know when time is up."
         ),
-        SessionTypeConfig(
-            type: .timebox,
-            displayName: "Time Box",
-            description: "Plan a block of time for an activity with a specific start and end. You'll be reminded when it's time to begin."
-        ),
     ]
 
     public static func config(for type: SessionType) -> SessionTypeConfig {

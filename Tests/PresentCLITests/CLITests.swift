@@ -190,7 +190,6 @@ struct CLITests {
         #expect(SessionType(rawValue: "work") == .work)
         #expect(SessionType(rawValue: "rhythm") == .rhythm)
         #expect(SessionType(rawValue: "timebound") == .timebound)
-        #expect(SessionType(rawValue: "timebox") == .timebox)
         #expect(SessionType(rawValue: "invalid") == nil)
     }
 

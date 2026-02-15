@@ -99,11 +99,10 @@ struct MenuBarView: View {
 
     // MARK: - Quick Start
 
-    private let menuBarSessionTypes: [SessionType] = SessionType.allCases.filter { $0 != .timebox }
+    private let menuBarSessionTypes: [SessionType] = SessionType.allCases
 
     private var quickStartSection: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Session type tabs (timebox excluded — needs dedicated page)
             HStack(spacing: 4) {
                 ForEach(menuBarSessionTypes, id: \.self) { type in
                     let isSelected = selectedSessionType == type

@@ -41,7 +41,7 @@ public final class PresentService: PresentAPI, Sendable {
 
     // MARK: - Sessions
 
-    public func startSession(activityId: Int64, type: SessionType, timerMinutes: Int? = nil, breakMinutes: Int? = nil, plannedStart: Date? = nil, plannedEnd: Date? = nil) async throws -> Session {
+    public func startSession(activityId: Int64, type: SessionType, timerMinutes: Int? = nil, breakMinutes: Int? = nil) async throws -> Session {
         try await dbWriter.write { db in
             // Check no active session
             let active = try Session
@@ -64,8 +64,6 @@ public final class PresentService: PresentAPI, Sendable {
                 activityId: activityId,
                 sessionType: type,
                 startedAt: now,
-                plannedStart: plannedStart,
-                plannedEnd: plannedEnd,
                 timerLengthMinutes: timerMinutes,
                 state: .running,
                 createdAt: now

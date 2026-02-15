@@ -9,7 +9,6 @@ struct ModelTests {
         #expect(SessionType.work.rawValue == "work")
         #expect(SessionType.rhythm.rawValue == "rhythm")
         #expect(SessionType.timebound.rawValue == "timebound")
-        #expect(SessionType.timebox.rawValue == "timebox")
     }
 
     @Test func sessionStateRawValues() {
@@ -20,7 +19,7 @@ struct ModelTests {
     }
 
     @Test func sessionTypeConfigs() {
-        #expect(SessionTypeConfig.all.count == 4)
+        #expect(SessionTypeConfig.all.count == 3)
         for type in SessionType.allCases {
             let config = SessionTypeConfig.config(for: type)
             #expect(!config.displayName.isEmpty)

@@ -41,18 +41,4 @@ final class NotificationManager {
         )
         UNUserNotificationCenter.current().add(request)
     }
-
-    func sendTimeBoxReminder(activityTitle: String) {
-        let content = UNMutableNotificationContent()
-        content.title = "Time Box Starting"
-        content.body = "It's time to begin: \(activityTitle)"
-        content.sound = .default
-
-        let request = UNNotificationRequest(
-            identifier: "timebox-reminder-\(UUID().uuidString)",
-            content: content,
-            trigger: nil
-        )
-        UNUserNotificationCenter.current().add(request)
-    }
 }
