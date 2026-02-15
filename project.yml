@@ -1,0 +1,30 @@
+name: Present
+options:
+  bundleIdPrefix: com.present
+  deploymentTarget:
+    macOS: "15.0"
+  xcodeVersion: "16.0"
+  generateEmptyDirectories: true
+
+packages:
+  PresentCore:
+    path: .
+
+targets:
+  Present:
+    type: application
+    platform: macOS
+    sources:
+      - path: PresentApp
+    info:
+      path: PresentApp/Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.present.app
+        INFOPLIST_FILE: PresentApp/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        SWIFT_VERSION: "6.0"
+        MACOSX_DEPLOYMENT_TARGET: "15.0"
+    dependencies:
+      - package: PresentCore
+        product: PresentCore

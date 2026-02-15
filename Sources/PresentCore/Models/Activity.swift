@@ -1,7 +1,7 @@
 import Foundation
 import GRDB
 
-public struct Activity: Codable, Sendable, Identifiable, Equatable {
+public struct Activity: Codable, Sendable, Identifiable, Equatable, Hashable {
     public var id: Int64?
     public var title: String
     public var externalId: String?
