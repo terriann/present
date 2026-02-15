@@ -50,13 +50,14 @@ struct ActivitiesListView: View {
                         systemImage: "tray",
                         description: Text("Create an activity to start tracking time.")
                     )
-                    .frame(minWidth: 250, idealWidth: 280, maxWidth: 350, maxHeight: .infinity)
+                    .frame(minWidth: 250, idealWidth: 300, maxHeight: .infinity)
                 } else {
                     List(displayedActivities, selection: $selectedActivity) { activity in
                         ActivityRow(activity: activity)
                             .tag(activity)
                     }
-                    .frame(minWidth: 250, idealWidth: 280, maxWidth: 350, maxHeight: .infinity)
+                    .listStyle(.inset)
+                    .frame(minWidth: 250, idealWidth: 300, maxHeight: .infinity)
                 }
 
                 // Detail view
@@ -64,17 +65,17 @@ struct ActivitiesListView: View {
                     ActivityDetailView(activity: activity)
                         .id(activity.id)
                         .environment(appState)
-                        .frame(minWidth: 400, maxHeight: .infinity)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     ContentUnavailableView(
                         "Select an Activity",
                         systemImage: "tray",
                         description: Text("Choose an activity from the list to view its details.")
                     )
-                    .frame(minWidth: 400, maxHeight: .infinity)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
-            .frame(maxHeight: .infinity)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .navigationTitle("Activities")

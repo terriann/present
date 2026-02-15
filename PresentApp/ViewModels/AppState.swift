@@ -329,9 +329,9 @@ final class AppState {
 
 enum SidebarItem: String, CaseIterable, Identifiable {
     case dashboard = "Dashboard"
-    case log = "Log"
-    case reports = "Reports"
     case activities = "Activities"
+    case reports = "Reports"
+    case log = "Log"
 
     var id: String { rawValue }
 

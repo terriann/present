@@ -240,6 +240,7 @@ struct MenuBarView: View {
     }
 
     private func openMainWindow() {
+        NSApp.keyWindow?.close()
         openWindow(id: "main")
         NSApplication.shared.activate(ignoringOtherApps: true)
     }

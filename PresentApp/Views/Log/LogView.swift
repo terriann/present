@@ -27,12 +27,15 @@ struct LogView: View {
                     systemImage: "list.bullet.clipboard",
                     description: Text("Completed sessions will appear here.")
                 )
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .padding(.top, 40)
             } else {
                 List(filteredEntries, id: \.0.id) { session, activity in
                     SessionRow(session: session, activityTitle: activity.title)
                 }
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .navigationTitle("Log")
         .task {
             await loadSessions()

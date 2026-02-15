@@ -40,6 +40,7 @@ CLI Commands ──────────────────────�
 - Extract complex subviews into computed properties with `// MARK: -` comments.
 - Use SF Symbols for icons. `.monospacedDigit()` for timer displays.
 - Standard section order: properties, body, MARK subviews, MARK helpers.
+- All tabs and panes align content to the top — use `.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)`. Empty states (`ContentUnavailableView`) must also be top-aligned, never vertically centered.
 
 ### CLI Commands
 - Each command in a separate file under `Commands/`.
