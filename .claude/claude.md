@@ -84,7 +84,22 @@ Use [Conventional Commits](https://www.conventionalcommits.org/) format: `type(s
 
 ### Types
 
-`feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `style`, `perf`, `ci`, `build`
+| Type | When to use |
+|---|---|
+| `feat` | New user-facing functionality or behavior that didn't exist before |
+| `fix` | Corrects broken behavior, layout issues, visual bugs, or data errors |
+| `refactor` | Restructures code without changing behavior (renames, extractions, cleanup) |
+| `style` | Code formatting only (whitespace, semicolons, linting). No logic changes |
+| `perf` | Improves performance without changing functionality |
+| `test` | Adds or updates tests. No production code changes |
+| `docs` | Documentation only (README, claude.md, code comments) |
+| `build` | Build system, dependencies, XcodeGen, Package.swift |
+| `ci` | CI/CD pipeline and GitHub Actions changes |
+| `chore` | Maintenance that doesn't fit above (gitignore, config files, tooling setup) |
+
+**Key distinction**: UI layout fixes, visual corrections, and alignment issues are `fix`, not `chore`. If something looks wrong or behaves incorrectly, it's a `fix`.
+
+**When unsure** whether a change is `feat` or `fix`, ask before committing.
 
 ### Scopes
 
