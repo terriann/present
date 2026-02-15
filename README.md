@@ -24,9 +24,8 @@ database.
 
 - **Menu bar timer** -- Start, pause, and stop sessions from the menu bar.
   See elapsed or remaining time at a glance.
-- **Four session types** -- Work (open-ended), Rhythm (Pomodoro-style cycles
-  with breaks), Timebound (fixed countdown), and Time Box (planned
-  start/end).
+- **Three session types** -- Work (open-ended), Rhythm (Pomodoro-style cycles
+  with breaks), and Timebound (fixed countdown).
 - **Main app window** -- Dashboard with today's summary, searchable session
   log, reports with charts, and activity management.
 - **CLI tool** -- Full control from the terminal. Start sessions, append
@@ -97,7 +96,7 @@ present activities list --include-archived
 present activities archive <id>   # Archive an activity
 ```
 
-Session types: `work` (default), `rhythm`, `timebound`, `timebox`.
+Session types: `work` (default), `rhythm`, `timebound`.
 
 Run `present --help` or `present <command> --help` for full option details.
 
@@ -176,6 +175,10 @@ swift test   # Run all tests
 2. Run `xcodegen generate` after cloning or pulling changes.
 3. Make your changes and verify all tests pass with `swift test`.
 4. Open a pull request against `main`.
+
+To file a bug report or feature request, use the `/issue` slash command in
+Claude Code. This ensures your issue includes relevant codebase context,
+architectural details, and a well-researched description.
 
 See [DEVELOPMENT.md](DEVELOPMENT.md) for detailed setup and coding
 conventions.

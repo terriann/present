@@ -145,3 +145,17 @@ docs(readme): update CLI usage examples
 ```
 
 When a change spans multiple scopes, use the most significant one. If truly cross-cutting, omit the scope: `refactor: rename session states for clarity`.
+
+## Filing Issues
+
+**Always delegate bug reports and feature requests to the `/issue` skill.** Do not create GitHub issues directly.
+
+This applies when the user:
+- Reports a bug or unexpected behavior
+- Requests a new feature or enhancement
+- Asks to "file an issue", "create a ticket", or "document this bug"
+- Describes a problem that should be tracked rather than fixed immediately
+
+Use: `/issue <description of bug or feature>`
+
+The skill handles clarifying questions, codebase research, drafting, and creating the issue via `gh`. See `.claude/skills/README.md` for details.
