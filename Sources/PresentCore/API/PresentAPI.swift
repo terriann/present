@@ -1,0 +1,45 @@
+import Foundation
+
+public protocol PresentAPI: Sendable {
+    // Sessions
+    func startSession(activityId: Int64, type: SessionType, timerMinutes: Int?, plannedStart: Date?, plannedEnd: Date?) async throws -> Session
+    func pauseSession() async throws -> Session
+    func resumeSession() async throws -> Session
+    func stopSession() async throws -> Session
+    func cancelSession() async throws
+    func currentSession() async throws -> (Session, Activity)?
+
+    // Activities
+    func createActivity(_ input: CreateActivityInput) async throws -> Activity
+    func updateActivity(id: Int64, _ input: UpdateActivityInput) async throws -> Activity
+    func archiveActivity(id: Int64) async throws -> ArchiveResult
+    func deleteActivity(id: Int64) async throws
+    func unarchiveActivity(id: Int64) async throws -> Activity
+    func listActivities(includeArchived: Bool) async throws -> [Activity]
+    func getActivity(id: Int64) async throws -> Activity
+    func searchActivities(query: String) async throws -> [Activity]
+    func recentActivities(limit: Int) async throws -> [Activity]
+
+    // Notes
+    func appendNote(activityId: Int64, text: String) async throws -> Activity
+
+    // Tags
+    func createTag(name: String) async throws -> Tag
+    func deleteTag(id: Int64) async throws
+    func listTags() async throws -> [Tag]
+    func tagActivity(activityId: Int64, tagId: Int64) async throws
+    func untagActivity(activityId: Int64, tagId: Int64) async throws
+
+    // Reports
+    func dailySummary(date: Date, includeArchived: Bool) async throws -> DailySummary
+    func weeklySummary(weekOf: Date, includeArchived: Bool) async throws -> WeeklySummary
+    func monthlySummary(monthOf: Date, includeArchived: Bool) async throws -> MonthlySummary
+    func exportCSV(from: Date, to: Date, includeArchived: Bool) async throws -> Data
+
+    // Preferences
+    func getPreference(key: String) async throws -> String?
+    func setPreference(key: String, value: String) async throws
+
+    // Status
+    func todaySummary() async throws -> TodaySummary
+}

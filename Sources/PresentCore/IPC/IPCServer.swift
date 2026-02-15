@@ -1,0 +1,98 @@
+import Foundation
+
+/// IPC server that listens on a Unix domain socket for messages from the CLI.
+/// Runs in the app process to receive notifications about CLI mutations.
+public final class IPCServer: @unchecked Sendable {
+    private let socketPath: String
+    private let handler: @Sendable (IPCMessage) -> Void
+    private var serverFD: Int32 = -1
+
+    public init(handler: @escaping @Sendable (IPCMessage) -> Void) {
+        self.socketPath = IPCServer.defaultSocketPath
+        self.handler = handler
+    }
+
+    public static var defaultSocketPath: String {
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let presentDir = appSupport.appendingPathComponent("Present", isDirectory: true)
+        try? FileManager.default.createDirectory(at: presentDir, withIntermediateDirectories: true)
+        return presentDir.appendingPathComponent("present.sock").path
+    }
+
+    public func start() throws {
+        // Clean up existing socket
+        if FileManager.default.fileExists(atPath: socketPath) {
+            try FileManager.default.removeItem(atPath: socketPath)
+        }
+
+        let fd = socket(AF_UNIX, SOCK_STREAM, 0)
+        guard fd >= 0 else {
+            throw IPCError.socketCreationFailed
+        }
+        self.serverFD = fd
+
+        var addr = sockaddr_un()
+        addr.sun_family = sa_family_t(AF_UNIX)
+        let pathBytes = socketPath.utf8CString
+        withUnsafeMutablePointer(to: &addr.sun_path) { ptr in
+            ptr.withMemoryRebound(to: CChar.self, capacity: Int(104)) { dest in
+                for (i, byte) in pathBytes.enumerated() where i < 104 {
+                    dest[i] = byte
+                }
+            }
+        }
+
+        let bindResult = withUnsafePointer(to: &addr) { ptr in
+            ptr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sockPtr in
+                bind(fd, sockPtr, socklen_t(MemoryLayout<sockaddr_un>.size))
+            }
+        }
+        guard bindResult == 0 else {
+            close(fd)
+            throw IPCError.bindFailed
+        }
+
+        guard listen(fd, 5) == 0 else {
+            close(fd)
+            throw IPCError.listenFailed
+        }
+
+        // Accept connections in background
+        let handler = self.handler
+        DispatchQueue.global(qos: .utility).async {
+            while true {
+                let clientFD = accept(fd, nil, nil)
+                guard clientFD >= 0 else { break }
+
+                var buffer = [UInt8](repeating: 0, count: 4096)
+                let bytesRead = read(clientFD, &buffer, buffer.count)
+                close(clientFD)
+
+                if bytesRead > 0 {
+                    let data = Data(buffer[0..<bytesRead])
+                    if let message = IPCMessage.from(data: data) {
+                        handler(message)
+                    }
+                }
+            }
+        }
+    }
+
+    public func stop() {
+        if serverFD >= 0 {
+            close(serverFD)
+            serverFD = -1
+        }
+        if FileManager.default.fileExists(atPath: socketPath) {
+            try? FileManager.default.removeItem(atPath: socketPath)
+        }
+    }
+}
+
+public enum IPCError: Error, Sendable {
+    case socketCreationFailed
+    case bindFailed
+    case listenFailed
+    case connectionFailed
+    case sendFailed
+}
