@@ -10,19 +10,24 @@ struct MenuBarView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if appState.isSessionActive {
+            if appState.isSessionRunning {
+                // Focused: timer + controls only
                 currentSessionSection
             } else {
-                idleSection
+                if appState.isSessionActive {
+                    currentSessionSection
+                } else {
+                    idleSection
+                }
+
+                Divider()
+
+                quickStartSection
+
+                Divider()
+
+                bottomBar
             }
-
-            Divider()
-
-            quickStartSection
-
-            Divider()
-
-            bottomBar
         }
         .frame(width: 320)
     }

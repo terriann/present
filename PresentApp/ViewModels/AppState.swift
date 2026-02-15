@@ -79,6 +79,10 @@ final class AppState {
         return session.state == .running || session.state == .paused
     }
 
+    var isSessionRunning: Bool {
+        currentSession?.state == .running
+    }
+
     // MARK: - Initialization
 
     init() {
@@ -107,9 +111,14 @@ final class AppState {
             if let (session, activity) = try await service.currentSession() {
                 currentSession = session
                 currentActivity = activity
-                // Only start the timer if the session is running (not paused)
                 if session.state == .running, timerTask == nil {
                     startTimer()
+                } else if session.state == .paused {
+                    // Use fixed dates only — no Date() calls that cause rounding jitter
+                    if let pausedAt = session.lastPausedAt {
+                        let activeTime = Int(pausedAt.timeIntervalSince(session.startedAt)) - session.totalPausedSeconds
+                        timerElapsedSeconds = max(0, activeTime)
+                    }
                 }
             } else {
                 currentSession = nil
@@ -153,7 +162,7 @@ final class AppState {
         do {
             let session = try await service.pauseSession()
             currentSession = session
-            stopTimer()
+            stopTimer(resetElapsed: false)
         } catch {
             print("Error pausing session: \(error)")
         }
@@ -232,10 +241,12 @@ final class AppState {
         }
     }
 
-    private func stopTimer() {
+    private func stopTimer(resetElapsed: Bool = true) {
         timerTask?.cancel()
         timerTask = nil
-        timerElapsedSeconds = 0
+        if resetElapsed {
+            timerElapsedSeconds = 0
+        }
     }
 
     private func handleTimerCompletion() async {
