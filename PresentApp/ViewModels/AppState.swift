@@ -107,7 +107,10 @@ final class AppState {
             if let (session, activity) = try await service.currentSession() {
                 currentSession = session
                 currentActivity = activity
-                startTimer()
+                // Only start the timer if the session is running (not paused)
+                if session.state == .running, timerTask == nil {
+                    startTimer()
+                }
             } else {
                 currentSession = nil
                 currentActivity = nil
