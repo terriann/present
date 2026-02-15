@@ -17,6 +17,9 @@ struct SettingsView: View {
             NotificationSettingsTab()
                 .environment(appState)
                 .tabItem { Label("Notifications", systemImage: "bell") }
+
+            AboutTab()
+                .tabItem { Label("About", systemImage: "info.circle") }
         }
         .frame(width: 450, height: 300)
     }
@@ -124,6 +127,48 @@ struct RhythmSettingsTab: View {
             try? await appState.service.setPreference(key: PreferenceKey.shortBreakMinutes, value: "\(shortBreak)")
             try? await appState.service.setPreference(key: PreferenceKey.longBreakMinutes, value: "\(longBreak)")
         }
+    }
+}
+
+struct AboutTab: View {
+    private var appVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+    }
+
+    private var buildNumber: String {
+        Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
+    }
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Spacer()
+
+            Image(systemName: "clock.fill")
+                .font(.system(size: 48))
+                .foregroundStyle(.tint)
+
+            Text("Present")
+                .font(.title.bold())
+
+            Text("Version \(appVersion) (\(buildNumber))")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Text("Developed by Terri Ann Swallow")
+                .font(.body)
+
+            VStack(spacing: 8) {
+                Link("GitHub Repository", destination: URL(string: "https://github.com/terriann/present")!)
+                    .font(.callout)
+
+                Link("Sound effects by Epidemic Sound", destination: URL(string: "https://www.epidemicsound.com/sound-effects/playlists/interfaceessentials/")!)
+                    .font(.callout)
+            }
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity)
+        .padding()
     }
 }
 
