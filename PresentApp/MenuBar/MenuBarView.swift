@@ -3,6 +3,7 @@ import PresentCore
 
 struct MenuBarView: View {
     @Environment(AppState.self) private var appState
+    @Environment(\.openWindow) private var openWindow
     @State private var searchText = ""
     @State private var showingSessionTypeSheet = false
     @State private var selectedActivity: Activity?
@@ -128,20 +129,19 @@ struct MenuBarView: View {
             .foregroundStyle(.tint)
 
             Spacer()
+
+            Button("Quit") {
+                NSApplication.shared.terminate(nil)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
     }
 
     private func openMainWindow() {
-        if let url = URL(string: "present://open") {
-            NSWorkspace.shared.open(url)
-        }
-        // Fallback: use environment to open window
+        openWindow(id: "main")
         NSApplication.shared.activate(ignoringOtherApps: true)
-        for window in NSApplication.shared.windows where window.title == "Present" {
-            window.makeKeyAndOrderFront(nil)
-            return
-        }
     }
 }
