@@ -23,3 +23,6 @@ Package.resolved
 .idea/
 *.swp
 *~
+
+# AI
+.claude/settings.local.json
