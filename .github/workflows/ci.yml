@@ -1,0 +1,25 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.app
+
+      - name: Build app
+        run: |
+          xcodegen generate
+          xcodebuild build -project Present.xcodeproj -scheme Present -destination 'platform=macOS'
+
+      - name: Run unit tests (SPM)
+        run: swift test
+
+      - name: Build CLI (release)
+        run: swift build -c release --product present
