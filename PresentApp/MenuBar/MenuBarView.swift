@@ -150,12 +150,17 @@ struct MenuBarView: View {
                     .foregroundStyle(.secondary)
                 TextField("Search activities...", text: $searchText)
                     .textFieldStyle(.plain)
+                if !searchText.isEmpty {
+                    ClearSearchButton {
+                        searchText = ""
+                    }
+                }
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
 
             // Activity list heading
-            Text("Recent Activities")
+            Text(searchText.isEmpty ? "Recent Activities" : "Search Results")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 12)
@@ -243,5 +248,24 @@ struct MenuBarView: View {
         NSApp.keyWindow?.close()
         openWindow(id: "main")
         NSApplication.shared.activate(ignoringOtherApps: true)
+    }
+}
+
+// MARK: - Clear Search Button
+
+private struct ClearSearchButton: View {
+    let action: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "xmark.circle.fill")
+                .foregroundStyle(isHovered ? .primary : .secondary)
+                .font(.caption)
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            isHovered = hovering
+        }
     }
 }
