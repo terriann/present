@@ -10,6 +10,7 @@ struct ActivitiesListView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+
             // Toolbar
             HStack {
                 HStack {
@@ -72,6 +73,7 @@ struct ActivitiesListView: View {
                 }
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .navigationTitle("Activities")
         .sheet(isPresented: $showingCreateSheet) {
             ActivityFormSheet(mode: .create)

@@ -28,6 +28,7 @@ struct ActivityDetailView: View {
                 tagsSection
             }
             .padding(20)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .navigationTitle(activity.title)
         .toolbar {
