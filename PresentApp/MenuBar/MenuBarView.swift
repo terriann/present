@@ -7,6 +7,8 @@ struct MenuBarView: View {
     @State private var searchText = ""
     @State private var selectedSessionType: SessionType = .work
     @State private var timerMinutes: Int = 25
+    @State private var newActivityTitle = ""
+    @State private var editingActivity: Activity?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -152,6 +154,13 @@ struct MenuBarView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
 
+            // Activity list heading
+            Text("Recent Activities")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 12)
+                .padding(.top, 4)
+
             // Activity list
             let activities = filteredActivities
             if activities.isEmpty && !searchText.isEmpty {
@@ -162,14 +171,41 @@ struct MenuBarView: View {
                     .padding(.vertical, 4)
             } else {
                 ForEach(activities) { activity in
-                    QuickStartRow(activity: activity) {
+                    QuickStartRow(activity: activity, onTap: {
                         Task {
                             let minutes: Int? = (selectedSessionType == .rhythm || selectedSessionType == .timebound) ? timerMinutes : nil
                             await appState.startSession(activityId: activity.id!, type: selectedSessionType, timerMinutes: minutes)
                         }
-                    }
+                    }, onEdit: {
+                        editingActivity = activity
+                    })
                 }
             }
+
+            // Quick-create activity
+            HStack(spacing: 8) {
+                Image(systemName: "plus")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                TextField("New activity...", text: $newActivityTitle)
+                    .textFieldStyle(.plain)
+                    .onSubmit {
+                        guard !newActivityTitle.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+                        Task {
+                            guard let activity = try? await appState.service.createActivity(
+                                CreateActivityInput(title: newActivityTitle.trimmingCharacters(in: .whitespaces))
+                            ) else { return }
+                            newActivityTitle = ""
+                            let minutes: Int? = (selectedSessionType == .rhythm || selectedSessionType == .timebound) ? timerMinutes : nil
+                            await appState.startSession(activityId: activity.id!, type: selectedSessionType, timerMinutes: minutes)
+                        }
+                    }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+        }
+        .sheet(item: $editingActivity) { activity in
+            ActivityFormSheet(mode: .edit(activity))
         }
     }
 
