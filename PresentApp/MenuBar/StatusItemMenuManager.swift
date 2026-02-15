@@ -1,4 +1,5 @@
 import AppKit
+import PresentCore
 
 /// Adds a right-click context menu to the menu bar status item.
 ///
@@ -68,10 +69,17 @@ final class StatusItemMenuManager: NSObject, @unchecked Sendable {
 
         let isActive = MainActor.assumeIsolated { appState?.isSessionActive ?? false }
         let isRunning = MainActor.assumeIsolated { appState?.isSessionRunning ?? false }
+        let activityTitle = MainActor.assumeIsolated { appState?.currentActivity?.title }
 
         if isActive {
-            addSessionItems(to: menu, isRunning: isRunning)
+            addSessionItems(to: menu, isRunning: isRunning, activityTitle: activityTitle)
             menu.addItem(.separator())
+        } else {
+            let suggestion = MainActor.assumeIsolated { appState?.recentSessionSuggestion }
+            if let suggestion {
+                addRecentSuggestionItem(to: menu, session: suggestion.session, activity: suggestion.activity)
+                menu.addItem(.separator())
+            }
         }
 
         let openItem = NSMenuItem(title: "Open Present", action: #selector(openApp), keyEquivalent: "")
@@ -91,20 +99,32 @@ final class StatusItemMenuManager: NSObject, @unchecked Sendable {
         return menu
     }
 
-    private func addSessionItems(to menu: NSMenu, isRunning: Bool) {
+    private func addSessionItems(to menu: NSMenu, isRunning: Bool, activityTitle: String?) {
+        let suffix = activityTitle.map { " \u{2014} \($0)" } ?? ""
+
         if isRunning {
-            let pauseItem = NSMenuItem(title: "Pause", action: #selector(pauseSession), keyEquivalent: "")
+            let pauseItem = NSMenuItem(title: "Pause\(suffix)", action: #selector(pauseSession), keyEquivalent: "")
             pauseItem.target = self
             menu.addItem(pauseItem)
         } else {
-            let resumeItem = NSMenuItem(title: "Resume", action: #selector(resumeSession), keyEquivalent: "")
+            let resumeItem = NSMenuItem(title: "Resume\(suffix)", action: #selector(resumeSession), keyEquivalent: "")
             resumeItem.target = self
             menu.addItem(resumeItem)
         }
 
-        let stopItem = NSMenuItem(title: "Stop", action: #selector(stopSession), keyEquivalent: "")
+        let stopItem = NSMenuItem(title: "Stop\(suffix)", action: #selector(stopSession), keyEquivalent: "")
         stopItem.target = self
         menu.addItem(stopItem)
+    }
+
+    private func addRecentSuggestionItem(to menu: NSMenu, session: Session, activity: Activity) {
+        let item = NSMenuItem(
+            title: "Start \(activity.title)",
+            action: #selector(restartRecentSession),
+            keyEquivalent: ""
+        )
+        item.target = self
+        menu.addItem(item)
     }
 
     // MARK: - Actions
@@ -124,6 +144,18 @@ final class StatusItemMenuManager: NSObject, @unchecked Sendable {
     @objc private func stopSession() {
         Task { @MainActor in
             await appState?.stopSession()
+        }
+    }
+
+    @objc private func restartRecentSession() {
+        Task { @MainActor in
+            guard let suggestion = appState?.recentSessionSuggestion,
+                  let activityId = suggestion.activity.id else { return }
+            await appState?.startSession(
+                activityId: activityId,
+                type: suggestion.session.sessionType,
+                timerMinutes: suggestion.session.timerLengthMinutes
+            )
         }
     }
 
