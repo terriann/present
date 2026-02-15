@@ -273,6 +273,104 @@ struct PresentServiceTests {
         #expect(csv.contains("Session ID"))
     }
 
+    // MARK: - List Sessions (Filtered)
+
+    @Test func listSessionsDateRange() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Filtered"))
+        _ = try await service.startSession(activityId: activity.id!, type: .work)
+        _ = try await service.stopSession()
+
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
+
+        let sessions = try await service.listSessions(from: yesterday, to: tomorrow, type: nil, activityId: nil, includeArchived: true)
+        #expect(sessions.count == 1)
+        #expect(sessions.first?.1.title == "Filtered")
+    }
+
+    @Test func listSessionsFilterByType() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Multi"))
+        _ = try await service.startSession(activityId: activity.id!, type: .work)
+        _ = try await service.stopSession()
+        _ = try await service.startSession(activityId: activity.id!, type: .rhythm, timerMinutes: 25)
+        _ = try await service.stopSession()
+
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
+
+        let workOnly = try await service.listSessions(from: yesterday, to: tomorrow, type: .work, activityId: nil, includeArchived: true)
+        #expect(workOnly.count == 1)
+
+        let rhythmOnly = try await service.listSessions(from: yesterday, to: tomorrow, type: .rhythm, activityId: nil, includeArchived: true)
+        #expect(rhythmOnly.count == 1)
+
+        let all = try await service.listSessions(from: yesterday, to: tomorrow, type: nil, activityId: nil, includeArchived: true)
+        #expect(all.count == 2)
+    }
+
+    @Test func listSessionsFilterByActivity() async throws {
+        let service = try makeService()
+        let a1 = try await service.createActivity(CreateActivityInput(title: "A1"))
+        let a2 = try await service.createActivity(CreateActivityInput(title: "A2"))
+        _ = try await service.startSession(activityId: a1.id!, type: .work)
+        _ = try await service.stopSession()
+        _ = try await service.startSession(activityId: a2.id!, type: .work)
+        _ = try await service.stopSession()
+
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
+
+        let a1Sessions = try await service.listSessions(from: yesterday, to: tomorrow, type: nil, activityId: a1.id, includeArchived: true)
+        #expect(a1Sessions.count == 1)
+        #expect(a1Sessions.first?.1.title == "A1")
+    }
+
+    // MARK: - Tags for Activity
+
+    @Test func tagsForActivity() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Tagged"))
+        let tag1 = try await service.createTag(name: "frontend")
+        let tag2 = try await service.createTag(name: "backend")
+        _ = try await service.createTag(name: "unrelated")
+
+        try await service.tagActivity(activityId: activity.id!, tagId: tag1.id!)
+        try await service.tagActivity(activityId: activity.id!, tagId: tag2.id!)
+
+        let tags = try await service.tagsForActivity(activityId: activity.id!)
+        #expect(tags.count == 2)
+        let names = tags.map(\.name).sorted()
+        #expect(names == ["backend", "frontend"])
+    }
+
+    @Test func tagsForActivityEmpty() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "No Tags"))
+        let tags = try await service.tagsForActivity(activityId: activity.id!)
+        #expect(tags.isEmpty)
+    }
+
+    // MARK: - Search Activities
+
+    @Test func searchActivities() async throws {
+        let service = try makeService()
+        _ = try await service.createActivity(CreateActivityInput(title: "Design Homepage"))
+        _ = try await service.createActivity(CreateActivityInput(title: "Backend API"))
+        _ = try await service.createActivity(CreateActivityInput(title: "Design System"))
+
+        let results = try await service.searchActivities(query: "design")
+        #expect(results.count == 2)
+    }
+
+    @Test func searchActivitiesEmptyQuery() async throws {
+        let service = try makeService()
+        _ = try await service.createActivity(CreateActivityInput(title: "Something"))
+        let results = try await service.searchActivities(query: "  ")
+        #expect(results.isEmpty)
+    }
+
     // MARK: - Recent Activities
 
     @Test func recentActivities() async throws {

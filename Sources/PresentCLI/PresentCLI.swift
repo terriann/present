@@ -12,6 +12,7 @@ struct PresentCLI: AsyncParsableCommand {
             StopCommand.self,
             PauseCommand.self,
             ResumeCommand.self,
+            CancelCommand.self,
             NoteCommand.self,
             LogCommand.self,
             ActivitiesCommand.self,
