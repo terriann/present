@@ -75,6 +75,23 @@ struct MenuBarView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+
+            if let suggestion = appState.recentSessionSuggestion {
+                RecentSuggestionRow(
+                    activity: suggestion.activity,
+                    session: suggestion.session
+                ) {
+                    Task {
+                        let minutes = suggestion.session.timerLengthMinutes
+                        await appState.startSession(
+                            activityId: suggestion.activity.id!,
+                            type: suggestion.session.sessionType,
+                            timerMinutes: minutes
+                        )
+                    }
+                }
+                .padding(.top, 4)
+            }
         }
         .padding()
     }

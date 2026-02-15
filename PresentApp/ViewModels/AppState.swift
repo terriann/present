@@ -15,6 +15,7 @@ final class AppState {
     var recentActivities: [Activity] = []
     var allActivities: [Activity] = []
     var allTags: [Tag] = []
+    var recentSessionSuggestion: (session: Session, activity: Activity)?
 
     // MARK: - Timer
 
@@ -131,6 +132,13 @@ final class AppState {
             todayTotalSeconds = summary.totalSeconds
             todaySessionCount = summary.sessionCount
             todayActivities = summary.activities
+
+            if currentSession == nil {
+                let since = Date().addingTimeInterval(-3 * 60 * 60)
+                recentSessionSuggestion = try await service.lastCompletedSession(since: since)
+            } else {
+                recentSessionSuggestion = nil
+            }
 
             recentActivities = try await service.recentActivities(limit: 6)
             allActivities = try await service.listActivities(includeArchived: true)
