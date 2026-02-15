@@ -695,6 +695,120 @@ public final class PresentService: PresentAPI, Sendable {
         }
     }
 
+    // MARK: - Bulk Operations
+
+    public func countSessions(in range: BulkDeleteRange) async throws -> Int {
+        let (start, end) = dateRange(for: range)
+        return try await dbWriter.read { db in
+            try Session
+                .filter(Session.Columns.startedAt >= start && Session.Columns.startedAt < end)
+                .fetchCount(db)
+        }
+    }
+
+    public func deleteSessions(in range: BulkDeleteRange) async throws -> BulkDeleteResult {
+        let (start, end) = dateRange(for: range)
+        return try await dbWriter.write { db in
+            var cancelledActive = false
+
+            // Cancel active session if it falls within range
+            if let active = try Session
+                .filter(Session.Columns.state == SessionState.running.rawValue || Session.Columns.state == SessionState.paused.rawValue)
+                .fetchOne(db),
+               active.startedAt >= start && active.startedAt < end {
+                try active.delete(db)
+                cancelledActive = true
+            }
+
+            // Delete all sessions in range
+            let deleted = try Session
+                .filter(Session.Columns.startedAt >= start && Session.Columns.startedAt < end)
+                .deleteAll(db)
+
+            return BulkDeleteResult(
+                sessionsDeleted: deleted + (cancelledActive ? 1 : 0),
+                activeSessionCancelled: cancelledActive
+            )
+        }
+    }
+
+    public func deleteAllActivities() async throws -> BulkDeleteResult {
+        try await dbWriter.write { db in
+            var cancelledActive = false
+
+            // Cancel active session first
+            if let active = try Session
+                .filter(Session.Columns.state == SessionState.running.rawValue || Session.Columns.state == SessionState.paused.rawValue)
+                .fetchOne(db) {
+                try active.delete(db)
+                cancelledActive = true
+            }
+
+            let sessionsDeleted = try Session.deleteAll(db)
+            let activitiesDeleted = try Activity.deleteAll(db)
+            // activity_tag rows cascade from activity deletion
+
+            return BulkDeleteResult(
+                sessionsDeleted: sessionsDeleted + (cancelledActive ? 1 : 0),
+                activitiesDeleted: activitiesDeleted,
+                activeSessionCancelled: cancelledActive
+            )
+        }
+    }
+
+    public func deleteAllTags() async throws -> BulkDeleteResult {
+        try await dbWriter.write { db in
+            let tagsDeleted = try Tag.deleteAll(db)
+            // activity_tag rows cascade from tag deletion; activities untouched
+            return BulkDeleteResult(tagsDeleted: tagsDeleted)
+        }
+    }
+
+    public func factoryReset() async throws {
+        try await dbWriter.write { db in
+            // Cancel active session
+            if let active = try Session
+                .filter(Session.Columns.state == SessionState.running.rawValue || Session.Columns.state == SessionState.paused.rawValue)
+                .fetchOne(db) {
+                try active.delete(db)
+            }
+
+            // Delete everything
+            try db.execute(sql: "DELETE FROM session")
+            try db.execute(sql: "DELETE FROM activity_tag")
+            try db.execute(sql: "DELETE FROM activity")
+            try db.execute(sql: "DELETE FROM tag")
+            try db.execute(sql: "DELETE FROM preference")
+
+            // Re-seed default preferences
+            for (key, value) in PreferenceKey.defaults {
+                try db.execute(
+                    sql: "INSERT OR IGNORE INTO preference (key, value) VALUES (?, ?)",
+                    arguments: [key, value]
+                )
+            }
+        }
+    }
+
+    private func dateRange(for range: BulkDeleteRange) -> (start: Date, end: Date) {
+        let calendar = Calendar.current
+        let now = Date()
+        switch range {
+        case .today:
+            let start = calendar.startOfDay(for: now)
+            let end = calendar.date(byAdding: .day, value: 1, to: start)!
+            return (start, end)
+        case .thisWeek:
+            let interval = calendar.dateInterval(of: .weekOfYear, for: now)!
+            return (interval.start, interval.end)
+        case .thisMonth:
+            let interval = calendar.dateInterval(of: .month, for: now)!
+            return (interval.start, interval.end)
+        case .allTime:
+            return (Date.distantPast, Date.distantFuture)
+        }
+    }
+
     // MARK: - Status
 
     public func todaySummary() async throws -> TodaySummary {

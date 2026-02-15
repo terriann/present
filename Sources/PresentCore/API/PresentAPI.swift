@@ -45,4 +45,11 @@ public protocol PresentAPI: Sendable {
 
     // Status
     func todaySummary() async throws -> TodaySummary
+
+    // Bulk Operations
+    func countSessions(in range: BulkDeleteRange) async throws -> Int
+    func deleteSessions(in range: BulkDeleteRange) async throws -> BulkDeleteResult
+    func deleteAllActivities() async throws -> BulkDeleteResult
+    func deleteAllTags() async throws -> BulkDeleteResult
+    func factoryReset() async throws
 }

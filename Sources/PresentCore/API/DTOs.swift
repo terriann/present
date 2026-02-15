@@ -53,6 +53,26 @@ public enum ArchiveResult: Sendable, Equatable {
     case promptDelete(totalSeconds: Int)
 }
 
+// MARK: - Bulk Operation Types
+
+public enum BulkDeleteRange: String, Sendable, CaseIterable {
+    case today, thisWeek, thisMonth, allTime
+}
+
+public struct BulkDeleteResult: Sendable {
+    public let sessionsDeleted: Int
+    public let activitiesDeleted: Int
+    public let tagsDeleted: Int
+    public let activeSessionCancelled: Bool
+
+    public init(sessionsDeleted: Int = 0, activitiesDeleted: Int = 0, tagsDeleted: Int = 0, activeSessionCancelled: Bool = false) {
+        self.sessionsDeleted = sessionsDeleted
+        self.activitiesDeleted = activitiesDeleted
+        self.tagsDeleted = tagsDeleted
+        self.activeSessionCancelled = activeSessionCancelled
+    }
+}
+
 // MARK: - Report Types
 
 public struct ActivitySummary: Sendable, Equatable {

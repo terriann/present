@@ -30,7 +30,7 @@ struct SettingsView: View {
                 .tabItem { Label("About", systemImage: "info.circle") }
                 .tag(SettingsTab.about)
         }
-        .frame(width: 450, height: 300)
+        .frame(width: 450, height: 520)
         .onAppear { selectedTab = .general }
     }
 }
@@ -38,6 +38,17 @@ struct SettingsView: View {
 struct GeneralSettingsTab: View {
     @Environment(AppState.self) private var appState
     @State private var baseUrl = ""
+
+    // MARK: - Danger Zone State
+
+    @State private var showDeleteTodayAlert = false
+    @State private var showDeleteRangeAlert = false
+    @State private var showDeleteActivitiesAlert = false
+    @State private var showDeleteTagsAlert = false
+    @State private var showFactoryResetAlert = false
+
+    @State private var bulkDeleteRange: BulkDeleteRange = .thisWeek
+    @State private var pendingDeleteCount = 0
 
     var body: some View {
         Form {
@@ -67,10 +78,155 @@ struct GeneralSettingsTab: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+
+            dangerZoneSection
         }
         .formStyle(.grouped)
         .padding()
     }
+
+    // MARK: - Danger Zone
+
+    private var dangerZoneSection: some View {
+        Section {
+            // Delete today's sessions
+            Button(role: .destructive) {
+                Task {
+                    pendingDeleteCount = try await appState.service.countSessions(in: .today)
+                    showDeleteTodayAlert = true
+                }
+            } label: {
+                Label("Delete today's sessions", systemImage: "trash")
+            }
+            .alert("Delete Today's Sessions", isPresented: $showDeleteTodayAlert) {
+                Button("Cancel", role: .cancel) {}
+                Button("Delete", role: .destructive) {
+                    Task { await performDeleteSessions(in: .today) }
+                }
+            } message: {
+                Text("This will permanently delete \(pendingDeleteCount) session(s) from today. This cannot be undone.")
+            }
+
+            // Bulk delete sessions by range
+            HStack {
+                Picker("Delete sessions from", selection: $bulkDeleteRange) {
+                    Text("This Week").tag(BulkDeleteRange.thisWeek)
+                    Text("This Month").tag(BulkDeleteRange.thisMonth)
+                    Text("All Time").tag(BulkDeleteRange.allTime)
+                }
+                .frame(maxWidth: .infinity)
+
+                Button(role: .destructive) {
+                    Task {
+                        pendingDeleteCount = try await appState.service.countSessions(in: bulkDeleteRange)
+                        showDeleteRangeAlert = true
+                    }
+                } label: {
+                    Text("Delete")
+                }
+            }
+            .alert("Delete Sessions", isPresented: $showDeleteRangeAlert) {
+                Button("Cancel", role: .cancel) {}
+                Button("Delete", role: .destructive) {
+                    Task { await performDeleteSessions(in: bulkDeleteRange) }
+                }
+            } message: {
+                Text("This will permanently delete \(pendingDeleteCount) session(s). Any active session will be cancelled. This cannot be undone.")
+            }
+
+            // Delete all activities
+            Button(role: .destructive) {
+                showDeleteActivitiesAlert = true
+            } label: {
+                Label("Delete all activities", systemImage: "tray.full")
+            }
+            .alert("Delete All Activities", isPresented: $showDeleteActivitiesAlert) {
+                Button("Cancel", role: .cancel) {}
+                Button("Delete All", role: .destructive) {
+                    Task { await performDeleteAllActivities() }
+                }
+            } message: {
+                Text("This will delete all \(appState.allActivities.count) activities and their sessions. Any active session will be cancelled. This cannot be undone.")
+            }
+
+            // Delete all tags
+            Button(role: .destructive) {
+                showDeleteTagsAlert = true
+            } label: {
+                Label("Delete all tags", systemImage: "tag")
+            }
+            .alert("Delete All Tags", isPresented: $showDeleteTagsAlert) {
+                Button("Cancel", role: .cancel) {}
+                Button("Delete All", role: .destructive) {
+                    Task { await performDeleteAllTags() }
+                }
+            } message: {
+                Text("This will delete all \(appState.allTags.count) tags. Activities will be kept but their tag associations removed.")
+            }
+
+            // Factory reset
+            Button(role: .destructive) {
+                showFactoryResetAlert = true
+            } label: {
+                Label("Factory reset", systemImage: "arrow.counterclockwise")
+            }
+            .alert("Factory Reset", isPresented: $showFactoryResetAlert) {
+                Button("Cancel", role: .cancel) {}
+                Button("Reset Everything", role: .destructive) {
+                    Task { await performFactoryReset() }
+                }
+            } message: {
+                Text("This will delete ALL sessions, activities, tags, and preferences. Everything will be wiped. This cannot be undone.")
+            }
+        } header: {
+            Label("Danger Zone", systemImage: "exclamationmark.triangle")
+                .foregroundStyle(.red)
+        }
+    }
+
+    // MARK: - Danger Zone Actions
+
+    private func performDeleteSessions(in range: BulkDeleteRange) async {
+        do {
+            _ = try await appState.service.deleteSessions(in: range)
+            SoundManager.shared.play(.dip)
+            await appState.refreshAll()
+        } catch {
+            print("Error deleting sessions: \(error)")
+        }
+    }
+
+    private func performDeleteAllActivities() async {
+        do {
+            _ = try await appState.service.deleteAllActivities()
+            SoundManager.shared.play(.dip)
+            await appState.refreshAll()
+        } catch {
+            print("Error deleting activities: \(error)")
+        }
+    }
+
+    private func performDeleteAllTags() async {
+        do {
+            _ = try await appState.service.deleteAllTags()
+            SoundManager.shared.play(.dip)
+            await appState.refreshAll()
+        } catch {
+            print("Error deleting tags: \(error)")
+        }
+    }
+
+    private func performFactoryReset() async {
+        do {
+            try await appState.service.factoryReset()
+            SoundManager.shared.play(.dip)
+            await appState.refreshAll()
+        } catch {
+            print("Error performing factory reset: \(error)")
+        }
+    }
+
+    // MARK: - Helpers
 
     private func loadBaseUrl() {
         Task {
