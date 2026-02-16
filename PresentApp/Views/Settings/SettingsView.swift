@@ -65,7 +65,7 @@ struct GeneralSettingsTab: View {
                     PaletteRow(
                         palette: palette,
                         isSelected: theme.activePalette == palette,
-                        colors: theme.colors(for: palette)
+                        colors: ThemeManager.previewColors(for: palette)
                     ) {
                         theme.activePalette = palette
                         Task {

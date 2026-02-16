@@ -17,92 +17,87 @@ public final class ThemeManager {
     // MARK: - Semantic Tokens
 
     /// Brand identity color — used for app chrome, headers, and branding.
-    public var primary: Color {
-        switch activePalette {
-        case .basic:
-            return Color(light: basicPrimaryLight, dark: basicPrimaryDark)
-        case .modern:
-            return Color(light: Color(hex: 0x3a3e5c), dark: Color(hex: 0x25283d))
-        case .dusty:
-            return Color(light: Color(hex: 0x6e7390), dark: Color(hex: 0x888da7))
-        }
-    }
+    public var primary: Color { Self.primaryColor(for: activePalette) }
 
     /// Interactive accent — buttons, selections, links, hover states.
-    public var accent: Color {
-        switch activePalette {
-        case .basic:
-            return Color(light: basicPrimaryLight, dark: basicPrimaryDark)
-        case .modern:
-            return Color(light: Color(hex: 0x5a8ae6), dark: Color(hex: 0x709fff))
-        case .dusty:
-            return Color(light: Color(hex: 0x698d94), dark: Color(hex: 0x7ea2aa))
-        }
-    }
+    public var accent: Color { Self.accentColor(for: activePalette) }
 
     /// Positive/completed state (e.g. completed sessions).
-    public var success: Color {
-        switch activePalette {
-        case .basic:
-            return Color(
-                light: Color(red: 0.204, green: 0.780, blue: 0.349),  // #34C759
-                dark: Color(red: 0.188, green: 0.820, blue: 0.345)    // #30D158
-            )
-        case .modern:
-            return Color(light: Color(hex: 0x5aab9e), dark: Color(hex: 0x70c1b3))
-        case .dusty:
-            return Color(light: Color(hex: 0x6dd0b3), dark: Color(hex: 0x8be8cb))
-        }
-    }
+    public var success: Color { Self.successColor(for: activePalette) }
 
     /// Caution/paused state (e.g. paused sessions).
-    public var warning: Color {
-        switch activePalette {
-        case .basic:
-            return Color(
-                light: Color(red: 0.961, green: 0.651, blue: 0.137),  // #F5A623
-                dark: Color(red: 1.0, green: 0.702, blue: 0.251)      // #FFB340
-            )
-        case .modern:
-            return Color(light: Color(hex: 0xd95a3c), dark: Color(hex: 0xee6c4d))
-        case .dusty:
-            return Color(light: Color(hex: 0xd98a45), dark: Color(hex: 0xf4a259))
-        }
-    }
+    public var warning: Color { Self.warningColor(for: activePalette) }
 
     /// Destructive/error state (e.g. cancel, danger zone).
-    public var alert: Color {
-        switch activePalette {
-        case .basic:
-            return Color(
-                light: Color(red: 1.0, green: 0.231, blue: 0.188),    // #FF3B30
-                dark: Color(red: 1.0, green: 0.271, blue: 0.227)      // #FF453A
-            )
-        case .modern:
-            return Color(light: Color(hex: 0x7a2d70), dark: Color(hex: 0x8f3985))
-        case .dusty:
-            return Color(light: Color(hex: 0x856880), dark: Color(hex: 0x9c7a97))
-        }
-    }
+    public var alert: Color { Self.alertColor(for: activePalette) }
 
     // MARK: - Palette Preview
 
     /// Returns the five semantic colors for a given palette (for swatch previews).
-    public func colors(for palette: ColorPalette) -> [Color] {
-        let saved = activePalette
-        activePalette = palette
-        let result = [accent, success, warning, alert, primary]
-        activePalette = saved
-        return result
+    /// Uses static color lookup to avoid mutating the observed `activePalette`.
+    public static func previewColors(for palette: ColorPalette) -> [Color] {
+        [
+            accentColor(for: palette),
+            successColor(for: palette),
+            warningColor(for: palette),
+            alertColor(for: palette),
+            primaryColor(for: palette),
+        ]
     }
 
-    // MARK: - Basic Palette Base Colors
+    // MARK: - Static Color Lookup
 
-    /// Brand blue light variant: #95bcff
-    private let basicPrimaryLight = Color(red: 0.584, green: 0.737, blue: 1.0)
+    private static let basicPrimaryLight = Color(red: 0.584, green: 0.737, blue: 1.0)
+    private static let basicPrimaryDark = Color(red: 0.439, green: 0.624, blue: 1.0)
 
-    /// Brand blue dark variant: #709fff
-    private let basicPrimaryDark = Color(red: 0.439, green: 0.624, blue: 1.0)
+    private static func primaryColor(for palette: ColorPalette) -> Color {
+        switch palette {
+        case .basic: Color(light: basicPrimaryLight, dark: basicPrimaryDark)
+        case .modern: Color(light: Color(hex: 0x3a3e5c), dark: Color(hex: 0x25283d))
+        case .dusty: Color(light: Color(hex: 0x6e7390), dark: Color(hex: 0x888da7))
+        }
+    }
+
+    private static func accentColor(for palette: ColorPalette) -> Color {
+        switch palette {
+        case .basic: Color(light: basicPrimaryLight, dark: basicPrimaryDark)
+        case .modern: Color(light: Color(hex: 0x5a8ae6), dark: Color(hex: 0x709fff))
+        case .dusty: Color(light: Color(hex: 0x698d94), dark: Color(hex: 0x7ea2aa))
+        }
+    }
+
+    private static func successColor(for palette: ColorPalette) -> Color {
+        switch palette {
+        case .basic: Color(
+            light: Color(red: 0.204, green: 0.780, blue: 0.349),
+            dark: Color(red: 0.188, green: 0.820, blue: 0.345)
+        )
+        case .modern: Color(light: Color(hex: 0x5aab9e), dark: Color(hex: 0x70c1b3))
+        case .dusty: Color(light: Color(hex: 0x6dd0b3), dark: Color(hex: 0x8be8cb))
+        }
+    }
+
+    private static func warningColor(for palette: ColorPalette) -> Color {
+        switch palette {
+        case .basic: Color(
+            light: Color(red: 0.961, green: 0.651, blue: 0.137),
+            dark: Color(red: 1.0, green: 0.702, blue: 0.251)
+        )
+        case .modern: Color(light: Color(hex: 0xd95a3c), dark: Color(hex: 0xee6c4d))
+        case .dusty: Color(light: Color(hex: 0xd98a45), dark: Color(hex: 0xf4a259))
+        }
+    }
+
+    private static func alertColor(for palette: ColorPalette) -> Color {
+        switch palette {
+        case .basic: Color(
+            light: Color(red: 1.0, green: 0.231, blue: 0.188),
+            dark: Color(red: 1.0, green: 0.271, blue: 0.227)
+        )
+        case .modern: Color(light: Color(hex: 0x7a2d70), dark: Color(hex: 0x8f3985))
+        case .dusty: Color(light: Color(hex: 0x856880), dark: Color(hex: 0x9c7a97))
+        }
+    }
 }
 
 // MARK: - Light/Dark Adaptive Color
