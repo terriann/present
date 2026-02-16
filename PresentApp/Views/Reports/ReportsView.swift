@@ -4,6 +4,7 @@ import PresentCore
 
 struct ReportsView: View {
     @Environment(AppState.self) private var appState
+    @Environment(ThemeManager.self) private var theme
     @State private var selectedPeriod: ReportPeriod = .daily
     @State private var selectedDate: Date = Date()
     @State private var includeArchived = false
@@ -62,6 +63,7 @@ struct ReportsView: View {
                 .labelsHidden()
 
             Toggle("Include archived", isOn: $includeArchived)
+                .toggleStyle(ThemedToggleStyle(tintColor: theme.accent))
 
             Spacer()
         }

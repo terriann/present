@@ -3,6 +3,7 @@ import PresentCore
 
 struct ActivitiesListView: View {
     @Environment(AppState.self) private var appState
+    @Environment(ThemeManager.self) private var theme
     @State private var showingCreateSheet = false
     @State private var showArchived = false
     @State private var selectedActivity: Activity?
@@ -24,6 +25,7 @@ struct ActivitiesListView: View {
                 .frame(maxWidth: 200)
 
                 Toggle("Show archived", isOn: $showArchived)
+                    .toggleStyle(ThemedToggleStyle(tintColor: theme.accent))
 
                 Spacer()
 
@@ -52,9 +54,21 @@ struct ActivitiesListView: View {
                     )
                     .frame(minWidth: 250, idealWidth: 300, maxHeight: .infinity)
                 } else {
-                    List(displayedActivities, selection: $selectedActivity) { activity in
-                        ActivityRow(activity: activity)
-                            .tag(activity)
+                    List {
+                        ForEach(displayedActivities) { activity in
+                            Button {
+                                selectedActivity = activity
+                            } label: {
+                                ActivityRow(activity: activity)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .listRowBackground(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(selectedActivity == activity ? theme.accent.opacity(0.15) : Color.clear)
+                            )
+                        }
                     }
                     .listStyle(.inset)
                     .frame(minWidth: 250, idealWidth: 300, maxHeight: .infinity)

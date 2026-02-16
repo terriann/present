@@ -3,35 +3,79 @@ import PresentCore
 
 struct SettingsView: View {
     @Environment(AppState.self) private var appState
+    @Environment(ThemeManager.self) private var theme
     @State private var selectedTab = SettingsTab.general
 
-    private enum SettingsTab: Hashable {
+    enum SettingsTab: String, CaseIterable {
         case general, sessions, notifications, about
+
+        var label: String {
+            switch self {
+            case .general: "General"
+            case .sessions: "Sessions"
+            case .notifications: "Notifications"
+            case .about: "About"
+            }
+        }
+
+        var icon: String {
+            switch self {
+            case .general: "gear"
+            case .sessions: "timer"
+            case .notifications: "bell"
+            case .about: "info.circle"
+            }
+        }
     }
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            GeneralSettingsTab()
-                .environment(appState)
-                .tabItem { Label("General", systemImage: "gear") }
-                .tag(SettingsTab.general)
+        VStack(spacing: 0) {
+            // Custom tab bar
+            HStack(spacing: 2) {
+                ForEach(SettingsTab.allCases, id: \.self) { tab in
+                    Button {
+                        selectedTab = tab
+                    } label: {
+                        VStack(spacing: 4) {
+                            Image(systemName: tab.icon)
+                                .font(.title2)
+                            Text(tab.label)
+                                .font(.caption)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(selectedTab == tab ? theme.accent.opacity(0.15) : Color.clear)
+                        )
+                        .foregroundStyle(selectedTab == tab ? theme.accent : .secondary)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 10)
+            .padding(.bottom, 4)
 
-            SessionSettingsTab()
-                .environment(appState)
-                .tabItem { Label("Sessions", systemImage: "timer") }
-                .tag(SettingsTab.sessions)
+            Divider()
 
-            NotificationSettingsTab()
-                .environment(appState)
-                .tabItem { Label("Notifications", systemImage: "bell") }
-                .tag(SettingsTab.notifications)
-
-            AboutTab()
-                .tabItem { Label("About", systemImage: "info.circle") }
-                .tag(SettingsTab.about)
+            // Tab content
+            Group {
+                switch selectedTab {
+                case .general:
+                    GeneralSettingsTab()
+                case .sessions:
+                    SessionSettingsTab()
+                case .notifications:
+                    NotificationSettingsTab()
+                case .about:
+                    AboutTab()
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(width: 450, height: 520)
-        .onAppear { selectedTab = .general }
     }
 }
 
@@ -532,6 +576,8 @@ struct SessionSettingsTab: View {
 }
 
 struct AboutTab: View {
+    @Environment(ThemeManager.self) private var theme
+
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1"
     }
@@ -561,9 +607,11 @@ struct AboutTab: View {
             VStack(spacing: 8) {
                 Link("GitHub Repository", destination: URL(string: "https://github.com/terriann/present")!)
                     .font(.callout)
+                    .foregroundStyle(theme.accent)
 
                 Link("Sound effects by Epidemic Sound", destination: URL(string: "https://www.epidemicsound.com/sound-effects/playlists/interfaceessentials/")!)
                     .font(.callout)
+                    .foregroundStyle(theme.accent)
             }
 
             Spacer()
@@ -575,6 +623,7 @@ struct AboutTab: View {
 
 struct NotificationSettingsTab: View {
     @Environment(AppState.self) private var appState
+    @Environment(ThemeManager.self) private var theme
     @State private var soundEnabled = true
     @State private var soundEffectsEnabled = true
 
@@ -582,6 +631,7 @@ struct NotificationSettingsTab: View {
         Form {
             Section("Notifications") {
                 Toggle("Play sound on timer completion", isOn: $soundEnabled)
+                    .toggleStyle(ThemedToggleStyle(tintColor: theme.accent))
                     .onChange(of: soundEnabled) {
                         Task {
                             try? await appState.service.setPreference(
@@ -594,6 +644,7 @@ struct NotificationSettingsTab: View {
 
             Section("Sound Effects") {
                 Toggle("Play UI sound effects", isOn: $soundEffectsEnabled)
+                    .toggleStyle(ThemedToggleStyle(tintColor: theme.accent))
                     .onChange(of: soundEffectsEnabled) {
                         SoundManager.shared.isEnabled = soundEffectsEnabled
                         Task {

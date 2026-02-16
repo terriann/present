@@ -15,6 +15,7 @@ struct PresentApp: App {
             MenuBarView()
                 .environment(appState)
                 .environment(themeManager)
+                .tint(themeManager.accent)
         } label: {
             MenuBarLabelView()
                 .environment(appState)
@@ -25,6 +26,7 @@ struct PresentApp: App {
             ContentView()
                 .environment(appState)
                 .environment(themeManager)
+                .tint(themeManager.accent)
                 .onAppear {
                     appDelegate.appState = appState
                     appState.showDockIcon(true)
@@ -37,6 +39,7 @@ struct PresentApp: App {
             SettingsView()
                 .environment(appState)
                 .environment(themeManager)
+                .tint(themeManager.accent)
         }
     }
 
