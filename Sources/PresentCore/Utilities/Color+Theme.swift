@@ -37,11 +37,11 @@ public final class ThemeManager {
     /// Uses static color lookup to avoid mutating the observed `activePalette`.
     public static func previewColors(for palette: ColorPalette) -> [Color] {
         [
+            primaryColor(for: palette),
             accentColor(for: palette),
             successColor(for: palette),
             warningColor(for: palette),
             alertColor(for: palette),
-            primaryColor(for: palette),
         ]
     }
 
@@ -53,16 +53,16 @@ public final class ThemeManager {
     private static func primaryColor(for palette: ColorPalette) -> Color {
         switch palette {
         case .basic: Color(light: basicPrimaryLight, dark: basicPrimaryDark)
-        case .modern: Color(light: Color(hex: 0x3a3e5c), dark: Color(hex: 0x25283d))
-        case .dusty: Color(light: Color(hex: 0x6e7390), dark: Color(hex: 0x888da7))
+        case .modern: Color(light: Color(hex: 0x5da89c), dark: Color(hex: 0x70c1b3))
+        case .dusty: Color(light: Color(hex: 0x7a2445), dark: Color(hex: 0x8f2d56))
         }
     }
 
     private static func accentColor(for palette: ColorPalette) -> Color {
         switch palette {
-        case .basic: Color(light: basicPrimaryLight, dark: basicPrimaryDark)
-        case .modern: Color(light: Color(hex: 0x5a8ae6), dark: Color(hex: 0x709fff))
-        case .dusty: Color(light: Color(hex: 0x698d94), dark: Color(hex: 0x7ea2aa))
+        case .basic: Color(light: Color(hex: 0xe47e1e), dark: Color(hex: 0xffa042))
+        case .modern: Color(light: Color(hex: 0xbfcc85), dark: Color(hex: 0xd4e09b))
+        case .dusty: Color(light: Color(hex: 0xd98a45), dark: Color(hex: 0xf4a259))
         }
     }
 
@@ -72,8 +72,8 @@ public final class ThemeManager {
             light: Color(red: 0.204, green: 0.780, blue: 0.349),
             dark: Color(red: 0.188, green: 0.820, blue: 0.345)
         )
-        case .modern: Color(light: Color(hex: 0x5aab9e), dark: Color(hex: 0x70c1b3))
-        case .dusty: Color(light: Color(hex: 0x6dd0b3), dark: Color(hex: 0x8be8cb))
+        case .modern: Color(light: Color(hex: 0x7a2d70), dark: Color(hex: 0x8f3985))
+        case .dusty: Color(light: Color(hex: 0x698d94), dark: Color(hex: 0x7ea2aa))
         }
     }
 
@@ -83,8 +83,8 @@ public final class ThemeManager {
             light: Color(red: 0.961, green: 0.651, blue: 0.137),
             dark: Color(red: 1.0, green: 0.702, blue: 0.251)
         )
-        case .modern: Color(light: Color(hex: 0xd95a3c), dark: Color(hex: 0xee6c4d))
-        case .dusty: Color(light: Color(hex: 0xd98a45), dark: Color(hex: 0xf4a259))
+        case .modern: Color(light: Color(hex: 0x5a8ae6), dark: Color(hex: 0x709fff))
+        case .dusty: Color(light: Color(hex: 0x737890), dark: Color(hex: 0x888da7))
         }
     }
 
@@ -94,8 +94,8 @@ public final class ThemeManager {
             light: Color(red: 1.0, green: 0.231, blue: 0.188),
             dark: Color(red: 1.0, green: 0.271, blue: 0.227)
         )
-        case .modern: Color(light: Color(hex: 0x7a2d70), dark: Color(hex: 0x8f3985))
-        case .dusty: Color(light: Color(hex: 0x856880), dark: Color(hex: 0x9c7a97))
+        case .modern: Color(light: Color(hex: 0xd95a3c), dark: Color(hex: 0xee6c4d))
+        case .dusty: Color(light: Color(hex: 0xa27499), dark: Color(hex: 0xbc8da7))
         }
     }
 }

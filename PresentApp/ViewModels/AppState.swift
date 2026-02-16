@@ -24,6 +24,13 @@ final class AppState {
     private var timerTask: Task<Void, Never>?
     private var timerCompletionHandled = false
 
+    // MARK: - Completed Timer Linger
+
+    var completedTimerText: String?
+    var isCountdownCompletion: Bool = false
+    var isCompletedTimerFading: Bool = false
+    private var completedTimerLingerTask: Task<Void, Never>?
+
     // MARK: - Break Suggestion
 
     var showBreakSuggestion = false
@@ -55,10 +62,10 @@ final class AppState {
     }
 
     var menuBarTimerText: String? {
-        guard let session = currentSession, session.state == .running || session.state == .paused else {
-            return nil
+        if let session = currentSession, session.state == .running || session.state == .paused {
+            return formattedTimerValue
         }
-        return formattedTimerValue
+        return completedTimerText
     }
 
     var formattedTimerValue: String {
@@ -157,6 +164,7 @@ final class AppState {
     // MARK: - Session Actions
 
     func startSession(activityId: Int64, type: SessionType, timerMinutes: Int? = nil, breakMinutes: Int? = nil) async {
+        clearCompletedTimerLinger()
         do {
             let session = try await service.startSession(
                 activityId: activityId,
@@ -197,19 +205,24 @@ final class AppState {
     }
 
     func stopSession() async {
+        let finalText = formattedTimerValue
+
         do {
             let stoppedSession = try await service.stopSession()
-            let activity = currentActivity
             currentSession = nil
             currentActivity = nil
             stopTimer()
+
+            // Start linger unless handleTimerCompletion already did
+            if completedTimerText == nil {
+                startCompletedTimerLinger(text: finalText, isCountdown: false)
+            }
 
             // For rhythm sessions, suggest a break
             if stoppedSession.sessionType == .rhythm, let index = stoppedSession.rhythmSessionIndex {
                 await suggestBreak(session: stoppedSession, sessionIndex: index)
             }
 
-            _ = activity
             await refreshAll()
         } catch {
             print("Error stopping session: \(error)")
@@ -271,6 +284,9 @@ final class AppState {
     private func handleTimerCompletion() async {
         guard let activity = currentActivity, let session = currentSession else { return }
 
+        let finalText = formattedTimerValue
+        let isCountdown = session.sessionType == .rhythm || session.sessionType == .timebound
+
         // Send notification and play completion sound
         NotificationManager.shared.sendTimerCompleted(
             activityTitle: activity.title,
@@ -278,8 +294,40 @@ final class AppState {
         )
         SoundManager.shared.play(.shimmer)
 
+        // Start linger BEFORE stopSession so it doesn't get overwritten
+        startCompletedTimerLinger(text: finalText, isCountdown: isCountdown)
+
         // Auto-stop the session
         await stopSession()
+    }
+
+    // MARK: - Completed Timer Linger
+
+    private func startCompletedTimerLinger(text: String, isCountdown: Bool) {
+        clearCompletedTimerLinger()
+        completedTimerText = text
+        isCountdownCompletion = isCountdown
+        isCompletedTimerFading = false
+
+        completedTimerLingerTask = Task {
+            try? await Task.sleep(for: .seconds(Constants.completedTimerLingerSeconds))
+            guard !Task.isCancelled else { return }
+
+            isCompletedTimerFading = true
+
+            try? await Task.sleep(for: .seconds(Constants.completedTimerFadeSeconds))
+            guard !Task.isCancelled else { return }
+
+            clearCompletedTimerLinger()
+        }
+    }
+
+    private func clearCompletedTimerLinger() {
+        completedTimerLingerTask?.cancel()
+        completedTimerLingerTask = nil
+        completedTimerText = nil
+        isCountdownCompletion = false
+        isCompletedTimerFading = false
     }
 
     // MARK: - Break Suggestions

@@ -67,17 +67,44 @@ private struct MenuBarLabelView: View {
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openSettings) private var openSettings
 
+    @State private var flashVisible: Bool = true
+    @State private var flashTask: Task<Void, Never>?
+    @State private var fadeOpacity: Double = Constants.menuBarTimerLingerOpacity
+
     var body: some View {
         HStack(spacing: 4) {
             Image(systemName: appState.menuBarIcon)
             if let timerText = appState.menuBarTimerText {
                 Text(timerText)
                     .monospacedDigit()
+                    .opacity(timerTextOpacity)
+            }
+        }
+        .onChange(of: appState.isCountdownCompletion) { _, isCountdown in
+            if isCountdown {
+                startFlashAnimation()
+            } else {
+                stopFlashAnimation()
+            }
+        }
+        .onChange(of: appState.isCompletedTimerFading) { _, isFading in
+            if isFading {
+                withAnimation(.easeOut(duration: Double(Constants.completedTimerFadeSeconds))) {
+                    fadeOpacity = 0.0
+                }
+            } else {
+                fadeOpacity = Constants.menuBarTimerLingerOpacity
+            }
+        }
+        .onChange(of: appState.completedTimerText) { _, newValue in
+            if newValue == nil {
+                // Linger cleared — reset animation state
+                stopFlashAnimation()
+                fadeOpacity = Constants.menuBarTimerLingerOpacity
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: StatusItemMenuManager.openMainWindowNotification)) { _ in
             openWindow(id: "main")
-            // Activate after the window is created so it appears in front.
             DispatchQueue.main.async {
                 NSApplication.shared.activate()
             }
@@ -88,6 +115,45 @@ private struct MenuBarLabelView: View {
                 NSApplication.shared.activate()
             }
         }
+    }
+
+    // MARK: - Timer Opacity
+
+    private var timerTextOpacity: Double {
+        if appState.isCompletedTimerFading {
+            return fadeOpacity
+        }
+        if appState.completedTimerText != nil {
+            return flashVisible ? Constants.menuBarTimerLingerOpacity : 0.0
+        }
+        if appState.currentSession?.state == .paused {
+            return Constants.menuBarTimerPausedOpacity
+        }
+        return 1.0
+    }
+
+    // MARK: - Flash Animation
+
+    private func startFlashAnimation() {
+        flashVisible = true
+        flashTask?.cancel()
+        flashTask = Task {
+            let interval: Duration = .milliseconds(500)
+            let totalFlashes = Constants.completedTimerFlashSeconds * 2 // 2 toggles per second
+            for _ in 0..<totalFlashes {
+                try? await Task.sleep(for: interval)
+                guard !Task.isCancelled else { return }
+                flashVisible.toggle()
+            }
+            // After flashing, hold visible
+            flashVisible = true
+        }
+    }
+
+    private func stopFlashAnimation() {
+        flashTask?.cancel()
+        flashTask = nil
+        flashVisible = true
     }
 }
 
