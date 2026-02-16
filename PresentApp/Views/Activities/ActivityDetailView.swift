@@ -3,6 +3,7 @@ import PresentCore
 
 struct ActivityDetailView: View {
     @Environment(AppState.self) private var appState
+    @Environment(ThemeManager.self) private var theme
     @State private var activity: Activity
     @State private var notes: String
     @State private var tags: [Tag] = []
@@ -164,8 +165,8 @@ struct ActivityDetailView: View {
                                     .font(.caption.weight(isSelected ? .semibold : .regular))
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 5)
-                                    .background(isSelected ? Color.accentColor.opacity(0.15) : Color.clear, in: Capsule())
-                                    .foregroundStyle(isSelected ? Color.accentColor : .secondary)
+                                    .background(isSelected ? theme.accent.opacity(0.15) : Color.clear, in: Capsule())
+                                    .foregroundStyle(isSelected ? theme.accent : .secondary)
                             }
                             .buttonStyle(.plain)
                         }
@@ -182,8 +183,8 @@ struct ActivityDetailView: View {
                                         .font(.caption2.weight(isSelected ? .semibold : .regular))
                                         .padding(.horizontal, 8)
                                         .padding(.vertical, 3)
-                                        .background(isSelected ? Color.accentColor.opacity(0.12) : Color.secondary.opacity(0.08), in: Capsule())
-                                        .foregroundStyle(isSelected ? Color.accentColor : .secondary)
+                                        .background(isSelected ? theme.accent.opacity(0.12) : Color.secondary.opacity(0.08), in: Capsule())
+                                        .foregroundStyle(isSelected ? theme.accent : .secondary)
                                 }
                                 .buttonStyle(.plain)
                             }

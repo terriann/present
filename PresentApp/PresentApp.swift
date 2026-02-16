@@ -5,13 +5,16 @@ import PresentCore
 struct PresentApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var appState = AppState()
+    @State private var themeManager = ThemeManager()
 
     var body: some Scene {
         let _ = startStatusItemMenu()
+        let _ = loadPalette()
 
         MenuBarExtra {
             MenuBarView()
                 .environment(appState)
+                .environment(themeManager)
         } label: {
             MenuBarLabelView()
                 .environment(appState)
@@ -21,6 +24,7 @@ struct PresentApp: App {
         Window("Present", id: "main") {
             ContentView()
                 .environment(appState)
+                .environment(themeManager)
                 .onAppear {
                     appDelegate.appState = appState
                     appState.showDockIcon(true)
@@ -32,6 +36,16 @@ struct PresentApp: App {
         Settings {
             SettingsView()
                 .environment(appState)
+                .environment(themeManager)
+        }
+    }
+
+    private func loadPalette() {
+        Task {
+            if let value = try? await appState.service.getPreference(key: PreferenceKey.colorPalette),
+               let palette = ColorPalette(rawValue: value) {
+                themeManager.activePalette = palette
+            }
         }
     }
 

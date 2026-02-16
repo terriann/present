@@ -3,6 +3,7 @@ import PresentCore
 
 struct SessionControls: View {
     @Environment(AppState.self) private var appState
+    @Environment(ThemeManager.self) private var theme
 
     var body: some View {
         HStack(spacing: 16) {
@@ -37,7 +38,7 @@ struct SessionControls: View {
                 } label: {
                     Image(systemName: "stop.circle.fill")
                         .font(.title)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(theme.alert)
                 }
                 .buttonStyle(.plain)
                 .help("Stop session")

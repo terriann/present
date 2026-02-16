@@ -18,6 +18,7 @@ contributing.
 - [Database](#database)
 - [IPC](#ipc)
 - [Code Style](#code-style)
+- [Colors](#colors)
 - [Distribution](#distribution)
 - [Versioning](#versioning)
 - [Common Tasks](#common-tasks)
@@ -215,6 +216,51 @@ these conventions when contributing:
   `Sources/PresentCLI/Commands/`, one file per command.
 - **Error handling:** Prefer typed errors. CLI commands surface user-facing
   error messages via `ValidationError`.
+
+## Colors
+
+Present uses a palette-based color system managed by `ThemeManager`
+(`Sources/PresentCore/Utilities/Color+Theme.swift`). Views access color
+tokens via `@Environment(ThemeManager.self) private var theme`.
+
+### Palettes
+
+Two palettes are available, selectable in Settings > General > Appearance:
+
+**Basic** (default) — brand blues derived from the app icon:
+
+| Token | Purpose | Light | Dark |
+|-------|---------|-------|------|
+| `theme.primary` | Brand blue, identity | `#95bcff` | `#709fff` |
+| `theme.accent` | Interactive elements (same as primary) | `#95bcff` | `#709fff` |
+| `theme.success` | Completed/positive state | `#34C759` | `#30D158` |
+| `theme.warning` | Paused/caution state | `#F5A623` | `#FFB340` |
+| `theme.alert` | Destructive/error state | `#FF3B30` | `#FF453A` |
+
+**Modern** — navy/teal/coral/purple:
+
+| Token | Purpose | Light | Dark |
+|-------|---------|-------|------|
+| `theme.primary` | Dark navy, brand identity | `#3a3e5c` | `#25283d` |
+| `theme.accent` | Blue, interactive elements | `#5a8ae6` | `#709fff` |
+| `theme.success` | Teal, completed sessions | `#5aab9e` | `#70c1b3` |
+| `theme.warning` | Coral, paused/caution | `#d95a3c` | `#ee6c4d` |
+| `theme.alert` | Purple, destructive/error | `#7a2d70` | `#8f3985` |
+
+Use `theme.accent` for interactive elements (buttons, selections, links).
+Use `theme.primary` for brand identity and chrome.
+
+The `AccentColor` asset catalog entry
+(`PresentApp/Resources/Assets.xcassets/AccentColor.colorset/`) sets the
+system accent color app-wide so `.borderedProminent` buttons and other
+system controls automatically use the brand blue.
+
+### Adding a New Palette
+
+1. Add a case to `ColorPalette` enum in `Sources/PresentCore/Models/ColorPalette.swift`.
+2. Add color definitions in each computed property of `ThemeManager`.
+3. Verify in both light and dark mode — check opacity modifiers still look
+   good with the new values.
 
 ## Distribution
 

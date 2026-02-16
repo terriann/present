@@ -37,6 +37,7 @@ struct SettingsView: View {
 
 struct GeneralSettingsTab: View {
     @Environment(AppState.self) private var appState
+    @Environment(ThemeManager.self) private var theme
     @State private var baseUrl = ""
 
     // MARK: - CLI Install State
@@ -56,7 +57,29 @@ struct GeneralSettingsTab: View {
     @State private var pendingDeleteCount = 0
 
     var body: some View {
+        @Bindable var theme = theme
+
         Form {
+            Section("Appearance") {
+                Picker("Color palette", selection: $theme.activePalette) {
+                    ForEach(ColorPalette.allCases, id: \.self) { palette in
+                        HStack(spacing: 6) {
+                            Text(palette.displayName)
+                            paletteSwatches(for: palette)
+                        }
+                        .tag(palette)
+                    }
+                }
+                .onChange(of: theme.activePalette) {
+                    Task {
+                        try? await appState.service.setPreference(
+                            key: PreferenceKey.colorPalette,
+                            value: theme.activePalette.rawValue
+                        )
+                    }
+                }
+            }
+
             Section("External ID") {
                 TextField("Base URL", text: $baseUrl, prompt: Text("https://linear.app/team/issue/"))
                     .onAppear { loadBaseUrl() }
@@ -190,7 +213,7 @@ struct GeneralSettingsTab: View {
             }
         } header: {
             Label("Danger Zone", systemImage: "exclamationmark.triangle")
-                .foregroundStyle(.red)
+                .foregroundStyle(theme.alert)
         }
     }
 
@@ -236,6 +259,19 @@ struct GeneralSettingsTab: View {
         }
     }
 
+    // MARK: - Palette Swatches
+
+    private func paletteSwatches(for palette: ColorPalette) -> some View {
+        let preview = ThemeManager()
+        preview.activePalette = palette
+        return HStack(spacing: 3) {
+            Circle().fill(preview.accent).frame(width: 10, height: 10)
+            Circle().fill(preview.success).frame(width: 10, height: 10)
+            Circle().fill(preview.warning).frame(width: 10, height: 10)
+            Circle().fill(preview.alert).frame(width: 10, height: 10)
+        }
+    }
+
     // MARK: - Helpers
 
     private func loadBaseUrl() {
@@ -275,6 +311,7 @@ struct GeneralSettingsTab: View {
 
 struct SessionSettingsTab: View {
     @Environment(AppState.self) private var appState
+    @Environment(ThemeManager.self) private var theme
     @State private var defaultMinutes = 25
     @State private var longBreak = 15
     @State private var cycleLength = 4
@@ -296,7 +333,7 @@ struct SessionSettingsTab: View {
                             removeDurationOption(option)
                         } label: {
                             Image(systemName: "minus.circle.fill")
-                                .foregroundStyle(.red)
+                                .foregroundStyle(theme.alert)
                         }
                         .buttonStyle(.plain)
                         .disabled(durationOptions.count <= 1)
@@ -331,7 +368,7 @@ struct SessionSettingsTab: View {
                                 addDurationOption()
                             } label: {
                                 Image(systemName: "plus.circle.fill")
-                                    .foregroundStyle(Color.accentColor)
+                                    .foregroundStyle(theme.accent)
                             }
                             .buttonStyle(.plain)
                             .disabled(newFocusText.isEmpty || newBreakText.isEmpty)
@@ -340,7 +377,7 @@ struct SessionSettingsTab: View {
                         if let error = durationValidationError {
                             Text(error)
                                 .font(.caption)
-                                .foregroundStyle(.red)
+                                .foregroundStyle(theme.alert)
                         }
                     }
                 }

@@ -2,6 +2,8 @@ import SwiftUI
 import PresentCore
 
 struct SessionRow: View {
+    @Environment(ThemeManager.self) private var theme
+
     let session: Session
     let activityTitle: String
 
@@ -40,16 +42,16 @@ struct SessionRow: View {
             switch session.state {
             case .completed:
                 Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
+                    .foregroundStyle(theme.success)
             case .cancelled:
                 Image(systemName: "xmark.circle.fill")
                     .foregroundStyle(.secondary)
             case .running:
                 Image(systemName: "play.circle.fill")
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(theme.accent)
             case .paused:
                 Image(systemName: "pause.circle.fill")
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(theme.warning)
             }
         }
         .font(.body)

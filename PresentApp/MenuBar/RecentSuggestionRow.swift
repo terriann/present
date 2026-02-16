@@ -2,6 +2,8 @@ import SwiftUI
 import PresentCore
 
 struct RecentSuggestionRow: View {
+    @Environment(ThemeManager.self) private var theme
+
     let activity: Activity
     let session: Session
     let onStart: () -> Void
@@ -30,11 +32,11 @@ struct RecentSuggestionRow: View {
 
                 Image(systemName: "play.fill")
                     .font(.caption2)
-                    .foregroundStyle(isHovered ? Color.accentColor : .secondary)
+                    .foregroundStyle(isHovered ? theme.accent : .secondary)
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
-            .background(Color.accentColor.opacity(isHovered ? 0.1 : 0.05), in: RoundedRectangle(cornerRadius: 6))
+            .background(theme.accent.opacity(isHovered ? 0.1 : 0.05), in: RoundedRectangle(cornerRadius: 6))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

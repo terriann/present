@@ -2,6 +2,8 @@ import SwiftUI
 import PresentCore
 
 struct QuickStartRow: View {
+    @Environment(ThemeManager.self) private var theme
+
     let activity: Activity
     let onTap: () -> Void
     let onEdit: () -> Void
@@ -29,9 +31,9 @@ struct QuickStartRow: View {
             Button(action: onEdit) {
                 Image(systemName: "pencil")
                     .font(.caption)
-                    .foregroundStyle(isEditHovered ? Color.accentColor : .secondary)
+                    .foregroundStyle(isEditHovered ? theme.accent : .secondary)
                     .padding(5)
-                    .background(isEditHovered ? Color.accentColor.opacity(0.15) : Color.clear, in: Circle())
+                    .background(isEditHovered ? theme.accent.opacity(0.15) : Color.clear, in: Circle())
                     .contentShape(Circle())
             }
             .buttonStyle(.plain)

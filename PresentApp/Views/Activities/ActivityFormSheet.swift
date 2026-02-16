@@ -8,6 +8,7 @@ enum ActivityFormMode {
 
 struct ActivityFormSheet: View {
     @Environment(AppState.self) private var appState
+    @Environment(ThemeManager.self) private var theme
     @Environment(\.dismiss) private var dismiss
 
     let mode: ActivityFormMode
@@ -38,7 +39,7 @@ struct ActivityFormSheet: View {
             if let error = errorMessage {
                 Text(error)
                     .font(.caption)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(theme.alert)
             }
 
             HStack {
