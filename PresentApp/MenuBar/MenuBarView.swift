@@ -103,63 +103,65 @@ struct MenuBarView: View {
 
     private var quickStartSection: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 4) {
-                ForEach(menuBarSessionTypes, id: \.self) { type in
-                    let isSelected = selectedSessionType == type
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.15)) {
-                            selectedSessionType = type
-                        }
-                    } label: {
-                        Text(SessionTypeConfig.config(for: type).displayName)
-                            .font(.caption.weight(isSelected ? .semibold : .regular))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(isSelected ? Color.accentColor.opacity(0.15) : Color.clear, in: Capsule())
-                            .foregroundStyle(isSelected ? Color.accentColor : .secondary)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-
-            // Duration controls for rhythm/timebound
-            if selectedSessionType == .rhythm {
+            VStack(alignment: .trailing, spacing: 0) {
                 HStack(spacing: 4) {
-                    ForEach(appState.rhythmDurationOptions, id: \.self) { option in
-                        let isSelected = selectedRhythmOption == option
+                    ForEach(menuBarSessionTypes, id: \.self) { type in
+                        let isSelected = selectedSessionType == type
                         Button {
-                            selectedRhythmOption = option
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                selectedSessionType = type
+                            }
                         } label: {
-                            Text("\(option.focusMinutes) min (\(option.breakMinutes)m)")
-                                .font(.caption2.weight(isSelected ? .semibold : .regular))
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 3)
-                                .background(isSelected ? Color.accentColor.opacity(0.12) : Color.secondary.opacity(0.08), in: Capsule())
+                            Text(SessionTypeConfig.config(for: type).displayName)
+                                .font(.caption.weight(isSelected ? .semibold : .regular))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(isSelected ? Color.accentColor.opacity(0.15) : Color.clear, in: Capsule())
                                 .foregroundStyle(isSelected ? Color.accentColor : .secondary)
                         }
                         .buttonStyle(.plain)
                     }
                 }
-                .padding(.horizontal, 12)
-                .padding(.bottom, 6)
-            } else if selectedSessionType == .timebound {
-                HStack(spacing: 4) {
-                    Text("Duration:")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    TextField("", value: $timeboundMinutes, format: .number)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 48)
-                        .font(.caption)
-                    Text("min")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                .padding(.bottom, 8)
+
+                // Duration controls for rhythm/timebound
+                if selectedSessionType == .rhythm {
+                    HStack(spacing: 4) {
+                        ForEach(Array(appState.rhythmDurationOptions.prefix(4)), id: \.self) { option in
+                            let isSelected = selectedRhythmOption == option
+                            Button {
+                                selectedRhythmOption = option
+                            } label: {
+                                Text("\(option.focusMinutes) m / \(option.breakMinutes) m")
+                                    .font(.caption2.weight(isSelected ? .semibold : .regular))
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 3)
+                                    .background(isSelected ? Color.accentColor.opacity(0.12) : Color.secondary.opacity(0.08), in: Capsule())
+                                    .foregroundStyle(isSelected ? Color.accentColor : .secondary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.bottom, 6)
+                } else if selectedSessionType == .timebound {
+                    HStack(spacing: 4) {
+                        Text("Duration:")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        TextField("", value: $timeboundMinutes, format: .number)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 48)
+                            .font(.caption)
+                        Text("min")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.bottom, 6)
                 }
-                .padding(.horizontal, 12)
-                .padding(.bottom, 6)
             }
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 12)
+            .padding(.top, 8)
 
             // Search
             HStack {
