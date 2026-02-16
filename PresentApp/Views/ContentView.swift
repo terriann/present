@@ -20,10 +20,10 @@ struct ContentView: View {
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .foregroundStyle(state.selectedSidebarItem == item ? theme.accent : .primary)
+                    .foregroundStyle(state.selectedSidebarItem == item ? theme.primary : .primary)
                     .listRowBackground(
                         RoundedRectangle(cornerRadius: 6)
-                            .fill(state.selectedSidebarItem == item ? theme.accent.opacity(0.15) : Color.clear)
+                            .fill(state.selectedSidebarItem == item ? theme.primary.opacity(0.15) : Color.clear)
                     )
                 }
             }

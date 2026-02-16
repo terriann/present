@@ -46,9 +46,9 @@ struct SettingsView: View {
                         .padding(.vertical, 8)
                         .background(
                             RoundedRectangle(cornerRadius: 8)
-                                .fill(selectedTab == tab ? theme.accent.opacity(0.15) : Color.clear)
+                                .fill(selectedTab == tab ? theme.primary.opacity(0.15) : Color.clear)
                         )
-                        .foregroundStyle(selectedTab == tab ? theme.accent : .secondary)
+                        .foregroundStyle(selectedTab == tab ? theme.primary : .secondary)
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
