@@ -99,6 +99,7 @@ struct DashboardView: View {
             Image(systemName: icon)
                 .font(.title2)
                 .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
 
             Text(value)
                 .font(.title2.bold())
