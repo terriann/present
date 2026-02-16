@@ -61,21 +61,19 @@ struct GeneralSettingsTab: View {
 
         Form {
             Section("Appearance") {
-                Picker("Color palette", selection: $theme.activePalette) {
-                    ForEach(ColorPalette.allCases, id: \.self) { palette in
-                        HStack(spacing: 6) {
-                            Text(palette.displayName)
-                            paletteSwatches(for: palette)
+                ForEach(ColorPalette.allCases, id: \.self) { palette in
+                    PaletteRow(
+                        palette: palette,
+                        isSelected: theme.activePalette == palette,
+                        colors: theme.colors(for: palette)
+                    ) {
+                        theme.activePalette = palette
+                        Task {
+                            try? await appState.service.setPreference(
+                                key: PreferenceKey.colorPalette,
+                                value: palette.rawValue
+                            )
                         }
-                        .tag(palette)
-                    }
-                }
-                .onChange(of: theme.activePalette) {
-                    Task {
-                        try? await appState.service.setPreference(
-                            key: PreferenceKey.colorPalette,
-                            value: theme.activePalette.rawValue
-                        )
                     }
                 }
             }
@@ -256,19 +254,6 @@ struct GeneralSettingsTab: View {
             await appState.refreshAll()
         } catch {
             print("Error performing factory reset: \(error)")
-        }
-    }
-
-    // MARK: - Palette Swatches
-
-    private func paletteSwatches(for palette: ColorPalette) -> some View {
-        let preview = ThemeManager()
-        preview.activePalette = palette
-        return HStack(spacing: 3) {
-            Circle().fill(preview.accent).frame(width: 10, height: 10)
-            Circle().fill(preview.success).frame(width: 10, height: 10)
-            Circle().fill(preview.warning).frame(width: 10, height: 10)
-            Circle().fill(preview.alert).frame(width: 10, height: 10)
         }
     }
 
@@ -636,5 +621,48 @@ struct NotificationSettingsTab: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Palette Row
+
+private struct PaletteRow: View {
+    let palette: ColorPalette
+    let isSelected: Bool
+    let colors: [Color]
+    let onSelect: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: onSelect) {
+            HStack(spacing: 12) {
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(isSelected ? colors.first ?? .accentColor : .secondary)
+                    .font(.title3)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(palette.displayName)
+                        .font(.body.weight(isSelected ? .semibold : .regular))
+                        .foregroundStyle(.primary)
+
+                    HStack(spacing: 0) {
+                        ForEach(Array(colors.enumerated()), id: \.offset) { _, color in
+                            Rectangle()
+                                .fill(color)
+                                .frame(height: 20)
+                        }
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                    .frame(maxWidth: 200)
+                }
+
+                Spacer()
+            }
+            .padding(.vertical, 4)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in isHovered = hovering }
     }
 }

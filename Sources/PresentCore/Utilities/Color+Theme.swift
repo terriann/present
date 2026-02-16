@@ -17,24 +17,26 @@ public final class ThemeManager {
     // MARK: - Semantic Tokens
 
     /// Brand identity color — used for app chrome, headers, and branding.
-    /// Basic: brand blue. Modern: dark navy.
     public var primary: Color {
         switch activePalette {
         case .basic:
             return Color(light: basicPrimaryLight, dark: basicPrimaryDark)
         case .modern:
             return Color(light: Color(hex: 0x3a3e5c), dark: Color(hex: 0x25283d))
+        case .dusty:
+            return Color(light: Color(hex: 0x6e7390), dark: Color(hex: 0x888da7))
         }
     }
 
     /// Interactive accent — buttons, selections, links, hover states.
-    /// Basic: same as primary (brand blue). Modern: blue.
     public var accent: Color {
         switch activePalette {
         case .basic:
             return Color(light: basicPrimaryLight, dark: basicPrimaryDark)
         case .modern:
             return Color(light: Color(hex: 0x5a8ae6), dark: Color(hex: 0x709fff))
+        case .dusty:
+            return Color(light: Color(hex: 0x698d94), dark: Color(hex: 0x7ea2aa))
         }
     }
 
@@ -48,6 +50,8 @@ public final class ThemeManager {
             )
         case .modern:
             return Color(light: Color(hex: 0x5aab9e), dark: Color(hex: 0x70c1b3))
+        case .dusty:
+            return Color(light: Color(hex: 0x6dd0b3), dark: Color(hex: 0x8be8cb))
         }
     }
 
@@ -61,6 +65,8 @@ public final class ThemeManager {
             )
         case .modern:
             return Color(light: Color(hex: 0xd95a3c), dark: Color(hex: 0xee6c4d))
+        case .dusty:
+            return Color(light: Color(hex: 0xd98a45), dark: Color(hex: 0xf4a259))
         }
     }
 
@@ -74,7 +80,20 @@ public final class ThemeManager {
             )
         case .modern:
             return Color(light: Color(hex: 0x7a2d70), dark: Color(hex: 0x8f3985))
+        case .dusty:
+            return Color(light: Color(hex: 0x856880), dark: Color(hex: 0x9c7a97))
         }
+    }
+
+    // MARK: - Palette Preview
+
+    /// Returns the five semantic colors for a given palette (for swatch previews).
+    public func colors(for palette: ColorPalette) -> [Color] {
+        let saved = activePalette
+        activePalette = palette
+        let result = [accent, success, warning, alert, primary]
+        activePalette = saved
+        return result
     }
 
     // MARK: - Basic Palette Base Colors
