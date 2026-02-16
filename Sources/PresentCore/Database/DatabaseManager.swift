@@ -122,6 +122,13 @@ public final class DatabaseManager: Sendable {
             }
         }
 
+        migrator.registerMigration("v4-seed-default-timebound-minutes") { db in
+            try db.execute(
+                sql: "INSERT OR IGNORE INTO preference (key, value) VALUES (?, ?)",
+                arguments: [PreferenceKey.defaultTimeboundMinutes, "\(Constants.defaultTimeboundMinutes)"]
+            )
+        }
+
         try migrator.migrate(writer)
     }
 }

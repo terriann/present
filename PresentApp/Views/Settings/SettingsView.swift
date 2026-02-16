@@ -6,7 +6,7 @@ struct SettingsView: View {
     @State private var selectedTab = SettingsTab.general
 
     private enum SettingsTab: Hashable {
-        case general, rhythm, notifications, about
+        case general, sessions, notifications, about
     }
 
     var body: some View {
@@ -16,10 +16,10 @@ struct SettingsView: View {
                 .tabItem { Label("General", systemImage: "gear") }
                 .tag(SettingsTab.general)
 
-            RhythmSettingsTab()
+            SessionSettingsTab()
                 .environment(appState)
-                .tabItem { Label("Rhythm", systemImage: "timer") }
-                .tag(SettingsTab.rhythm)
+                .tabItem { Label("Sessions", systemImage: "timer") }
+                .tag(SettingsTab.sessions)
 
             NotificationSettingsTab()
                 .environment(appState)
@@ -246,7 +246,7 @@ struct GeneralSettingsTab: View {
     }
 }
 
-struct RhythmSettingsTab: View {
+struct SessionSettingsTab: View {
     @Environment(AppState.self) private var appState
     @State private var defaultMinutes = 25
     @State private var longBreak = 15
@@ -255,6 +255,7 @@ struct RhythmSettingsTab: View {
     @State private var newFocusText = ""
     @State private var newBreakText = ""
     @State private var durationValidationError: String?
+    @State private var defaultTimeboundMinutes = Constants.defaultTimeboundMinutes
 
     var body: some View {
         Form {
@@ -317,7 +318,14 @@ struct RhythmSettingsTab: View {
                     }
                 }
             } header: {
-                Text("Duration Options")
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Rhythm Sessions")
+                    Text("Timed focus cycles with short breaks, like a pomodoro timer.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fontWeight(.regular)
+                        .textCase(.none)
+                }
             } footer: {
                 Text("Up to \(Constants.maxRhythmDurationOptions) focus/break pairs. Focus: \(Constants.rhythmDurationRange.lowerBound)\u{2013}\(Constants.rhythmDurationRange.upperBound) min, break: \(Constants.breakDurationRange.lowerBound)\u{2013}\(Constants.breakDurationRange.upperBound) min.")
                     .font(.caption)
@@ -349,13 +357,33 @@ struct RhythmSettingsTab: View {
                             .monospacedDigit()
                     }
                 }
+            }
+
+            Section {
+                Stepper(value: $defaultTimeboundMinutes, in: Constants.timeboundDurationRange) {
+                    HStack {
+                        Text("Default duration")
+                        Spacer()
+                        Text("\(defaultTimeboundMinutes) minutes")
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+                }
             } header: {
-                Text("Rhythm Session Defaults")
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Timebound Sessions")
+                    Text("A hard stop timer. The session ends automatically when time is up.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fontWeight(.regular)
+                        .textCase(.none)
+                }
             }
         }
         .formStyle(.grouped)
         .padding()
         .onAppear { loadSettings() }
+        .onChange(of: defaultTimeboundMinutes) { saveSettings() }
         .onChange(of: defaultMinutes) { saveSettings() }
         .onChange(of: longBreak) { saveSettings() }
         .onChange(of: cycleLength) { saveSettings() }
@@ -419,6 +447,9 @@ struct RhythmSettingsTab: View {
 
     private func loadSettings() {
         Task {
+            if let val = try? await appState.service.getPreference(key: PreferenceKey.defaultTimeboundMinutes) {
+                defaultTimeboundMinutes = Int(val) ?? Constants.defaultTimeboundMinutes
+            }
             if let val = try? await appState.service.getPreference(key: PreferenceKey.rhythmDurationOptions) {
                 let parsed = PreferenceKey.parseRhythmOptions(val)
                 if !parsed.isEmpty {
@@ -443,6 +474,7 @@ struct RhythmSettingsTab: View {
 
     private func saveSettings() {
         Task {
+            try? await appState.service.setPreference(key: PreferenceKey.defaultTimeboundMinutes, value: "\(defaultTimeboundMinutes)")
             try? await appState.service.setPreference(key: PreferenceKey.defaultRhythmMinutes, value: "\(defaultMinutes)")
             try? await appState.service.setPreference(key: PreferenceKey.longBreakMinutes, value: "\(longBreak)")
             try? await appState.service.setPreference(key: PreferenceKey.rhythmCycleLength, value: "\(cycleLength)")

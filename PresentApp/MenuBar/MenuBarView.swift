@@ -230,6 +230,9 @@ struct MenuBarView: View {
             if selectedRhythmOption == nil || !appState.rhythmDurationOptions.contains(where: { $0 == selectedRhythmOption }) {
                 selectedRhythmOption = appState.rhythmDurationOptions.first
             }
+            Task {
+                timeboundMinutes = (try? await appState.service.getPreference(key: PreferenceKey.defaultTimeboundMinutes)).flatMap(Int.init) ?? Constants.defaultTimeboundMinutes
+            }
         }
         .onChange(of: appState.rhythmDurationOptions) {
             if selectedRhythmOption == nil || !appState.rhythmDurationOptions.contains(where: { $0 == selectedRhythmOption }) {

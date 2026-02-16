@@ -108,6 +108,7 @@ struct ActivityDetailView: View {
         }
         .task {
             await loadDetails()
+            timeboundMinutes = (try? await appState.service.getPreference(key: PreferenceKey.defaultTimeboundMinutes)).flatMap(Int.init) ?? Constants.defaultTimeboundMinutes
             if selectedRhythmOption == nil || !appState.rhythmDurationOptions.contains(where: { $0 == selectedRhythmOption }) {
                 selectedRhythmOption = appState.rhythmDurationOptions.first
             }

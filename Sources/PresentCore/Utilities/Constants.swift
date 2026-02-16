@@ -16,6 +16,8 @@ public enum Constants {
         RhythmOption(focusMinutes: 45, breakMinutes: 10),
     ]
     public static let maxRhythmDurationOptions = 5
+    public static let defaultTimeboundMinutes = 25
+    public static let timeboundDurationRange = 5...120
     public static let rhythmDurationRange = 1...120
     public static let breakDurationRange = 1...60
 }

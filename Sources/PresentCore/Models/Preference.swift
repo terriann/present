@@ -29,6 +29,7 @@ public enum PreferenceKey {
     public static let soundEffectsEnabled = "soundEffectsEnabled"
     public static let includeArchivedInReports = "includeArchivedInReports"
     public static let rhythmDurationOptions = "rhythmDurationOptions"
+    public static let defaultTimeboundMinutes = "defaultTimeboundMinutes"
 
     public static let defaults: [(String, String)] = [
         (externalIdBaseUrl, ""),
@@ -39,6 +40,7 @@ public enum PreferenceKey {
         (soundEffectsEnabled, "1"),
         (includeArchivedInReports, "0"),
         (rhythmDurationOptions, "25:5,30:5,45:10"),
+        (defaultTimeboundMinutes, "25"),
     ]
 
     /// Parse a serialized string of rhythm duration options into sorted, validated RhythmOption pairs.
