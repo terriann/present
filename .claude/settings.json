@@ -9,6 +9,7 @@
       "Bash(gh issue edit *)",
       "Bash(gh issue list *)",
       "Bash(gh issue view *)",
+      "Bash(gh issue create *)",
       "Bash(gh api repos/terriann/present/milestones *)"
     ]
   }
