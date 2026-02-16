@@ -41,24 +41,28 @@ struct ActivityDetailView: View {
                     } label: {
                         Label("Edit", systemImage: "pencil")
                     }
+                    .accessibilityLabel("Edit activity")
 
                     Button {
                         Task { await handleArchive() }
                     } label: {
                         Label("Archive", systemImage: "archivebox")
                     }
+                    .accessibilityLabel("Archive activity")
                 } else {
                     Button {
                         Task { await handleUnarchive() }
                     } label: {
                         Label("Unarchive", systemImage: "arrow.uturn.backward")
                     }
+                    .accessibilityLabel("Unarchive activity")
 
                     Button(role: .destructive) {
                         showingDeleteConfirm = true
                     } label: {
                         Label("Delete", systemImage: "trash")
                     }
+                    .accessibilityLabel("Delete activity")
                 }
             }
         }
