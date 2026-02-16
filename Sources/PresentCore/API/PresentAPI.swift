@@ -11,6 +11,7 @@ public protocol PresentAPI: Sendable {
     func getSession(id: Int64) async throws -> (Session, Activity)
     func listSessions(from: Date, to: Date, type: SessionType?, activityId: Int64?, includeArchived: Bool) async throws -> [(Session, Activity)]
     func lastCompletedSession(since: Date) async throws -> (Session, Activity)?
+    func earliestSessionDate() async throws -> Date?
 
     // Activities
     func createActivity(_ input: CreateActivityInput) async throws -> Activity
@@ -41,6 +42,7 @@ public protocol PresentAPI: Sendable {
     func dailySummary(date: Date, includeArchived: Bool) async throws -> DailySummary
     func weeklySummary(weekOf: Date, includeArchived: Bool) async throws -> WeeklySummary
     func monthlySummary(monthOf: Date, includeArchived: Bool) async throws -> MonthlySummary
+    func tagSummary(from: Date, to: Date, includeArchived: Bool) async throws -> [TagSummary]
     func exportCSV(from: Date, to: Date, includeArchived: Bool) async throws -> Data
 
     // Preferences

@@ -75,6 +75,30 @@ public struct BulkDeleteResult: Sendable {
 
 // MARK: - Report Types
 
+public struct HourlyBucket: Sendable, Equatable {
+    public var hour: Int
+    public var activity: Activity
+    public var totalSeconds: Int
+
+    public init(hour: Int, activity: Activity, totalSeconds: Int) {
+        self.hour = hour
+        self.activity = activity
+        self.totalSeconds = totalSeconds
+    }
+}
+
+public struct TagSummary: Sendable, Equatable {
+    public var tagName: String
+    public var totalSeconds: Int
+    public var sessionCount: Int
+
+    public init(tagName: String, totalSeconds: Int, sessionCount: Int) {
+        self.tagName = tagName
+        self.totalSeconds = totalSeconds
+        self.sessionCount = sessionCount
+    }
+}
+
 public struct ActivitySummary: Sendable, Equatable {
     public var activity: Activity
     public var totalSeconds: Int
@@ -92,12 +116,14 @@ public struct DailySummary: Sendable, Equatable {
     public var totalSeconds: Int
     public var sessionCount: Int
     public var activities: [ActivitySummary]
+    public var hourlyBreakdown: [HourlyBucket]
 
-    public init(date: Date, totalSeconds: Int, sessionCount: Int, activities: [ActivitySummary]) {
+    public init(date: Date, totalSeconds: Int, sessionCount: Int, activities: [ActivitySummary], hourlyBreakdown: [HourlyBucket] = []) {
         self.date = date
         self.totalSeconds = totalSeconds
         self.sessionCount = sessionCount
         self.activities = activities
+        self.hourlyBreakdown = hourlyBreakdown
     }
 }
 
@@ -122,13 +148,15 @@ public struct MonthlySummary: Sendable, Equatable {
     public var totalSeconds: Int
     public var sessionCount: Int
     public var weeklyBreakdown: [WeeklySummary]
+    public var dailyBreakdown: [DailySummary]
     public var activities: [ActivitySummary]
 
-    public init(monthOf: Date, totalSeconds: Int, sessionCount: Int, weeklyBreakdown: [WeeklySummary], activities: [ActivitySummary]) {
+    public init(monthOf: Date, totalSeconds: Int, sessionCount: Int, weeklyBreakdown: [WeeklySummary], dailyBreakdown: [DailySummary] = [], activities: [ActivitySummary]) {
         self.monthOf = monthOf
         self.totalSeconds = totalSeconds
         self.sessionCount = sessionCount
         self.weeklyBreakdown = weeklyBreakdown
+        self.dailyBreakdown = dailyBreakdown
         self.activities = activities
     }
 }

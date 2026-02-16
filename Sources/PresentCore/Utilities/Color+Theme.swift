@@ -45,6 +45,42 @@ public final class ThemeManager {
         ]
     }
 
+    // MARK: - Chart Colors
+
+    /// Returns an array of 10 distinguishing colors for chart series, harmonized with the palette.
+    /// The first 5 are the semantic tokens; the remaining 5 provide additional contrast.
+    public static func chartColors(for palette: ColorPalette) -> [Color] {
+        let semantic = previewColors(for: palette)
+        let extra: [Color]
+        switch palette {
+        case .basic:
+            extra = [
+                Color(light: Color(hex: 0x8B5CF6), dark: Color(hex: 0xA78BFA)),  // violet
+                Color(light: Color(hex: 0x06B6D4), dark: Color(hex: 0x22D3EE)),  // cyan
+                Color(light: Color(hex: 0xD946EF), dark: Color(hex: 0xE879F9)),  // fuchsia
+                Color(light: Color(hex: 0x84CC16), dark: Color(hex: 0xA3E635)),  // lime
+                Color(light: Color(hex: 0xF97316), dark: Color(hex: 0xFB923C)),  // orange
+            ]
+        case .modern:
+            extra = [
+                Color(light: Color(hex: 0x6366F1), dark: Color(hex: 0x818CF8)),  // indigo
+                Color(light: Color(hex: 0x14B8A6), dark: Color(hex: 0x2DD4BF)),  // teal
+                Color(light: Color(hex: 0xEC4899), dark: Color(hex: 0xF472B6)),  // pink
+                Color(light: Color(hex: 0xEAB308), dark: Color(hex: 0xFACC15)),  // yellow
+                Color(light: Color(hex: 0x78716C), dark: Color(hex: 0xA8A29E)),  // stone
+            ]
+        case .dusty:
+            extra = [
+                Color(light: Color(hex: 0x6D597A), dark: Color(hex: 0x8B7198)),  // mauve
+                Color(light: Color(hex: 0xB56576), dark: Color(hex: 0xCB7A8C)),  // rose
+                Color(light: Color(hex: 0xE8AC65), dark: Color(hex: 0xEBBE82)),  // sand
+                Color(light: Color(hex: 0x355070), dark: Color(hex: 0x4A6D8C)),  // slate blue
+                Color(light: Color(hex: 0x56876D), dark: Color(hex: 0x6B9E82)),  // sage
+            ]
+        }
+        return semantic + extra
+    }
+
     // MARK: - Static Color Lookup
 
     private static let basicPrimaryLight = Color(red: 0.584, green: 0.737, blue: 1.0)

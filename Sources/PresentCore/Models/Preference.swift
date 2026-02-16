@@ -31,6 +31,7 @@ public enum PreferenceKey {
     public static let rhythmDurationOptions = "rhythmDurationOptions"
     public static let defaultTimeboundMinutes = "defaultTimeboundMinutes"
     public static let colorPalette = "colorPalette"
+    public static let weekStartDay = "weekStartDay"
 
     public static let defaults: [(String, String)] = [
         (externalIdBaseUrl, ""),
@@ -43,7 +44,14 @@ public enum PreferenceKey {
         (rhythmDurationOptions, "25:5,30:5,45:10"),
         (defaultTimeboundMinutes, "25"),
         (colorPalette, "basic"),
+        (weekStartDay, "sunday"),
     ]
+
+    /// Parse weekStartDay preference to Calendar.firstWeekday value.
+    /// Returns 1 for Sunday (default), 2 for Monday.
+    public static func parseWeekStartDay(_ value: String) -> Int {
+        value.lowercased() == "monday" ? 2 : 1
+    }
 
     /// Parse a serialized string of rhythm duration options into sorted, validated RhythmOption pairs.
     /// Supports legacy format ("25,30,45") and new format ("25:5,30:5,45:10").

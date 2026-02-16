@@ -293,6 +293,15 @@ public final class PresentService: PresentAPI, Sendable {
         }
     }
 
+    public func earliestSessionDate() async throws -> Date? {
+        try await dbWriter.read { db in
+            try Date.fetchOne(db,
+                sql: "SELECT MIN(startedAt) FROM session WHERE state = ?",
+                arguments: [SessionState.completed.rawValue]
+            )
+        }
+    }
+
     // MARK: - Activities
 
     public func createActivity(_ input: CreateActivityInput) async throws -> Activity {
@@ -716,7 +725,33 @@ public final class PresentService: PresentAPI, Sendable {
                 totalSessions += count
             }
 
-            return DailySummary(date: startOfDay, totalSeconds: totalSeconds, sessionCount: totalSessions, activities: activities)
+            // Hourly breakdown
+            let hourlySql = """
+                SELECT CAST(strftime('%H', s.startedAt, 'localtime') AS INTEGER) as hour,
+                       a.*, COALESCE(SUM(s.durationSeconds), 0) as totalSecs
+                FROM session s
+                INNER JOIN activity a ON a.id = s.activityId
+                WHERE s.state = ?
+                  AND s.startedAt >= ? AND s.startedAt < ?
+                  \(archiveFilter)
+                GROUP BY hour, a.id
+                ORDER BY hour, totalSecs DESC
+                """
+
+            let hourlyRows = try Row.fetchAll(db, sql: hourlySql, arguments: [
+                SessionState.completed.rawValue,
+                startOfDay, endOfDay
+            ])
+
+            var hourlyBreakdown: [HourlyBucket] = []
+            for row in hourlyRows {
+                let hour: Int = row["hour"]
+                let activity = try Activity(row: row)
+                let secs: Int = row["totalSecs"]
+                hourlyBreakdown.append(HourlyBucket(hour: hour, activity: activity, totalSeconds: secs))
+            }
+
+            return DailySummary(date: startOfDay, totalSeconds: totalSeconds, sessionCount: totalSessions, activities: activities, hourlyBreakdown: hourlyBreakdown)
         }
     }
 
@@ -795,8 +830,54 @@ public final class PresentService: PresentAPI, Sendable {
             }
         }
 
+        // Flatten daily breakdowns from weekly summaries, filtered to this calendar month
+        var seenDates: Set<Date> = []
+        var dailyBreakdown: [DailySummary] = []
+        for weekly in weeklyBreakdown {
+            for daily in weekly.dailyBreakdown {
+                if daily.date >= startOfMonth && daily.date < endOfMonth && !seenDates.contains(daily.date) {
+                    seenDates.insert(daily.date)
+                    dailyBreakdown.append(daily)
+                }
+            }
+        }
+        dailyBreakdown.sort { $0.date < $1.date }
+
         let activities = activityMap.values.sorted { $0.totalSeconds > $1.totalSeconds }
-        return MonthlySummary(monthOf: startOfMonth, totalSeconds: totalSeconds, sessionCount: totalSessions, weeklyBreakdown: weeklyBreakdown, activities: activities)
+        return MonthlySummary(monthOf: startOfMonth, totalSeconds: totalSeconds, sessionCount: totalSessions, weeklyBreakdown: weeklyBreakdown, dailyBreakdown: dailyBreakdown, activities: activities)
+    }
+
+    public func tagSummary(from startDate: Date, to endDate: Date, includeArchived: Bool) async throws -> [TagSummary] {
+        try await dbWriter.read { db in
+            let archiveFilter = includeArchived ? "" : " AND a.isArchived = 0"
+            let sql = """
+                SELECT COALESCE(t.name, 'Untagged') as tagName,
+                       COALESCE(SUM(s.durationSeconds), 0) as totalSecs,
+                       COUNT(s.id) as sessCount
+                FROM session s
+                INNER JOIN activity a ON a.id = s.activityId
+                LEFT JOIN activity_tag at2 ON at2.activityId = a.id
+                LEFT JOIN tag t ON t.id = at2.tagId
+                WHERE s.state = ?
+                  AND s.startedAt >= ? AND s.startedAt < ?
+                  \(archiveFilter)
+                GROUP BY tagName
+                ORDER BY totalSecs DESC
+                """
+
+            let rows = try Row.fetchAll(db, sql: sql, arguments: [
+                SessionState.completed.rawValue,
+                startDate, endDate
+            ])
+
+            return rows.map { row in
+                TagSummary(
+                    tagName: row["tagName"],
+                    totalSeconds: row["totalSecs"],
+                    sessionCount: row["sessCount"]
+                )
+            }
+        }
     }
 
     public func exportCSV(from: Date, to: Date, includeArchived: Bool) async throws -> Data {
