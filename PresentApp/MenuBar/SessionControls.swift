@@ -17,6 +17,7 @@ struct SessionControls: View {
                             .font(.title)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Pause session")
                     .help("Pause session")
 
                 case .paused:
@@ -27,6 +28,7 @@ struct SessionControls: View {
                             .font(.title)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Resume session")
                     .help("Resume session")
 
                 default:
@@ -41,6 +43,7 @@ struct SessionControls: View {
                         .foregroundStyle(theme.alert)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Stop session")
                 .help("Stop session")
 
                 if appState.timerElapsedSeconds <= 10 {
@@ -52,6 +55,7 @@ struct SessionControls: View {
                             .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Discard session")
                     .help("Discard session")
                 }
             }
