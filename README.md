@@ -102,7 +102,7 @@ present-cli activities archive <id>   # Archive an activity
 
 Session types: `work` (default), `rhythm`, `timebound`.
 
-Run `present-cli --help` or `present-cli <command> --help` for full option details.
+Run `present-cli --help` or `present-cli <command> --help` for full option details. See the [CLI Reference](docs/cli-reference.md) for complete documentation.
 
 The CLI shares the same SQLite database as the app. Changes made in the CLI
 are reflected in the app (and vice versa) via IPC notifications and database

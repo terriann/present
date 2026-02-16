@@ -13,6 +13,7 @@ contributing.
 - [Testing](#testing)
   - [Test Suites](#test-suites)
 - [CI](#ci)
+  - [CLI Reference Docs](#cli-reference-docs)
 - [Project Layout](#project-layout)
 - [Database](#database)
 - [IPC](#ipc)
@@ -120,6 +121,22 @@ CI steps:
 See [`.github/workflows/ci.yml`](.github/workflows/ci.yml) for the full
 configuration.
 
+### CLI Reference Docs
+
+The [CLI reference](docs/cli-reference.md) is auto-generated from
+`present-cli --experimental-dump-help`. A GitHub Action regenerates and
+commits the file automatically when CLI source files change on `main`.
+
+To regenerate manually:
+
+```bash
+./Scripts/generate-cli-docs.sh
+```
+
+This builds the CLI, dumps its help metadata as JSON, and pipes it through
+a Python script to produce `docs/cli-reference.md`. Requires Python 3
+(no extra dependencies).
+
 ## Project Layout
 
 - **`Package.swift`** -- SPM manifest. Defines `PresentCore` (library),
@@ -146,8 +163,9 @@ configuration.
     components.
   - `Notifications/` -- `NotificationManager` for system notifications.
 - **`Tests/`** -- Swift Testing test suites (see [Testing](#testing)).
-- **`Scripts/`** -- Shell scripts for building, notarizing, and installing
-  (`build-dmg.sh`, `notarize.sh`, `install-cli.sh`).
+- **`Scripts/`** -- Shell scripts for building, notarizing, installing,
+  and doc generation (`build-dmg.sh`, `notarize.sh`, `install-cli.sh`,
+  `generate-cli-docs.sh`).
 
 ## Database
 
