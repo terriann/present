@@ -8,6 +8,7 @@ public protocol PresentAPI: Sendable {
     func stopSession() async throws -> Session
     func cancelSession() async throws
     func currentSession() async throws -> (Session, Activity)?
+    func getSession(id: Int64) async throws -> (Session, Activity)
     func listSessions(from: Date, to: Date, type: SessionType?, activityId: Int64?, includeArchived: Bool) async throws -> [(Session, Activity)]
     func lastCompletedSession(since: Date) async throws -> (Session, Activity)?
 
@@ -27,11 +28,14 @@ public protocol PresentAPI: Sendable {
 
     // Tags
     func createTag(name: String) async throws -> Tag
+    func getTag(id: Int64) async throws -> Tag
+    func updateTag(id: Int64, name: String) async throws -> Tag
     func deleteTag(id: Int64) async throws
     func listTags() async throws -> [Tag]
     func tagActivity(activityId: Int64, tagId: Int64) async throws
     func untagActivity(activityId: Int64, tagId: Int64) async throws
     func tagsForActivity(activityId: Int64) async throws -> [Tag]
+    func tagsForActivities(activityIds: [Int64]) async throws -> [Int64: [Tag]]
 
     // Reports
     func dailySummary(date: Date, includeArchived: Bool) async throws -> DailySummary
@@ -42,6 +46,7 @@ public protocol PresentAPI: Sendable {
     // Preferences
     func getPreference(key: String) async throws -> String?
     func setPreference(key: String, value: String) async throws
+    func listPreferences() async throws -> [(key: String, value: String)]
 
     // Status
     func todaySummary() async throws -> TodaySummary

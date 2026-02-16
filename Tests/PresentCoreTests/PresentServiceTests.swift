@@ -371,6 +371,171 @@ struct PresentServiceTests {
         #expect(results.isEmpty)
     }
 
+    // MARK: - Input Validation
+
+    @Test func activityTitleTooLong() async throws {
+        let service = try makeService()
+        let longTitle = String(repeating: "a", count: Constants.maxTitleLength + 1)
+        await #expect(throws: PresentError.self) {
+            try await service.createActivity(CreateActivityInput(title: longTitle))
+        }
+    }
+
+    @Test func activityTitleMaxLengthSucceeds() async throws {
+        let service = try makeService()
+        let title = String(repeating: "a", count: Constants.maxTitleLength)
+        let activity = try await service.createActivity(CreateActivityInput(title: title))
+        #expect(activity.title.count == Constants.maxTitleLength)
+    }
+
+    @Test func activityTitleTrimsWhitespace() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "  Hello World  "))
+        #expect(activity.title == "Hello World")
+    }
+
+    @Test func activityTitleRejectsControlChars() async throws {
+        let service = try makeService()
+        await #expect(throws: PresentError.self) {
+            try await service.createActivity(CreateActivityInput(title: "Bad\u{0000}Title"))
+        }
+    }
+
+    @Test func activityInvalidLinkFails() async throws {
+        let service = try makeService()
+        await #expect(throws: PresentError.self) {
+            try await service.createActivity(CreateActivityInput(title: "Test", link: "not-a-url"))
+        }
+    }
+
+    @Test func activityValidLinkSucceeds() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Test", link: "https://example.com"))
+        #expect(activity.link == "https://example.com")
+    }
+
+    @Test func activityExternalIdTooLong() async throws {
+        let service = try makeService()
+        let longId = String(repeating: "x", count: Constants.maxExternalIdLength + 1)
+        await #expect(throws: PresentError.self) {
+            try await service.createActivity(CreateActivityInput(title: "Test", externalId: longId))
+        }
+    }
+
+    @Test func updateActivityTitleTooLong() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Original"))
+        let longTitle = String(repeating: "a", count: Constants.maxTitleLength + 1)
+        await #expect(throws: PresentError.self) {
+            try await service.updateActivity(id: activity.id!, UpdateActivityInput(title: longTitle))
+        }
+    }
+
+    @Test func updateActivityInvalidLink() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Original"))
+        await #expect(throws: PresentError.self) {
+            try await service.updateActivity(id: activity.id!, UpdateActivityInput(link: "bad-link"))
+        }
+    }
+
+    @Test func tagNameTooLong() async throws {
+        let service = try makeService()
+        let longName = String(repeating: "t", count: Constants.maxTagNameLength + 1)
+        await #expect(throws: PresentError.self) {
+            try await service.createTag(name: longName)
+        }
+    }
+
+    @Test func tagNameCaseInsensitiveUnique() async throws {
+        let service = try makeService()
+        _ = try await service.createTag(name: "Work")
+        await #expect(throws: PresentError.self) {
+            try await service.createTag(name: "work")
+        }
+    }
+
+    @Test func tagNameCaseInsensitiveUniquePreservesOriginal() async throws {
+        let service = try makeService()
+        let tag = try await service.createTag(name: "Work")
+        #expect(tag.name == "Work")
+
+        // Different casing should fail
+        await #expect(throws: PresentError.self) {
+            try await service.createTag(name: "WORK")
+        }
+    }
+
+    @Test func updateTagNameCaseInsensitiveUnique() async throws {
+        let service = try makeService()
+        _ = try await service.createTag(name: "frontend")
+        let tag2 = try await service.createTag(name: "backend")
+        await #expect(throws: PresentError.self) {
+            try await service.updateTag(id: tag2.id!, name: "Frontend")
+        }
+    }
+
+    @Test func updateTagCanKeepOwnName() async throws {
+        let service = try makeService()
+        let tag = try await service.createTag(name: "frontend")
+        // Updating to same name (different case) should succeed
+        let updated = try await service.updateTag(id: tag.id!, name: "Frontend")
+        #expect(updated.name == "Frontend")
+    }
+
+    @Test func appendNoteTooLong() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Notes Test"))
+        let longNote = String(repeating: "n", count: Constants.maxNotesLength + 1)
+        await #expect(throws: PresentError.self) {
+            try await service.appendNote(activityId: activity.id!, text: longNote)
+        }
+    }
+
+    @Test func sessionTimerMinutesOutOfRange() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Timer Test"))
+        await #expect(throws: PresentError.self) {
+            try await service.startSession(activityId: activity.id!, type: .timebound, timerMinutes: 0)
+        }
+        await #expect(throws: PresentError.self) {
+            try await service.startSession(activityId: activity.id!, type: .timebound, timerMinutes: 481)
+        }
+    }
+
+    @Test func sessionBreakMinutesOutOfRange() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Break Test"))
+        await #expect(throws: PresentError.self) {
+            try await service.startSession(activityId: activity.id!, type: .rhythm, timerMinutes: 25, breakMinutes: 0)
+        }
+        await #expect(throws: PresentError.self) {
+            try await service.startSession(activityId: activity.id!, type: .rhythm, timerMinutes: 25, breakMinutes: 61)
+        }
+    }
+
+    @Test func setPreferenceUnknownKeyFails() async throws {
+        let service = try makeService()
+        await #expect(throws: PresentError.self) {
+            try await service.setPreference(key: "nonExistentKey", value: "value")
+        }
+    }
+
+    @Test func setPreferenceKnownKeySucceeds() async throws {
+        let service = try makeService()
+        try await service.setPreference(key: PreferenceKey.soundEffectsEnabled, value: "0")
+        let value = try await service.getPreference(key: PreferenceKey.soundEffectsEnabled)
+        #expect(value == "0")
+    }
+
+    @Test func searchQueryTooLong() async throws {
+        let service = try makeService()
+        let longQuery = String(repeating: "q", count: Constants.maxSearchQueryLength + 1)
+        await #expect(throws: PresentError.self) {
+            try await service.searchActivities(query: longQuery)
+        }
+    }
+
     // MARK: - Recent Activities
 
     @Test func recentActivities() async throws {

@@ -1,0 +1,37 @@
+import ArgumentParser
+import Foundation
+import PresentCore
+
+struct ActivityUnarchiveCommand: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "unarchive",
+        abstract: "Unarchive an activity."
+    )
+
+    @Argument(help: "Activity ID to unarchive.")
+    var id: Int64
+
+    @OptionGroup var outputOptions: OutputOptions
+
+    func run() async throws {
+        try outputOptions.validateOptions()
+        let service = try CLIServiceFactory.makeService()
+        let activity = try await service.unarchiveActivity(id: id)
+        let tags = try await service.tagsForActivity(activityId: id)
+
+        switch outputOptions.format {
+        case .json:
+            try outputOptions.printJSON(activity.toJSONDict(tags: tags))
+
+        case .text:
+            if try outputOptions.printTextField(activity.toTextFields(tags: tags)) { break }
+            print("Unarchived \"\(activity.title)\"")
+
+        case .csv:
+            print("CSV output not supported for activity unarchive.")
+            throw ExitCode.failure
+        }
+
+        IPCClient().send(.dataChanged)
+    }
+}

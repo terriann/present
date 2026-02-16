@@ -20,4 +20,15 @@ public enum Constants {
     public static let timeboundDurationRange = 5...120
     public static let rhythmDurationRange = 1...120
     public static let breakDurationRange = 1...60
+
+    // MARK: - Validation Limits
+
+    public static let maxTitleLength = 200
+    public static let maxTagNameLength = 100
+    public static let maxExternalIdLength = 255
+    public static let maxLinkLength = 2000
+    public static let maxNotesLength = 50_000
+    public static let maxSearchQueryLength = 200
+    public static let minSearchQueryLength = 1
+    public static let sessionMinutesRange = 1...480
 }

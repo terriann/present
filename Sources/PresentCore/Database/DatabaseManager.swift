@@ -129,6 +129,17 @@ public final class DatabaseManager: Sendable {
             )
         }
 
+        migrator.registerMigration("v5-add-tag-timestamps") { db in
+            try db.alter(table: "tag") { t in
+                t.add(column: "createdAt", .datetime).defaults(sql: "'1970-01-01 00:00:00'")
+                t.add(column: "updatedAt", .datetime).defaults(sql: "'1970-01-01 00:00:00'")
+            }
+            // Backfill existing tags with current timestamp
+            try db.execute(sql: """
+                UPDATE tag SET createdAt = CURRENT_TIMESTAMP, updatedAt = CURRENT_TIMESTAMP
+                """)
+        }
+
         try migrator.migrate(writer)
     }
 }

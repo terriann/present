@@ -3,20 +3,18 @@ import PresentCore
 
 @main
 struct PresentCLI: AsyncParsableCommand {
+    static let version = "0.1.0"
+
     static let configuration = CommandConfiguration(
         commandName: "present-cli",
         abstract: "Present — time tracking from the command line.",
+        version: version,
         subcommands: [
-            StatusCommand.self,
-            StartCommand.self,
-            StopCommand.self,
-            PauseCommand.self,
-            ResumeCommand.self,
-            CancelCommand.self,
-            NoteCommand.self,
-            LogCommand.self,
-            ActivitiesCommand.self,
+            SessionCommand.self,
+            ActivityCommand.self,
+            TagCommand.self,
+            ReportCommand.self,
+            ConfigCommand.self,
         ],
-        defaultSubcommand: StatusCommand.self
     )
 }

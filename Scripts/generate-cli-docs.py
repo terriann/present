@@ -148,21 +148,49 @@ def render_command(command, parent_path="", default_subcommand=None, depth=3):
     sub_default = command.get("defaultSubcommand")
 
     if subcommands:
+        cmd_path = build_command_path(command, parent_path)
+
         lines.append("**Subcommands:**")
         lines.append("")
+        lines.append("| Command | Description |")
+        lines.append("|---|---|")
         for sub in subcommands:
-            sub_name = sub["commandName"]
+            sub_sig = build_signature(sub, cmd_path)
+            sub_anchor = make_anchor(sub_sig)
             sub_abstract = sub.get("abstract", "")
-            marker = " *(default)*" if sub_default and sub_name == sub_default else ""
-            lines.append(f"- `{sub_name}` \u2014 {sub_abstract}{marker}")
+            marker = " *(default)*" if sub_default and sub["commandName"] == sub_default else ""
+            lines.append(f"| [`{sub['commandName']}`](#{sub_anchor}) | {sub_abstract}{marker} |")
         lines.append("")
 
         # Render each subcommand with details
-        cmd_path = build_command_path(command, parent_path)
         for sub in subcommands:
             sub_lines = render_command(sub, cmd_path, default_subcommand=sub_default, depth=depth + 1)
             lines.extend(sub_lines)
 
+    return lines
+
+
+def build_toc(subcommands, parent_path, default_sub=None, indent=0):
+    """Build a nested table of contents list recursively."""
+    lines = []
+    prefix = "  " * indent
+    for sub in subcommands:
+        sig = build_signature(sub, parent_path)
+        anchor = make_anchor(sig)
+        cmd_path = build_command_path(sub, parent_path)
+        # Strip the root CLI name for cleaner display (e.g., "activity add" not "present-cli activity add")
+        display = cmd_path.split(" ", 1)[1] if " " in cmd_path else cmd_path
+        marker = " *(default)*" if default_sub and sub["commandName"] == default_sub else ""
+        lines.append(f"{prefix}- [`{display}`](#{anchor}){marker}")
+
+        # Recurse into child subcommands
+        children = sort_commands(
+            [s for s in sub.get("subcommands", []) if not is_help_command(s)]
+        )
+        if children:
+            child_path = build_command_path(sub, parent_path)
+            child_default = sub.get("defaultSubcommand")
+            lines.extend(build_toc(children, child_path, child_default, indent + 1))
     return lines
 
 
@@ -193,17 +221,10 @@ def generate_markdown(data):
     )
 
     if subcommands:
-        # Table of contents
+        # Nested table of contents
         lines.append("## Commands")
         lines.append("")
-        lines.append("| Command | Description |")
-        lines.append("|---|---|")
-        for sub in subcommands:
-            sig = build_signature(sub, root_name)
-            anchor = make_anchor(sig)
-            abstract = sub.get("abstract", "")
-            marker = " *(default)*" if default_sub and sub["commandName"] == default_sub else ""
-            lines.append(f"| [`{sig}`](#{anchor}) | {abstract}{marker} |")
+        lines.extend(build_toc(subcommands, root_name, default_sub))
         lines.append("")
 
         # Detailed command sections

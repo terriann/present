@@ -74,35 +74,41 @@ Once the app is running, you can start tracking time immediately:
 
 1. **From the menu bar:** Click the Present icon, select an activity (or
    create one), and start a session.
-2. **From the CLI:** Run `present-cli start "My Task"` to begin a work session.
-   The activity is created automatically if it does not exist.
+2. **From the CLI:** Run `present-cli session start "My Task"` to begin a work
+   session. The activity is created automatically if it does not exist.
 3. **View your day:** Open the main window for a dashboard summary, or run
-   `present-cli log today` in the terminal.
+   `present-cli report today -f text` in the terminal.
 
 ## CLI Usage
 
+All commands follow `present-cli <noun> <verb>`. Output defaults to JSON for
+scripting; use `-f text` for human-readable output.
+
 ```text
-present-cli                           # Show current session status (default)
-present-cli status                    # Same as above (explicit status command)
-present-cli start "Activity name"     # Start a work session (creates activity if needed)
-present-cli start "Task" --type rhythm --minutes 25
-present-cli stop                      # Stop the current session
-present-cli pause                     # Pause the current session
-present-cli resume                    # Resume a paused session
-present-cli cancel                    # Cancel without logging
-present-cli note "Some text"          # Append text to current activity's notes
-present-cli log                       # Show today's sessions (default)
-present-cli log today                 # Show today's sessions
-present-cli log week                  # Show this week's summary
-present-cli activities                # List active activities (default)
-present-cli activities list           # List active activities
-present-cli activities list --include-archived
-present-cli activities archive <id>   # Archive an activity
+present-cli session status            # Current session as JSON (default command)
+present-cli session start "Task"      # Start a work session (creates activity if needed)
+present-cli session start "Task" --type rhythm --minutes 25
+present-cli session stop              # Stop the current session
+present-cli session pause             # Pause / resume
+present-cli session resume
+present-cli session cancel            # Cancel without logging
+present-cli activity list             # List activities
+present-cli activity note "Some text" # Append note to current activity
+present-cli report today -f text       # Today's summary, human-readable
+present-cli session status --field state  # Extract a single value: "running"
 ```
+
+**Command groups:** [`session`](docs/cli-reference.md#present-cli-session) |
+[`activity`](docs/cli-reference.md#present-cli-activity) |
+[`tag`](docs/cli-reference.md#present-cli-tag) |
+[`report`](docs/cli-reference.md#present-cli-report) |
+[`config`](docs/cli-reference.md#present-cli-config)
 
 Session types: `work` (default), `rhythm`, `timebound`.
 
-Run `present-cli --help` or `present-cli <command> --help` for full option details. See the [CLI Reference](docs/cli-reference.md) for complete documentation.
+Run `present-cli --help` or `present-cli <noun> --help` for full option
+details. See the [CLI Reference](docs/cli-reference.md) for complete
+documentation.
 
 The CLI shares the same SQLite database as the app. Changes made in the CLI
 are reflected in the app (and vice versa) via IPC notifications and database

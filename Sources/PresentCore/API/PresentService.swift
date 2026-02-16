@@ -42,7 +42,14 @@ public final class PresentService: PresentAPI, Sendable {
     // MARK: - Sessions
 
     public func startSession(activityId: Int64, type: SessionType, timerMinutes: Int? = nil, breakMinutes: Int? = nil) async throws -> Session {
-        try await dbWriter.write { db in
+        if let timerMinutes {
+            try Validation.validateRange(timerMinutes, range: Constants.sessionMinutesRange, fieldName: "Timer duration")
+        }
+        if let breakMinutes {
+            try Validation.validateRange(breakMinutes, range: Constants.breakDurationRange, fieldName: "Break duration")
+        }
+
+        return try await dbWriter.write { db in
             // Check no active session
             let active = try Session
                 .filter(Session.Columns.state == SessionState.running.rawValue || Session.Columns.state == SessionState.paused.rawValue)
@@ -222,6 +229,36 @@ public final class PresentService: PresentAPI, Sendable {
         }
     }
 
+    public func getSession(id: Int64) async throws -> (Session, Activity) {
+        try await dbWriter.read { db in
+            let sql = """
+                SELECT s.*, a.id AS a_id, a.title AS a_title, a.externalId AS a_externalId,
+                       a.link AS a_link, a.notes AS a_notes, a.isArchived AS a_isArchived,
+                       a.createdAt AS a_createdAt, a.updatedAt AS a_updatedAt
+                FROM session s
+                INNER JOIN activity a ON a.id = s.activityId
+                WHERE s.id = ?
+                """
+
+            guard let row = try Row.fetchOne(db, sql: sql, arguments: [id]) else {
+                throw PresentError.sessionNotFound
+            }
+
+            let session = try Session(row: row)
+            let activity = Activity(
+                id: row["a_id"],
+                title: row["a_title"],
+                externalId: row["a_externalId"],
+                link: row["a_link"],
+                notes: row["a_notes"],
+                isArchived: row["a_isArchived"],
+                createdAt: row["a_createdAt"],
+                updatedAt: row["a_updatedAt"]
+            )
+            return (session, activity)
+        }
+    }
+
     public func lastCompletedSession(since: Date) async throws -> (Session, Activity)? {
         try await dbWriter.read { db in
             let sql = """
@@ -259,9 +296,14 @@ public final class PresentService: PresentAPI, Sendable {
     // MARK: - Activities
 
     public func createActivity(_ input: CreateActivityInput) async throws -> Activity {
-        guard !input.title.trimmingCharacters(in: .whitespaces).isEmpty else {
-            throw PresentError.invalidInput("Activity title cannot be empty.")
+        let title = try Validation.sanitize(input.title, fieldName: "Activity title", maxLength: Constants.maxTitleLength)
+        let externalId = try Validation.sanitizeOptional(input.externalId, fieldName: "External ID", maxLength: Constants.maxExternalIdLength)
+        let notes = try Validation.sanitizeOptional(input.notes, fieldName: "Notes", maxLength: Constants.maxNotesLength)
+
+        if let link = input.link, !link.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            try Validation.validateLink(link)
         }
+        let link = try Validation.sanitizeOptional(input.link, fieldName: "Link", maxLength: Constants.maxLinkLength)
 
         return try await dbWriter.write { db in
             let activeCount = try Activity.filter(Activity.Columns.isArchived == false).fetchCount(db)
@@ -271,10 +313,10 @@ public final class PresentService: PresentAPI, Sendable {
 
             let now = Date()
             var activity = Activity(
-                title: input.title.trimmingCharacters(in: .whitespaces),
-                externalId: input.externalId,
-                link: input.link,
-                notes: input.notes,
+                title: title,
+                externalId: externalId,
+                link: link,
+                notes: notes,
                 createdAt: now,
                 updatedAt: now
             )
@@ -293,25 +335,47 @@ public final class PresentService: PresentAPI, Sendable {
     }
 
     public func updateActivity(id: Int64, _ input: UpdateActivityInput) async throws -> Activity {
-        try await dbWriter.write { db in
+        // Validate inputs before entering the database write
+        let validatedTitle: String? = if let title = input.title {
+            try Validation.sanitize(title, fieldName: "Activity title", maxLength: Constants.maxTitleLength)
+        } else {
+            nil
+        }
+        if let link = input.link, !link.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            try Validation.validateLink(link)
+        }
+        let validatedExternalId: String?? = if let externalId = input.externalId {
+            try Validation.sanitizeOptional(externalId, fieldName: "External ID", maxLength: Constants.maxExternalIdLength)
+        } else {
+            nil as String??
+        }
+        let validatedLink: String?? = if let link = input.link {
+            try Validation.sanitizeOptional(link, fieldName: "Link", maxLength: Constants.maxLinkLength)
+        } else {
+            nil as String??
+        }
+        let validatedNotes: String?? = if let notes = input.notes {
+            try Validation.sanitizeOptional(notes, fieldName: "Notes", maxLength: Constants.maxNotesLength)
+        } else {
+            nil as String??
+        }
+
+        return try await dbWriter.write { db in
             guard var activity = try Activity.fetchOne(db, key: id) else {
                 throw PresentError.activityNotFound(id)
             }
 
-            if let title = input.title {
-                guard !title.trimmingCharacters(in: .whitespaces).isEmpty else {
-                    throw PresentError.invalidInput("Activity title cannot be empty.")
-                }
-                activity.title = title.trimmingCharacters(in: .whitespaces)
+            if let title = validatedTitle {
+                activity.title = title
             }
-            if let externalId = input.externalId {
-                activity.externalId = externalId.isEmpty ? nil : externalId
+            if let externalId = validatedExternalId {
+                activity.externalId = externalId
             }
-            if let link = input.link {
-                activity.link = link.isEmpty ? nil : link
+            if let link = validatedLink {
+                activity.link = link
             }
-            if let notes = input.notes {
-                activity.notes = notes.isEmpty ? nil : notes
+            if let notes = validatedNotes {
+                activity.notes = notes
             }
             activity.updatedAt = Date()
             try activity.update(db)
@@ -424,8 +488,12 @@ public final class PresentService: PresentAPI, Sendable {
     }
 
     public func searchActivities(query: String) async throws -> [Activity] {
-        let sanitized = query.trimmingCharacters(in: .whitespaces)
+        let sanitized = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !sanitized.isEmpty else { return [] }
+
+        if sanitized.count > Constants.maxSearchQueryLength {
+            throw PresentError.invalidInput("Search query exceeds maximum length of \(Constants.maxSearchQueryLength) characters.")
+        }
 
         return try await dbWriter.read { db in
             let pattern = FTS5Pattern(matchingAnyTokenIn: sanitized)
@@ -460,16 +528,26 @@ public final class PresentService: PresentAPI, Sendable {
     // MARK: - Notes
 
     public func appendNote(activityId: Int64, text: String) async throws -> Activity {
-        try await dbWriter.write { db in
+        let sanitizedText = try Validation.sanitize(text, fieldName: "Note text", maxLength: Constants.maxNotesLength)
+
+        return try await dbWriter.write { db in
             guard var activity = try Activity.fetchOne(db, key: activityId) else {
                 throw PresentError.activityNotFound(activityId)
             }
 
+            let newNotes: String
             if let existing = activity.notes, !existing.isEmpty {
-                activity.notes = existing + "\n" + text
+                newNotes = existing + "\n" + sanitizedText
             } else {
-                activity.notes = text
+                newNotes = sanitizedText
             }
+
+            // Check combined length
+            if newNotes.count > Constants.maxNotesLength {
+                throw PresentError.invalidInput("Notes would exceed maximum length of \(Constants.maxNotesLength) characters.")
+            }
+
+            activity.notes = newNotes
             activity.updatedAt = Date()
             try activity.update(db)
             return activity
@@ -479,15 +557,53 @@ public final class PresentService: PresentAPI, Sendable {
     // MARK: - Tags
 
     public func createTag(name: String) async throws -> Tag {
-        let trimmed = name.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else {
-            throw PresentError.invalidInput("Tag name cannot be empty.")
-        }
+        let trimmed = try Validation.sanitize(name, fieldName: "Tag name", maxLength: Constants.maxTagNameLength)
 
         return try await dbWriter.write { db in
+            // Case-insensitive uniqueness check
+            let existing = try Tag
+                .filter(Tag.Columns.name.collating(.nocase) == trimmed)
+                .fetchOne(db)
+            if let existing {
+                throw PresentError.invalidInput("A tag named \"\(existing.name)\" already exists.")
+            }
+
             var tag = Tag(name: trimmed)
             try tag.insert(db)
             tag.id = db.lastInsertedRowID
+            return tag
+        }
+    }
+
+    public func getTag(id: Int64) async throws -> Tag {
+        try await dbWriter.read { db in
+            guard let tag = try Tag.fetchOne(db, key: id) else {
+                throw PresentError.tagNotFound(id)
+            }
+            return tag
+        }
+    }
+
+    public func updateTag(id: Int64, name: String) async throws -> Tag {
+        let trimmed = try Validation.sanitize(name, fieldName: "Tag name", maxLength: Constants.maxTagNameLength)
+
+        return try await dbWriter.write { db in
+            guard var tag = try Tag.fetchOne(db, key: id) else {
+                throw PresentError.tagNotFound(id)
+            }
+
+            // Case-insensitive uniqueness check (exclude self)
+            let existing = try Tag
+                .filter(Tag.Columns.name.collating(.nocase) == trimmed)
+                .filter(Tag.Columns.id != id)
+                .fetchOne(db)
+            if let existing {
+                throw PresentError.invalidInput("A tag named \"\(existing.name)\" already exists.")
+            }
+
+            tag.name = trimmed
+            tag.updatedAt = Date()
+            try tag.update(db)
             return tag
         }
     }
@@ -537,6 +653,28 @@ public final class PresentService: PresentAPI, Sendable {
                 ORDER BY t.name
                 """
             return try Tag.fetchAll(db, sql: sql, arguments: [activityId])
+        }
+    }
+
+    public func tagsForActivities(activityIds: [Int64]) async throws -> [Int64: [Tag]] {
+        guard !activityIds.isEmpty else { return [:] }
+        return try await dbWriter.read { db in
+            let placeholders = activityIds.map { _ in "?" }.joined(separator: ", ")
+            let sql = """
+                SELECT at.activityId, t.*
+                FROM tag t
+                INNER JOIN activity_tag at ON at.tagId = t.id
+                WHERE at.activityId IN (\(placeholders))
+                ORDER BY t.name
+                """
+            let rows = try Row.fetchAll(db, sql: sql, arguments: StatementArguments(activityIds))
+            var result: [Int64: [Tag]] = [:]
+            for row in rows {
+                let activityId: Int64 = row["activityId"]
+                let tag = try Tag(row: row)
+                result[activityId, default: []].append(tag)
+            }
+            return result
         }
     }
 
@@ -688,10 +826,30 @@ public final class PresentService: PresentAPI, Sendable {
     }
 
     public func setPreference(key: String, value: String) async throws {
+        try Validation.validatePreferenceKey(key)
+
         try await dbWriter.write { db in
-            var pref = Preference(key: key, value: value)
+            let pref = Preference(key: key, value: value)
             try pref.save(db)
         }
+    }
+
+    public func listPreferences() async throws -> [(key: String, value: String)] {
+        let stored = try await dbWriter.read { db in
+            try Preference.fetchAll(db)
+        }
+        // Merge defaults with stored values (stored wins)
+        var result: [(key: String, value: String)] = []
+        let storedDict = Dictionary(uniqueKeysWithValues: stored.map { ($0.key, $0.value) })
+        for (key, defaultValue) in PreferenceKey.defaults {
+            let value = storedDict[key] ?? defaultValue
+            result.append((key: key, value: value))
+        }
+        // Include any custom keys not in defaults
+        for pref in stored where !PreferenceKey.defaults.contains(where: { $0.0 == pref.key }) {
+            result.append((key: pref.key, value: pref.value))
+        }
+        return result
     }
 
     // MARK: - Bulk Operations

@@ -1,7 +1,8 @@
 import ArgumentParser
+import Foundation
 import PresentCore
 
-struct StartCommand: AsyncParsableCommand {
+struct SessionStartCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "start",
         abstract: "Start a session for an activity."
@@ -19,7 +20,11 @@ struct StartCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Break duration in minutes (overrides rhythm option default).")
     var breakMinutes: Int?
 
+    @OptionGroup var outputOptions: OutputOptions
+
     func run() async throws {
+        try outputOptions.validateOptions()
+
         guard let sessionType = SessionType(rawValue: type) else {
             print("Invalid session type: \(type). Use: work, rhythm, timebound.")
             throw ExitCode.failure
@@ -44,7 +49,6 @@ struct StartCommand: AsyncParsableCommand {
                 }
                 resolvedBreakMinutes = breakMinutes ?? matched.breakMinutes
             } else {
-                // Default to first option
                 resolvedBreakMinutes = breakMinutes ?? validOptions.first?.breakMinutes
             }
         }
@@ -56,7 +60,9 @@ struct StartCommand: AsyncParsableCommand {
             activity = existing
         } else {
             activity = try await service.createActivity(CreateActivityInput(title: activityName))
-            print("Created activity: \(activity.title)")
+            if outputOptions.format == .text && outputOptions.field == nil {
+                print("Created activity: \(activity.title)")
+            }
         }
 
         let session = try await service.startSession(
@@ -66,14 +72,27 @@ struct StartCommand: AsyncParsableCommand {
             breakMinutes: resolvedBreakMinutes
         )
 
-        let config = SessionTypeConfig.config(for: session.sessionType)
-        print("Started \(config.displayName) for \"\(activity.title)\"")
+        switch outputOptions.format {
+        case .json:
+            try outputOptions.printJSON(session.toJSONDict(activity: activity))
 
-        if let timer = session.timerLengthMinutes {
-            print("Timer: \(timer) minutes")
-            if let brk = session.breakMinutes {
-                print("Break: \(brk) minutes")
+        case .text:
+            let textFields = session.toTextFields(activity: activity)
+            if try outputOptions.printTextField(textFields) { break }
+
+            let config = SessionTypeConfig.config(for: session.sessionType)
+            print("Started \(config.displayName) for \"\(activity.title)\"")
+
+            if let timer = session.timerLengthMinutes {
+                print("Timer: \(timer) minutes")
+                if let brk = session.breakMinutes {
+                    print("Break: \(brk) minutes")
+                }
             }
+
+        case .csv:
+            print("CSV output not supported for session start.")
+            throw ExitCode.failure
         }
 
         IPCClient().send(.sessionStarted)
