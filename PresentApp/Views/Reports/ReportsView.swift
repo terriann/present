@@ -27,8 +27,13 @@ struct ReportsView: View {
                     pieChartCard
                 }
 
-                // Export
-                exportButton
+                // Export hint
+                HStack {
+                    Spacer()
+                    Text("Use present-cli report export for CSV export")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
             .padding(20)
         }
@@ -131,17 +136,6 @@ struct ReportsView: View {
         }
     }
 
-    // MARK: - Export
-
-    private var exportButton: some View {
-        HStack {
-            Spacer()
-            Button("Export CSV") {
-                Task { await exportCSV() }
-            }
-        }
-    }
-
     // MARK: - Data Loading
 
     private func loadReport() async {
@@ -168,37 +162,6 @@ struct ReportsView: View {
         }
     }
 
-    private func exportCSV() async {
-        do {
-            let calendar = Calendar.current
-            let from: Date
-            let to: Date
-
-            switch selectedPeriod {
-            case .daily:
-                from = calendar.startOfDay(for: selectedDate)
-                to = calendar.date(byAdding: .day, value: 1, to: from)!
-            case .weekly:
-                from = calendar.dateInterval(of: .weekOfYear, for: selectedDate)!.start
-                to = calendar.date(byAdding: .day, value: 7, to: from)!
-            case .monthly:
-                from = calendar.dateInterval(of: .month, for: selectedDate)!.start
-                to = calendar.dateInterval(of: .month, for: selectedDate)!.end
-            }
-
-            let data = try await appState.service.exportCSV(from: from, to: to, includeArchived: includeArchived)
-
-            let panel = NSSavePanel()
-            panel.allowedContentTypes = [.commaSeparatedText]
-            panel.nameFieldStringValue = "present-report.csv"
-
-            if panel.runModal() == .OK, let url = panel.url {
-                try data.write(to: url)
-            }
-        } catch {
-            print("Error exporting CSV: \(error)")
-        }
-    }
 }
 
 enum ReportPeriod: String, CaseIterable {

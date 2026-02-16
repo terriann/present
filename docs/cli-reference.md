@@ -4,7 +4,7 @@
 
 > Present — time tracking from the command line.
 
-*Auto-generated on 2026-02-16 05:11 UTC from `present-cli --experimental-dump-help`.*
+*Auto-generated on 2026-02-16 22:31 UTC from `present-cli --experimental-dump-help`.*
 
 ## Commands
 
@@ -443,6 +443,7 @@ Export sessions as CSV.
 
 | Flag | Description |
 |---|---|
+| `--include-archived` | Include archived activities in the export. |
 | `--version` | Show the version. |
 
 #### `present-cli report month`

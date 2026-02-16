@@ -39,7 +39,7 @@ database.
 - **Tags and external IDs** -- Organize activities with tags and link to
   external tools (Jira, Linear, GitHub Issues, etc.).
 - **Reports and CSV export** -- Daily, weekly, and monthly summaries with
-  bar and pie charts. Export to CSV.
+  bar and pie charts. Export to CSV via CLI.
 - **System notifications** -- Gentle alerts when timers complete and break
   suggestions after rhythm sessions.
 - **Local and private** -- All data stored locally in SQLite via
@@ -95,6 +95,7 @@ present-cli session cancel            # Cancel without logging
 present-cli activity list             # List activities
 present-cli activity note "Some text" # Append note to current activity
 present-cli report today -f text       # Today's summary, human-readable
+present-cli report export --from 2026-02-01 --to 2026-02-15  # Export CSV
 present-cli session status --field state  # Extract a single value: "running"
 ```
 
