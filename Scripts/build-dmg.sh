@@ -40,11 +40,11 @@ xcodebuild build \
     CODE_SIGN_IDENTITY="$SIGNING_IDENTITY"
 
 echo "==> Building CLI (Release)..."
-swift build -c release --product present
+swift build -c release --product present-cli
 
 # Locate built products
 APP_PATH=$(find "$BUILD_DIR/DerivedData" -name "Present.app" -type d | head -1)
-CLI_PATH="$PROJECT_DIR/.build/release/present"
+CLI_PATH="$PROJECT_DIR/.build/release/present-cli"
 
 if [ -z "$APP_PATH" ]; then
     echo "Error: Present.app not found in build output"
@@ -55,7 +55,7 @@ echo "==> Preparing DMG contents..."
 DMG_STAGING="$BUILD_DIR/dmg-staging"
 mkdir -p "$DMG_STAGING"
 cp -R "$APP_PATH" "$DMG_STAGING/"
-cp "$CLI_PATH" "$DMG_STAGING/present"
+cp "$CLI_PATH" "$DMG_STAGING/present-cli"
 
 # Create Applications symlink for drag-to-install
 ln -s /Applications "$DMG_STAGING/Applications"
@@ -75,4 +75,4 @@ fi
 
 echo "==> Done! DMG created at: $BUILD_DIR/$DMG_NAME"
 echo "    App: $DMG_STAGING/Present.app"
-echo "    CLI: $DMG_STAGING/present"
+echo "    CLI: $DMG_STAGING/present-cli"

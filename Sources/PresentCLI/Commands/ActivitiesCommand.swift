@@ -56,7 +56,7 @@ struct ActivitiesArchiveCommand: AsyncParsableCommand {
             let activity = try await service.getActivity(id: id)
             let duration = TimeFormatting.formatDuration(seconds: totalSeconds)
             print("\"\(activity.title)\" has only \(duration) tracked. Consider deleting instead.")
-            print("To delete, use: present activities delete \(id)")
+            print("To delete, use: present-cli activities delete \(id)")
         }
 
         IPCClient().send(.dataChanged)

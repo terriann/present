@@ -70,7 +70,7 @@ Every user-facing action in the app must be accessible through the CLI. This is 
 └──────────▲────────────────────────────────────────┘
            │ same PresentAPI
 ┌──────────┴────────────────────────────────────────┐
-│               CLI (`present`)                      │
+│               CLI (`present-cli`)                   │
 │  Commands → PresentAPI → DatabasePool + IPC notify │
 └───────────────────────────────────────────────────┘
 ```
@@ -283,7 +283,7 @@ Four sections accessible via a sidebar:
 
 ---
 
-## 5. CLI (`present`)
+## 5. CLI (`present-cli`)
 
 A full-control CLI built as a separate executable target sharing the `PresentCore` library.
 
@@ -291,16 +291,16 @@ A full-control CLI built as a separate executable target sharing the `PresentCor
 
 | Command | Description |
 |---|---|
-| `present status` | Show current session (default if no subcommand) |
-| `present start "Activity name" [--type work\|rhythm\|timebound\|timebox]` | Start a session for an activity (create if doesn't exist) |
-| `present stop` | Stop the current session |
-| `present pause` | Pause the current session |
-| `present resume` | Resume a paused session |
-| `present note "Some text to append"` | Append text to the current activity's notes (Markdown) |
-| `present log today` | Show today's logged sessions |
-| `present log week` | Show this week's summary |
-| `present activities` | List active activities |
-| `present activities archive <id>` | Archive an activity |
+| `present-cli status` | Show current session (default if no subcommand) |
+| `present-cli start "Activity name" [--type work\|rhythm\|timebound\|timebox]` | Start a session for an activity (create if doesn't exist) |
+| `present-cli stop` | Stop the current session |
+| `present-cli pause` | Pause the current session |
+| `present-cli resume` | Resume a paused session |
+| `present-cli note "Some text to append"` | Append text to the current activity's notes (Markdown) |
+| `present-cli log today` | Show today's logged sessions |
+| `present-cli log week` | Show this week's summary |
+| `present-cli activities` | List active activities |
+| `present-cli activities archive <id>` | Archive an activity |
 
 ### Architecture
 
@@ -313,7 +313,7 @@ A full-control CLI built as a separate executable target sharing the `PresentCor
 ### Installation
 
 - Included in the DMG alongside `Present.app`.
-- Users can run `Present.app → Settings → Install CLI` which copies the binary to `/usr/local/bin/present`.
+- Users can run `Present.app → Settings → Install CLI` which copies the binary to `/usr/local/bin/present-cli`.
 - Or manually copy from DMG.
 
 ---
@@ -437,7 +437,7 @@ A `.github/workflows/ci.yml` workflow runs on every pull request and push to `ma
 1. **Build check** — `xcodebuild build` compiles the app target to catch compilation errors. This is standard for macOS apps and catches missing imports, type errors, and linker issues that `swift build` alone won't catch for the app target.
 2. **Unit tests** — `swift test` runs `PresentCoreTests` and `PresentCLITests` (SPM targets).
 3. **App tests** — `xcodebuild test` runs `PresentAppUITests` (Xcode UI test target). Requires a macOS runner with Xcode installed.
-4. **CLI build** — `swift build -c release --product present` verifies the CLI binary builds in release mode.
+4. **CLI build** — `swift build -c release --product present-cli` verifies the CLI binary builds in release mode.
 
 ```yaml
 # .github/workflows/ci.yml
@@ -461,7 +461,7 @@ jobs:
       - name: Run UI tests
         run: xcodebuild test -project Present.xcodeproj -scheme Present -destination 'platform=macOS'
       - name: Build CLI (release)
-        run: swift build -c release --product present
+        run: swift build -c release --product present-cli
 ```
 
 The `macos-15` runner provides macOS Sequoia with Xcode 16, matching our deployment target.
@@ -521,10 +521,10 @@ The `macos-15` runner provides macOS Sequoia with Xcode 16, matching our deploym
 4. **Rhythm Session flow:** Start a 25-min rhythm session, let it expire (or use a debug short timer), verify break suggestion appears, verify session is logged.
 5. **Timebound flow:** Start a 10-min timebound session, let it count down to zero, verify gentle notification fires, verify session is logged.
 6. **Menu bar timer:** Verify elapsed time shows for Work sessions, time remaining shows for Rhythm/Timebound sessions.
-7. **Note appending:** Run `present note "test note"` from CLI, verify text is appended to the current activity's notes in the app.
+7. **Note appending:** Run `present-cli note "test note"` from CLI, verify text is appended to the current activity's notes in the app.
 8. **Activity limit:** Create 50 activities, verify the 51st is rejected with a clear message.
 9. **Archive flow:** Archive an activity with <10min tracked, verify deletion prompt. Archive one with >10min, verify it disappears from active list but remains in reports.
-10. **CLI round-trip:** Run `present start "Test"` from terminal, verify the app's menu bar updates. Run `present status`, verify output. Run `present stop`, verify session is logged in the app.
+10. **CLI round-trip:** Run `present-cli start "Test"` from terminal, verify the app's menu bar updates. Run `present-cli status`, verify output. Run `present-cli stop`, verify session is logged in the app.
 11. **Reports:** Verify bar/pie charts render with test data. Export CSV and verify contents.
 12. **Search:** Create activities with various titles, search from menu bar and Log view, verify FTS5 results.
 13. **External ID:** Set a base URL in Settings, create an activity with an external ID, verify the link is clickable and opens the correct URL.

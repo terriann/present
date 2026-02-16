@@ -56,8 +56,8 @@ xcodegen generate
 
 ```bash
 swift build                               # Debug build
-swift build -c release --product present  # Release build
-.build/debug/present --help               # Run CLI
+swift build -c release --product present-cli  # Release build
+.build/debug/present-cli --help               # Run CLI
 ```
 
 ### App (via Xcode)
@@ -192,7 +192,7 @@ these conventions when contributing:
 - **Database records:** Model types conform to GRDB's `FetchableRecord`,
   `PersistableRecord`, and `Codable`.
 - **Naming:** Follow Swift API Design Guidelines. CLI commands use
-  lowercase with hyphens (e.g., `present activities list`).
+  lowercase with hyphens (e.g., `present-cli activities list`).
 - **File organization:** One type per file. CLI commands live in
   `Sources/PresentCLI/Commands/`, one file per command.
 - **Error handling:** Prefer typed errors. CLI commands surface user-facing

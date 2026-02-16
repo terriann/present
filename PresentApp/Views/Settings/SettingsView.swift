@@ -39,6 +39,11 @@ struct GeneralSettingsTab: View {
     @Environment(AppState.self) private var appState
     @State private var baseUrl = ""
 
+    // MARK: - CLI Install State
+
+    @State private var cliInstallStatus: String?
+    @State private var showCLIResult = false
+
     // MARK: - Danger Zone State
 
     @State private var showDeleteTodayAlert = false
@@ -73,8 +78,13 @@ struct GeneralSettingsTab: View {
                 Button("Install CLI to /usr/local/bin") {
                     installCLI()
                 }
+                .alert("CLI Install", isPresented: $showCLIResult) {
+                    Button("OK") {}
+                } message: {
+                    Text(cliInstallStatus ?? "")
+                }
 
-                Text("Copies the `present` command-line tool so you can use it from Terminal.")
+                Text("Copies the `present-cli` command-line tool so you can use it from Terminal.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -235,14 +245,31 @@ struct GeneralSettingsTab: View {
     }
 
     private func installCLI() {
-        guard let bundlePath = Bundle.main.path(forAuxiliaryExecutable: "present") else {
+        guard let bundlePath = Bundle.main.path(forAuxiliaryExecutable: "present-cli") else {
+            cliInstallStatus = "CLI binary not found in app bundle. Try reinstalling the app."
+            showCLIResult = true
             return
         }
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/bin/cp")
-        process.arguments = [bundlePath, "/usr/local/bin/present"]
-        try? process.run()
-        process.waitUntilExit()
+
+        let escapedPath = bundlePath.replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+        let script = """
+        do shell script "cp \\\"\(escapedPath)\\\" /usr/local/bin/present-cli && chmod +x /usr/local/bin/present-cli" with administrator privileges
+        """
+
+        var error: NSDictionary?
+        if let appleScript = NSAppleScript(source: script) {
+            appleScript.executeAndReturnError(&error)
+            if let error {
+                let message = error[NSAppleScript.errorMessage] as? String ?? "Unknown error"
+                cliInstallStatus = "Installation failed: \(message)"
+            } else {
+                cliInstallStatus = "Installed! Run `present-cli --help` in Terminal to get started."
+            }
+        } else {
+            cliInstallStatus = "Failed to create install script."
+        }
+        showCLIResult = true
     }
 }
 

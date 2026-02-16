@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/app-icon.png" width="128" alt="Present app icon">
+</p>
+
 # Present
 
 A simple, intentional way to track time on macOS. Present combines a menu bar
@@ -56,7 +60,7 @@ cd present
 
 # Build and run the CLI
 swift build
-.build/debug/present --help
+.build/debug/present-cli --help
 
 # Generate Xcode project and build the app
 brew install xcodegen  # if not installed
@@ -70,35 +74,35 @@ Once the app is running, you can start tracking time immediately:
 
 1. **From the menu bar:** Click the Present icon, select an activity (or
    create one), and start a session.
-2. **From the CLI:** Run `present start "My Task"` to begin a work session.
+2. **From the CLI:** Run `present-cli start "My Task"` to begin a work session.
    The activity is created automatically if it does not exist.
 3. **View your day:** Open the main window for a dashboard summary, or run
-   `present log today` in the terminal.
+   `present-cli log today` in the terminal.
 
 ## CLI Usage
 
 ```text
-present                           # Show current session status (default)
-present status                    # Same as above (explicit status command)
-present start "Activity name"     # Start a work session (creates activity if needed)
-present start "Task" --type rhythm --minutes 25
-present stop                      # Stop the current session
-present pause                     # Pause the current session
-present resume                    # Resume a paused session
-present cancel                    # Cancel without logging
-present note "Some text"          # Append text to current activity's notes
-present log                       # Show today's sessions (default)
-present log today                 # Show today's sessions
-present log week                  # Show this week's summary
-present activities                # List active activities (default)
-present activities list           # List active activities
-present activities list --include-archived
-present activities archive <id>   # Archive an activity
+present-cli                           # Show current session status (default)
+present-cli status                    # Same as above (explicit status command)
+present-cli start "Activity name"     # Start a work session (creates activity if needed)
+present-cli start "Task" --type rhythm --minutes 25
+present-cli stop                      # Stop the current session
+present-cli pause                     # Pause the current session
+present-cli resume                    # Resume a paused session
+present-cli cancel                    # Cancel without logging
+present-cli note "Some text"          # Append text to current activity's notes
+present-cli log                       # Show today's sessions (default)
+present-cli log today                 # Show today's sessions
+present-cli log week                  # Show this week's summary
+present-cli activities                # List active activities (default)
+present-cli activities list           # List active activities
+present-cli activities list --include-archived
+present-cli activities archive <id>   # Archive an activity
 ```
 
 Session types: `work` (default), `rhythm`, `timebound`.
 
-Run `present --help` or `present <command> --help` for full option details.
+Run `present-cli --help` or `present-cli <command> --help` for full option details.
 
 The CLI shares the same SQLite database as the app. Changes made in the CLI
 are reflected in the app (and vice versa) via IPC notifications and database

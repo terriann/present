@@ -9,7 +9,7 @@ let package = Package(
     ],
     products: [
         .library(name: "PresentCore", targets: ["PresentCore"]),
-        .executable(name: "present", targets: ["PresentCLI"])
+        .executable(name: "present-cli", targets: ["PresentCLI"])
     ],
     dependencies: [
         .package(url: "https://github.com/groue/GRDB.swift.git", from: "7.0.0"),
@@ -44,6 +44,8 @@ let package = Package(
             name: "PresentCLITests",
             dependencies: [
                 "PresentCore",
+                "PresentCLI",
+                .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 .product(name: "Testing", package: "swift-testing"),
             ],
             path: "Tests/PresentCLITests"

@@ -29,3 +29,15 @@ targets:
     dependencies:
       - package: PresentCore
         product: PresentCore
+    postCompileScripts:
+      - script: |
+          set -euo pipefail
+          CLI_DEST="$BUILT_PRODUCTS_DIR/Present.app/Contents/MacOS/present-cli"
+          if [ "$CONFIGURATION" = "Release" ]; then
+            swift build -c release --product present-cli --package-path "$SRCROOT"
+            cp "$SRCROOT/.build/release/present-cli" "$CLI_DEST"
+          else
+            swift build --product present-cli --package-path "$SRCROOT"
+            cp "$SRCROOT/.build/debug/present-cli" "$CLI_DEST"
+          fi
+        name: "Embed CLI Binary"

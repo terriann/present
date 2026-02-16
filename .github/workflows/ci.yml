@@ -22,4 +22,4 @@ jobs:
         run: swift test
 
       - name: Build CLI (release)
-        run: swift build -c release --product present
+        run: swift build -c release --product present-cli

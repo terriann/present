@@ -4,7 +4,7 @@ import PresentCore
 @main
 struct PresentCLI: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
-        commandName: "present",
+        commandName: "present-cli",
         abstract: "Present — time tracking from the command line.",
         subcommands: [
             StatusCommand.self,
