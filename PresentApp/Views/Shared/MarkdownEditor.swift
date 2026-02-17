@@ -106,6 +106,13 @@ struct MarkdownEditor: NSViewRepresentable {
             applyPattern(#"^- \[[ xX]\]"#, to: textStorage, in: lines,
                         attributes: [.foregroundColor: NSColor.systemBlue])
 
+            // Checked items: strikethrough + muted color for the entire line
+            applyPattern(#"^- \[[xX]\].*$"#, to: textStorage, in: lines,
+                        attributes: [
+                            .strikethroughStyle: NSUnderlineStyle.single.rawValue,
+                            .foregroundColor: NSColor.secondaryLabelColor
+                        ])
+
             // List markers (- or * or numbers)
             applyPattern(#"^[\t ]*[-*]\s"#, to: textStorage, in: lines,
                         attributes: [.foregroundColor: NSColor.secondaryLabelColor])

@@ -42,3 +42,5 @@ targets:
             cp "$SRCROOT/.build/debug/present-cli" "$CLI_DEST"
           fi
         name: "Embed CLI Binary"
+        outputFiles:
+          - $(BUILT_PRODUCTS_DIR)/Present.app/Contents/MacOS/present-cli

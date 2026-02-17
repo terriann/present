@@ -8,7 +8,6 @@ struct ActivityDetailView: View {
     @State private var notes: String
     @State private var tags: [Tag] = []
     @State private var baseUrl = ""
-    @State private var showingEditSheet = false
     @State private var showingArchiveConfirm = false
     @State private var archiveResult: ArchiveResult?
     @State private var showingDeleteConfirm = false
@@ -24,50 +23,14 @@ struct ActivityDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                header
+                titleRow
+                sessionControls
                 linksSection
                 notesSection
                 tagsSection
             }
             .padding(20)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        }
-        .navigationTitle(activity.title)
-        .toolbar {
-            ToolbarItemGroup {
-                if !activity.isArchived {
-                    Button {
-                        showingEditSheet = true
-                    } label: {
-                        Label("Edit", systemImage: "pencil")
-                    }
-                    .accessibilityLabel("Edit activity")
-
-                    Button {
-                        Task { await handleArchive() }
-                    } label: {
-                        Label("Archive", systemImage: "archivebox")
-                    }
-                    .accessibilityLabel("Archive activity")
-                } else {
-                    Button {
-                        Task { await handleUnarchive() }
-                    } label: {
-                        Label("Unarchive", systemImage: "arrow.uturn.backward")
-                    }
-                    .accessibilityLabel("Unarchive activity")
-
-                    Button(role: .destructive) {
-                        showingDeleteConfirm = true
-                    } label: {
-                        Label("Delete", systemImage: "trash")
-                    }
-                    .accessibilityLabel("Delete activity")
-                }
-            }
-        }
-        .sheet(isPresented: $showingEditSheet) {
-            ActivityFormSheet(mode: .edit(activity))
         }
         .alert("Archive Activity?", isPresented: $showingArchiveConfirm) {
             Button("Cancel", role: .cancel) {}
@@ -123,119 +86,160 @@ struct ActivityDetailView: View {
                 selectedRhythmOption = appState.rhythmDurationOptions.first
             }
         }
-        .onChange(of: showingEditSheet) {
-            if !showingEditSheet {
-                Task { await reload() }
-            }
-        }
     }
 
-    // MARK: - Header
+    // MARK: - Title Row
 
-    private var header: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text(activity.title)
-                        .font(.title.bold())
-
-                    if activity.isArchived {
-                        Text("Archived")
-                            .font(.caption)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(.secondary.opacity(0.2), in: Capsule())
-                    }
+    private var titleRow: some View {
+        HStack(alignment: .center) {
+            InlineEditableField(
+                value: activity.title,
+                placeholder: "Activity title",
+                font: .title.bold(),
+                isEditable: !activity.isArchived,
+                onSave: { newTitle in
+                    Task { await updateTitle(newTitle) }
                 }
+            )
 
-                Text("Created \(TimeFormatting.formatDate(activity.createdAt))")
+            if activity.isArchived {
+                Text("Archived")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(.secondary.opacity(0.2), in: Capsule())
             }
 
             Spacer()
 
-            if !activity.isArchived {
-                VStack(alignment: .trailing, spacing: 10) {
-                    HStack(spacing: 4) {
-                        ForEach(SessionType.allCases, id: \.self) { type in
-                            let isSelected = selectedSessionType == type
-                            Button {
-                                withAdaptiveAnimation(.easeInOut(duration: 0.15)) {
-                                    selectedSessionType = type
-                                }
-                            } label: {
-                                Text(SessionTypeConfig.config(for: type).displayName)
-                                    .font(.caption.weight(isSelected ? .semibold : .regular))
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 5)
-                                    .background(isSelected ? theme.accent.opacity(0.15) : Color.clear, in: Capsule())
-                                    .foregroundStyle(isSelected ? theme.accent : .secondary)
-                            }
-                            .buttonStyle(.plain)
-                        }
+            HStack(spacing: 8) {
+                if !activity.isArchived {
+                    Button {
+                        Task { await handleArchive() }
+                    } label: {
+                        Label("Archive", systemImage: "archivebox")
                     }
+                    .buttonStyle(.bordered)
+                    .accessibilityLabel("Archive activity")
+                } else {
+                    Button {
+                        Task { await handleUnarchive() }
+                    } label: {
+                        Label("Unarchive", systemImage: "arrow.uturn.backward")
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityLabel("Unarchive activity")
 
-                    if selectedSessionType == .rhythm {
+                    Button(role: .destructive) {
+                        showingDeleteConfirm = true
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityLabel("Delete activity")
+                }
+            }
+            .labelStyle(.iconOnly)
+        }
+    }
+
+    // MARK: - Session Controls
+
+    private var sessionControls: some View {
+        Group {
+            if !activity.isArchived {
+                HStack {
+                    Text("Created \(TimeFormatting.formatDate(activity.createdAt))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Spacer()
+
+                    VStack(alignment: .trailing, spacing: 10) {
                         HStack(spacing: 4) {
-                            ForEach(appState.rhythmDurationOptions, id: \.self) { option in
-                                let isSelected = selectedRhythmOption == option
+                            ForEach(SessionType.allCases, id: \.self) { type in
+                                let isSelected = selectedSessionType == type
                                 Button {
-                                    selectedRhythmOption = option
+                                    withAdaptiveAnimation(.easeInOut(duration: 0.15)) {
+                                        selectedSessionType = type
+                                    }
                                 } label: {
-                                    Text("\(option.focusMinutes) min (\(option.breakMinutes)m)")
-                                        .font(.caption2.weight(isSelected ? .semibold : .regular))
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 3)
-                                        .background(isSelected ? theme.accent.opacity(0.12) : Color.secondary.opacity(0.08), in: Capsule())
+                                    Text(SessionTypeConfig.config(for: type).displayName)
+                                        .font(.caption.weight(isSelected ? .semibold : .regular))
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 5)
+                                        .background(isSelected ? theme.accent.opacity(0.15) : Color.clear, in: Capsule())
                                         .foregroundStyle(isSelected ? theme.accent : .secondary)
                                 }
                                 .buttonStyle(.plain)
                             }
                         }
-                    } else if selectedSessionType == .timebound {
-                        HStack(spacing: 4) {
-                            Text("Duration:")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            TextField("", value: $timeboundMinutes, format: .number)
-                                .textFieldStyle(.roundedBorder)
-                                .frame(width: 48)
-                                .font(.caption)
-                            Text("min")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
 
-                    Button("Start Session") {
-                        Task {
-                            switch selectedSessionType {
-                            case .rhythm:
-                                let option = selectedRhythmOption ?? appState.rhythmDurationOptions.first
-                                await appState.startSession(
-                                    activityId: activity.id!,
-                                    type: .rhythm,
-                                    timerMinutes: option?.focusMinutes,
-                                    breakMinutes: option?.breakMinutes
-                                )
-                            case .timebound:
-                                await appState.startSession(
-                                    activityId: activity.id!,
-                                    type: .timebound,
-                                    timerMinutes: timeboundMinutes
-                                )
-                            default:
-                                await appState.startSession(
-                                    activityId: activity.id!,
-                                    type: selectedSessionType
-                                )
+                        if selectedSessionType == .rhythm {
+                            HStack(spacing: 4) {
+                                ForEach(appState.rhythmDurationOptions, id: \.self) { option in
+                                    let isSelected = selectedRhythmOption == option
+                                    Button {
+                                        selectedRhythmOption = option
+                                    } label: {
+                                        Text("\(option.focusMinutes) min (\(option.breakMinutes)m)")
+                                            .font(.caption2.weight(isSelected ? .semibold : .regular))
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 3)
+                                            .background(isSelected ? theme.accent.opacity(0.12) : Color.secondary.opacity(0.08), in: Capsule())
+                                            .foregroundStyle(isSelected ? theme.accent : .secondary)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                        } else if selectedSessionType == .timebound {
+                            HStack(spacing: 4) {
+                                Text("Duration:")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                TextField("", value: $timeboundMinutes, format: .number)
+                                    .textFieldStyle(.roundedBorder)
+                                    .frame(width: 48)
+                                    .font(.caption)
+                                Text("min")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
                             }
                         }
+
+                        Button("Start Session") {
+                            Task {
+                                switch selectedSessionType {
+                                case .rhythm:
+                                    let option = selectedRhythmOption ?? appState.rhythmDurationOptions.first
+                                    await appState.startSession(
+                                        activityId: activity.id!,
+                                        type: .rhythm,
+                                        timerMinutes: option?.focusMinutes,
+                                        breakMinutes: option?.breakMinutes
+                                    )
+                                case .timebound:
+                                    await appState.startSession(
+                                        activityId: activity.id!,
+                                        type: .timebound,
+                                        timerMinutes: timeboundMinutes
+                                    )
+                                default:
+                                    await appState.startSession(
+                                        activityId: activity.id!,
+                                        type: selectedSessionType
+                                    )
+                                }
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(appState.isSessionActive)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(appState.isSessionActive)
                 }
+            } else {
+                Text("Created \(TimeFormatting.formatDate(activity.createdAt))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
     }
@@ -244,10 +248,79 @@ struct ActivityDetailView: View {
 
     private var linksSection: some View {
         Group {
-            if activity.externalId != nil || activity.link != nil {
+            if !activity.isArchived || activity.externalId != nil || activity.link != nil {
                 GroupBox {
-                    VStack(alignment: .leading, spacing: 8) {
-                        ExternalIDLink(activity: activity, baseUrl: baseUrl)
+                    VStack(alignment: .leading, spacing: 12) {
+                        // External ID
+                        if !activity.isArchived || activity.externalId != nil {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("External ID")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+
+                                if let externalId = activity.externalId, !externalId.isEmpty,
+                                   let url = resolvedExternalURL(for: externalId) {
+                                    Link(destination: url) {
+                                        HStack(spacing: 4) {
+                                            Text(externalId)
+                                            Image(systemName: "arrow.up.right")
+                                                .font(.caption)
+                                        }
+                                        .font(.body)
+                                        .foregroundStyle(theme.accent)
+                                    }
+                                } else if !activity.isArchived {
+                                    InlineEditableField(
+                                        value: activity.externalId ?? "",
+                                        placeholder: "Add external ID",
+                                        font: .body,
+                                        isEditable: true,
+                                        onSave: { newValue in
+                                            Task { await updateExternalId(newValue) }
+                                        }
+                                    )
+                                } else if let externalId = activity.externalId, !externalId.isEmpty {
+                                    Text(externalId)
+                                        .font(.body)
+                                }
+                            }
+                        }
+
+                        // Link
+                        if !activity.isArchived || activity.link != nil {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Link")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+
+                                if let link = activity.link, !link.isEmpty,
+                                   let url = URL(string: link) {
+                                    Link(destination: url) {
+                                        HStack(spacing: 4) {
+                                            Text(link)
+                                                .lineLimit(1)
+                                            Image(systemName: "arrow.up.right")
+                                                .font(.caption)
+                                        }
+                                        .font(.body)
+                                        .foregroundStyle(theme.accent)
+                                    }
+                                } else if !activity.isArchived {
+                                    InlineEditableField(
+                                        value: activity.link ?? "",
+                                        placeholder: "Add link URL",
+                                        font: .body,
+                                        isEditable: true,
+                                        onSave: { newValue in
+                                            Task { await updateLink(newValue) }
+                                        }
+                                    )
+                                } else if let link = activity.link, !link.isEmpty {
+                                    Text(link)
+                                        .font(.body)
+                                }
+                            }
+                        }
                     }
                     .padding(4)
                 } label: {
@@ -278,7 +351,13 @@ struct ActivityDetailView: View {
             }
             .padding(4)
         } label: {
-            Label("Notes", systemImage: "doc.text")
+            HStack {
+                Label("Notes", systemImage: "doc.text")
+                Spacer()
+                Text("Markdown")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 
@@ -368,6 +447,41 @@ struct ActivityDetailView: View {
         try await appState.service.tagsForActivity(activityId: activity.id!)
     }
 
+    private func updateTitle(_ newTitle: String) async {
+        guard !newTitle.isEmpty else { return }
+        do {
+            activity = try await appState.service.updateActivity(
+                id: activity.id!,
+                UpdateActivityInput(title: newTitle)
+            )
+            await appState.refreshAll()
+        } catch {
+            appState.showError(error, context: "Could not update title")
+        }
+    }
+
+    private func updateExternalId(_ newValue: String) async {
+        do {
+            activity = try await appState.service.updateActivity(
+                id: activity.id!,
+                UpdateActivityInput(externalId: newValue)
+            )
+        } catch {
+            appState.showError(error, context: "Could not update external ID")
+        }
+    }
+
+    private func updateLink(_ newValue: String) async {
+        do {
+            activity = try await appState.service.updateActivity(
+                id: activity.id!,
+                UpdateActivityInput(link: newValue)
+            )
+        } catch {
+            appState.showError(error, context: "Could not update link")
+        }
+    }
+
     private func saveNotes() async {
         do {
             _ = try await appState.service.updateActivity(
@@ -419,6 +533,13 @@ struct ActivityDetailView: View {
         } catch {
             appState.showError(error, context: "Could not unarchive activity")
         }
+    }
+
+    // MARK: - Helpers
+
+    private func resolvedExternalURL(for externalId: String) -> URL? {
+        guard !baseUrl.isEmpty else { return nil }
+        return URL(string: baseUrl + externalId)
     }
 }
 
