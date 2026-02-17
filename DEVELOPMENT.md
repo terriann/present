@@ -26,6 +26,8 @@ contributing.
   - [Adding a New API Method](#adding-a-new-api-method)
   - [Adding a New View](#adding-a-new-view)
   - [Regenerating the Xcode Project](#regenerating-the-xcode-project)
+- [Claude Agents](#claude-agents)
+  - [Design Reviewer](#design-reviewer)
 - [Contributing Workflow](#contributing-workflow)
 - [Troubleshooting](#troubleshooting)
 
@@ -345,6 +347,28 @@ xcodegen generate
 ```
 
 The generated `Present.xcodeproj/` is gitignored.
+
+## Claude Agents
+
+Custom agents in `.claude/agents/` provide specialized capabilities during
+development. Reference docs live in `.claude/references/`.
+
+| Agent | Purpose |
+|-------|---------|
+| `pm` | Triages issues, sizes work, proposes milestones, files bugs and feature requests via GitHub CLI |
+| `design-reviewer` | Reviews UI implementations and ideas against Apple's Human Interface Guidelines and Present's design conventions. Read-only — never modifies code |
+
+### Design Reviewer
+
+Invoke with `/design-reviewer` or by asking Claude to review a view. It loads
+`.claude/references/apple-hig-macos.md` (a condensed macOS HIG reference) and
+the project conventions from `.claude/CLAUDE.md`, then evaluates against a
+checklist covering layout, typography, color, interaction, accessibility, and
+macOS platform conventions.
+
+Supports several review modes: file review (specific view), idea review
+(proposals before implementation), screenshot review, and diff review (PR
+changes).
 
 ## Contributing Workflow
 
