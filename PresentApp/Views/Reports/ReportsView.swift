@@ -14,7 +14,7 @@ struct ReportsView: View {
     @State private var dailySummaryData: DailySummary?
     @State private var weeklySummaryData: WeeklySummary?
     @State private var monthlySummaryData: MonthlySummary?
-    @State private var tagSummaries: [TagSummary] = []
+    @State private var tagActivitySummaries: [TagActivitySummary] = []
 
     // Navigation state
     @State private var earliestDate: Date?
@@ -26,6 +26,8 @@ struct ReportsView: View {
     @State private var activityAngleSelection: Int?
     @State private var hoveredActivityName: String?
     @State private var legendHoveredActivity: String?
+    @State private var hoveredTagLabel: String?
+    @State private var tagHoverLocation: CGPoint = .zero
 
     var body: some View {
         ScrollView {
@@ -39,7 +41,7 @@ struct ReportsView: View {
                     HStack(alignment: .top, spacing: 16) {
                         activityPieChartCard
                             .frame(maxWidth: .infinity)
-                        if !tagSummaries.isEmpty {
+                        if !tagActivitySummaries.isEmpty {
                             tagBarChartCard
                                 .frame(maxWidth: .infinity)
                         }
@@ -458,6 +460,49 @@ struct ReportsView: View {
         }
     }
 
+    private func tagTooltip(for label: String, summaries: [TagActivitySummary]) -> some View {
+        // Find the matching TagActivitySummary — label format is "TagName (N) · duration"
+        let matching = summaries.first { tag in
+            let duration = TimeFormatting.formatDuration(seconds: tag.totalSeconds)
+            return "\(tag.tagName) (\(tag.activityCount)) · \(duration)" == label
+        }
+        let palette = ThemeManager.chartColors(for: theme.activePalette)
+
+        return ChartTooltip {
+            if let tag = matching {
+                Text(tag.tagName)
+                    .font(.caption.bold())
+
+                ForEach(tag.activities, id: \.activity.id) { summary in
+                    HStack(spacing: 6) {
+                        let color = activities.firstIndex(where: { $0.activity.title == summary.activity.title })
+                            .map { palette[$0 % palette.count] } ?? .secondary
+                        Circle()
+                            .fill(color)
+                            .frame(width: 8, height: 8)
+                        Text(summary.activity.title)
+                            .font(.caption)
+                            .lineLimit(1)
+                        Spacer()
+                        Text(TimeFormatting.formatDuration(seconds: summary.totalSeconds))
+                            .font(.caption.monospacedDigit())
+                    }
+                }
+
+                if tag.activities.count > 1 {
+                    Divider()
+                    HStack {
+                        Text("Total")
+                            .font(.caption.bold())
+                        Spacer()
+                        Text(TimeFormatting.formatDuration(seconds: tag.totalSeconds))
+                            .font(.caption.bold().monospacedDigit())
+                    }
+                }
+            }
+        }
+    }
+
     // MARK: - Activity Pie Chart
 
     private func findActivity(for value: Int?) -> String? {
@@ -569,10 +614,23 @@ struct ReportsView: View {
     // MARK: - Tag Bar Chart
 
     private var tagBarChartCard: some View {
-        let palette = ThemeManager.chartColors(for: theme.activePalette)
-        let sorted = tagSummaries.sorted { $0.totalSeconds > $1.totalSeconds }
-        let colorMap = Dictionary(uniqueKeysWithValues: sorted.enumerated().map { ($1.tagName, palette[$0 % palette.count]) })
+        let sorted = tagActivitySummaries.sorted { $0.totalSeconds > $1.totalSeconds }
         let barHeight: CGFloat = max(120, CGFloat(sorted.count) * 36 + 40)
+
+        // Flatten into entries for the stacked bar
+        let entries: [TagBarEntry] = sorted.flatMap { tag in
+            let duration = TimeFormatting.formatDuration(seconds: tag.totalSeconds)
+            let yLabel = "\(tag.tagName) (\(tag.activityCount)) · \(duration)"
+            return tag.activities.map { summary in
+                TagBarEntry(
+                    tagLabel: yLabel,
+                    activityTitle: summary.activity.title,
+                    hours: Double(summary.totalSeconds) / 3600.0,
+                    totalSeconds: tag.totalSeconds,
+                    isLastInTag: false
+                )
+            }
+        }
 
         return GroupBox {
             Text("Tag Distribution")
@@ -582,18 +640,15 @@ struct ReportsView: View {
                 .padding(.top, 12)
                 .padding(.bottom, 12)
 
-            Chart(sorted, id: \.tagName) { summary in
+            Chart(entries, id: \.id) { entry in
                 BarMark(
-                    x: .value("Hours", Double(summary.totalSeconds) / 3600.0),
-                    y: .value("Tag", summary.tagName)
+                    x: .value("Hours", entry.hours),
+                    y: .value("Tag", entry.tagLabel)
                 )
-                .foregroundStyle(colorMap[summary.tagName] ?? .secondary)
-                .annotation(position: .trailing, spacing: 6) {
-                    Text(TimeFormatting.formatDuration(seconds: summary.totalSeconds))
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                }
+                .foregroundStyle(by: .value("Activity", entry.activityTitle))
+                .opacity(hoveredTagLabel == nil || hoveredTagLabel == entry.tagLabel ? 1.0 : 0.4)
             }
+            .chartForegroundStyleScale(domain: chartColorDomain, range: chartColorRange)
             .chartLegend(.hidden)
             .chartXAxis {
                 AxisMarks { value in
@@ -603,6 +658,37 @@ struct ReportsView: View {
                         if let v = value.as(Double.self) {
                             Text("\(Int(v))h")
                         }
+                    }
+                }
+            }
+            .chartOverlay { proxy in
+                GeometryReader { geometry in
+                    let plotFrame = geometry[proxy.plotAreaFrame]
+
+                    Rectangle()
+                        .fill(.clear)
+                        .contentShape(Rectangle())
+                        .onContinuousHover { phase in
+                            switch phase {
+                            case .active(let location):
+                                let relativeY = location.y - plotFrame.origin.y
+                                if let label: String = proxy.value(atY: relativeY) {
+                                    hoveredTagLabel = label
+                                    tagHoverLocation = location
+                                } else {
+                                    hoveredTagLabel = nil
+                                }
+                            case .ended:
+                                hoveredTagLabel = nil
+                            }
+                        }
+
+                    if let label = hoveredTagLabel {
+                        let pos = tooltipPosition(cursor: tagHoverLocation, containerSize: geometry.size)
+                        tagTooltip(for: label, summaries: sorted)
+                            .fixedSize()
+                            .frame(maxWidth: 200, alignment: .leading)
+                            .position(x: pos.x, y: pos.y)
                     }
                 }
             }
@@ -741,7 +827,7 @@ struct ReportsView: View {
 
                 let startOfDay = calendar.startOfDay(for: selectedDate)
                 let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
-                tagSummaries = try await appState.service.tagSummary(from: startOfDay, to: endOfDay, includeArchived: !hideArchived)
+                tagActivitySummaries = try await appState.service.tagActivitySummary(from: startOfDay, to: endOfDay, includeArchived: !hideArchived)
 
             case .weekly:
                 let summary = try await appState.service.weeklySummary(weekOf: selectedDate, includeArchived: !hideArchived)
@@ -752,7 +838,7 @@ struct ReportsView: View {
 
                 let wStart = weekStart(for: selectedDate)
                 let weekEnd = calendar.date(byAdding: .day, value: 7, to: wStart)!
-                tagSummaries = try await appState.service.tagSummary(from: wStart, to: weekEnd, includeArchived: !hideArchived)
+                tagActivitySummaries = try await appState.service.tagActivitySummary(from: wStart, to: weekEnd, includeArchived: !hideArchived)
 
             case .monthly:
                 let summary = try await appState.service.monthlySummary(monthOf: selectedDate, includeArchived: !hideArchived)
@@ -762,7 +848,7 @@ struct ReportsView: View {
                 sessionCount = summary.sessionCount
 
                 let monthInterval = calendar.dateInterval(of: .month, for: selectedDate)!
-                tagSummaries = try await appState.service.tagSummary(from: monthInterval.start, to: monthInterval.end, includeArchived: !hideArchived)
+                tagActivitySummaries = try await appState.service.tagActivitySummary(from: monthInterval.start, to: monthInterval.end, includeArchived: !hideArchived)
             }
         } catch {
             print("Error loading report: \(error)")
@@ -791,6 +877,15 @@ private struct BarEntry: Identifiable {
     let label: String
     let activity: String
     let value: Double
+}
+
+private struct TagBarEntry: Identifiable {
+    let id = UUID()
+    let tagLabel: String
+    let activityTitle: String
+    let hours: Double
+    let totalSeconds: Int
+    let isLastInTag: Bool
 }
 
 // MARK: - Tooltip Views

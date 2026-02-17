@@ -880,6 +880,73 @@ public final class PresentService: PresentAPI, Sendable {
         }
     }
 
+    public func tagActivitySummary(from startDate: Date, to endDate: Date, includeArchived: Bool) async throws -> [TagActivitySummary] {
+        try await dbWriter.read { db in
+            let archiveFilter = includeArchived ? "" : " AND a.isArchived = 0"
+            let sql = """
+                SELECT COALESCE(t.name, 'Untagged') as tagName,
+                       a.id as activityId, a.title as activityTitle,
+                       a.externalId, a.link, a.notes, a.isArchived,
+                       a.createdAt, a.updatedAt,
+                       COALESCE(SUM(s.durationSeconds), 0) as totalSecs,
+                       COUNT(s.id) as sessCount
+                FROM session s
+                INNER JOIN activity a ON a.id = s.activityId
+                LEFT JOIN activity_tag at2 ON at2.activityId = a.id
+                LEFT JOIN tag t ON t.id = at2.tagId
+                WHERE s.state = ?
+                  AND s.startedAt >= ? AND s.startedAt < ?
+                  \(archiveFilter)
+                GROUP BY tagName, a.id
+                ORDER BY tagName, totalSecs DESC
+                """
+
+            let rows = try Row.fetchAll(db, sql: sql, arguments: [
+                SessionState.completed.rawValue,
+                startDate, endDate
+            ])
+
+            // Group rows by tagName
+            var tagGroups: [String: [ActivitySummary]] = [:]
+            var tagOrder: [String] = []
+
+            for row in rows {
+                let tagName: String = row["tagName"]
+                let activity = Activity(
+                    id: row["activityId"],
+                    title: row["activityTitle"],
+                    externalId: row["externalId"],
+                    link: row["link"],
+                    notes: row["notes"],
+                    isArchived: row["isArchived"],
+                    createdAt: row["createdAt"],
+                    updatedAt: row["updatedAt"]
+                )
+                let summary = ActivitySummary(
+                    activity: activity,
+                    totalSeconds: row["totalSecs"],
+                    sessionCount: row["sessCount"]
+                )
+                if tagGroups[tagName] == nil {
+                    tagOrder.append(tagName)
+                }
+                tagGroups[tagName, default: []].append(summary)
+            }
+
+            return tagOrder.map { tagName in
+                let activities = tagGroups[tagName] ?? []
+                let totalSecs = activities.reduce(0) { $0 + $1.totalSeconds }
+                return TagActivitySummary(
+                    tagName: tagName,
+                    activities: activities,
+                    totalSeconds: totalSecs,
+                    activityCount: activities.count
+                )
+            }
+            .sorted { $0.totalSeconds > $1.totalSeconds }
+        }
+    }
+
     public func exportCSV(from: Date, to: Date, includeArchived: Bool) async throws -> Data {
         try await dbWriter.read { db in
             let archiveFilter = includeArchived ? "" : " AND a.isArchived = 0"

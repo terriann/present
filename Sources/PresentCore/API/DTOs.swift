@@ -99,6 +99,20 @@ public struct TagSummary: Sendable, Equatable {
     }
 }
 
+public struct TagActivitySummary: Sendable, Equatable {
+    public var tagName: String
+    public var activities: [ActivitySummary]
+    public var totalSeconds: Int
+    public var activityCount: Int
+
+    public init(tagName: String, activities: [ActivitySummary], totalSeconds: Int, activityCount: Int) {
+        self.tagName = tagName
+        self.activities = activities
+        self.totalSeconds = totalSeconds
+        self.activityCount = activityCount
+    }
+}
+
 public struct ActivitySummary: Sendable, Equatable {
     public var activity: Activity
     public var totalSeconds: Int
