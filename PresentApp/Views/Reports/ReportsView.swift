@@ -360,7 +360,13 @@ struct ReportsView: View {
             .chartForegroundStyleScale(domain: chartColorDomain, range: chartColorRange)
             .chartXScale(domain: domain)
             .chartXAxis {
-                AxisMarks(values: .automatic(desiredCount: selectedPeriod == .monthly ? 15 : 12))
+                AxisMarks { value in
+                    AxisGridLine()
+                    AxisTick()
+                    if let label = value.as(String.self), shouldShowXAxisLabel(label) {
+                        AxisValueLabel()
+                    }
+                }
             }
             .chartYScale(domain: yAxisDomain)
             .chartYAxis {
@@ -385,7 +391,8 @@ struct ReportsView: View {
                             switch phase {
                             case .active(let location):
                                 let relativeX = location.x - plotFrame.origin.x
-                                if let label: String = proxy.value(atX: relativeX) {
+                                if let label: String = proxy.value(atX: relativeX),
+                                   entries.contains(where: { $0.label == label }) {
                                     hoveredBarLabel = label
                                     barHoverLocation = location
                                 } else {
@@ -565,8 +572,8 @@ struct ReportsView: View {
     private func tooltipPosition(cursor: CGPoint, containerSize: CGSize) -> CGPoint {
         let tooltipWidth: CGFloat = 180
         let tooltipHeight: CGFloat = 100
-        let edgePadding: CGFloat = 16
-        let cursorOffset: CGFloat = 12
+        let edgePadding: CGFloat = 6
+        let cursorOffset: CGFloat = 6
 
         // Horizontal: prefer right of cursor, flip left if overflow
         let xRight = cursor.x + cursorOffset
@@ -615,6 +622,31 @@ struct ReportsView: View {
         let formatter = DateFormatter()
         formatter.dateFormat = "d"
         return formatter.string(from: date)
+    }
+
+    /// Determines whether an x-axis label should be shown for the current period.
+    private func shouldShowXAxisLabel(_ label: String) -> Bool {
+        switch selectedPeriod {
+        case .daily:
+            // Show 3am, 6am, 9am, 12pm, 3pm, 6pm, 9pm
+            let visibleHours: Set<String> = [
+                hourLabel(3), hourLabel(6), hourLabel(9), hourLabel(12),
+                hourLabel(15), hourLabel(18), hourLabel(21),
+            ]
+            return visibleHours.contains(label)
+        case .weekly:
+            return true
+        case .monthly:
+            // Show 1, 7, 14, 21, 28 (skip 28 for 29-day months), and the last day
+            let daysInMonth = allDayNumberLabels.count
+            var visible: Set<String> = ["1", "7", "14", "21"]
+            if daysInMonth != 29 {
+                visible.insert("28")
+            }
+            let lastDay = String(daysInMonth)
+            visible.insert(lastDay)
+            return visible.contains(label)
+        }
     }
 
     /// Format a value for tooltip display, using the correct unit for the period.
