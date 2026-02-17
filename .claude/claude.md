@@ -112,6 +112,14 @@ CLI Commands ──────────────────────�
 ### Swift Safety
 - **Never force unwrap** (`!`) optionals. Use `if let`, `guard let`, `??` (nil coalescing), or `compactMap` instead. Force unwraps compile fine but crash at runtime when the value is `nil` — use safe alternatives that handle the nil case gracefully.
 
+### Animations & Reduce Motion
+- **Never use raw `.animation()` or `withAnimation()`** — use the adaptive wrappers in `PresentApp/Views/Shared/AdaptiveAnimation.swift`.
+- Declarative: `.adaptiveAnimation(_:reduced:value:)` — drop-in replacement for `.animation(_:value:)`.
+- Imperative: `withAdaptiveAnimation(_:reduced:_:)` — drop-in replacement for `withAnimation(_:_:)`.
+- Both default `reduced` to `.linear(duration: 0.15)`. Override for longer animations (e.g., `reduced: .linear(duration: 0.6)` for a 2s fadeout).
+- **Auto-rotating content** (carousels, timed transitions): disable the rotation entirely when reduce motion is on. Read `@Environment(\.accessibilityReduceMotion)` and guard the timer callback.
+- `.contentTransition(.numericText())` respects reduce motion automatically — no wrapper needed.
+
 ## Conventional Commits
 
 Use [Conventional Commits](https://www.conventionalcommits.org/) format: `type(scope): description`
