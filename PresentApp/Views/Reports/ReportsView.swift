@@ -77,12 +77,11 @@ struct ReportsView: View {
 
     private var controlsBar: some View {
         HStack {
-            Picker("", selection: $selectedPeriod) {
+            Picker(selection: $selectedPeriod, label: EmptyView()) {
                 ForEach(ReportPeriod.allCases, id: \.self) { period in
                     Text(period.rawValue).tag(period)
                 }
             }
-            .labelsHidden()
             .pickerStyle(.segmented)
             .frame(width: 250)
 
@@ -326,18 +325,17 @@ struct ReportsView: View {
     }
 
     private var yAxisDomain: ClosedRange<Double> {
-        let entries = barEntries
-        switch selectedPeriod {
-        case .daily:
-            return 0...60
-        case .weekly, .monthly:
-            // Group by label, sum values, find peak
-            var labelTotals: [String: Double] = [:]
-            for entry in entries {
-                labelTotals[entry.label, default: 0] += entry.value
-            }
-            let peak = labelTotals.values.max() ?? 0
-            return 0...max(18, peak)
+        var labelTotals: [String: Double] = [:]
+        for entry in barEntries {
+            labelTotals[entry.label, default: 0] += entry.value
+        }
+        let peak = labelTotals.values.max() ?? 0
+        let rounded = max(5, ceil(peak / 5) * 5)
+        if selectedPeriod == .daily {
+            return 0...rounded
+        } else {
+            // +1 so the rounded multiple appears as a visible axis mark
+            return 0...min(rounded + 1, 25)
         }
     }
 
@@ -464,7 +462,7 @@ struct ReportsView: View {
         // Find the matching TagActivitySummary — label format is "TagName (N) · duration"
         let matching = summaries.first { tag in
             let duration = TimeFormatting.formatDuration(seconds: tag.totalSeconds)
-            return "\(tag.tagName) (\(tag.activityCount)) · \(duration)" == label
+            return "\(tag.tagName) · \(duration) (\(tag.activityCount))" == label
         }
         let palette = ThemeManager.chartColors(for: theme.activePalette)
 
@@ -620,7 +618,7 @@ struct ReportsView: View {
         // Flatten into entries for the stacked bar
         let entries: [TagBarEntry] = sorted.flatMap { tag in
             let duration = TimeFormatting.formatDuration(seconds: tag.totalSeconds)
-            let yLabel = "\(tag.tagName) (\(tag.activityCount)) · \(duration)"
+            let yLabel = "\(tag.tagName) · \(duration) (\(tag.activityCount))"
             return tag.activities.map { summary in
                 TagBarEntry(
                     tagLabel: yLabel,
@@ -804,9 +802,6 @@ struct ReportsView: View {
     private func loadInitialState() async {
         do {
             earliestDate = try await appState.service.earliestSessionDate()
-            if let weekStartPref = try await appState.service.getPreference(key: PreferenceKey.weekStartDay) {
-                weekStartDay = PreferenceKey.parseWeekStartDay(weekStartPref)
-            }
         } catch {
             print("Error loading initial state: \(error)")
         }
@@ -814,41 +809,50 @@ struct ReportsView: View {
 
     private func loadReport() async {
         do {
+            // Re-read week start preference on every load (store locally until data is ready)
+            var effectiveWeekStartDay = weekStartDay
+            if let weekStartPref = try await appState.service.getPreference(key: PreferenceKey.weekStartDay) {
+                effectiveWeekStartDay = PreferenceKey.parseWeekStartDay(weekStartPref)
+            }
             var calendar = Calendar.current
-            calendar.firstWeekday = weekStartDay
+            calendar.firstWeekday = effectiveWeekStartDay
 
             switch selectedPeriod {
             case .daily:
                 let summary = try await appState.service.dailySummary(date: selectedDate, includeArchived: !hideArchived)
+                let startOfDay = calendar.startOfDay(for: selectedDate)
+                let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+                let tags = try await appState.service.tagActivitySummary(from: startOfDay, to: endOfDay, includeArchived: !hideArchived)
+                // Batch all state updates together to avoid mid-render inconsistencies
+                weekStartDay = effectiveWeekStartDay
                 dailySummaryData = summary
                 activities = summary.activities
                 totalSeconds = summary.totalSeconds
                 sessionCount = summary.sessionCount
-
-                let startOfDay = calendar.startOfDay(for: selectedDate)
-                let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
-                tagActivitySummaries = try await appState.service.tagActivitySummary(from: startOfDay, to: endOfDay, includeArchived: !hideArchived)
+                tagActivitySummaries = tags
 
             case .weekly:
                 let summary = try await appState.service.weeklySummary(weekOf: selectedDate, includeArchived: !hideArchived)
+                let wStart = weekStart(for: selectedDate)
+                let weekEnd = calendar.date(byAdding: .day, value: 7, to: wStart)!
+                let tags = try await appState.service.tagActivitySummary(from: wStart, to: weekEnd, includeArchived: !hideArchived)
+                weekStartDay = effectiveWeekStartDay
                 weeklySummaryData = summary
                 activities = summary.activities
                 totalSeconds = summary.totalSeconds
                 sessionCount = summary.sessionCount
-
-                let wStart = weekStart(for: selectedDate)
-                let weekEnd = calendar.date(byAdding: .day, value: 7, to: wStart)!
-                tagActivitySummaries = try await appState.service.tagActivitySummary(from: wStart, to: weekEnd, includeArchived: !hideArchived)
+                tagActivitySummaries = tags
 
             case .monthly:
                 let summary = try await appState.service.monthlySummary(monthOf: selectedDate, includeArchived: !hideArchived)
+                let monthInterval = calendar.dateInterval(of: .month, for: selectedDate)!
+                let tags = try await appState.service.tagActivitySummary(from: monthInterval.start, to: monthInterval.end, includeArchived: !hideArchived)
+                weekStartDay = effectiveWeekStartDay
                 monthlySummaryData = summary
                 activities = summary.activities
                 totalSeconds = summary.totalSeconds
                 sessionCount = summary.sessionCount
-
-                let monthInterval = calendar.dateInterval(of: .month, for: selectedDate)!
-                tagActivitySummaries = try await appState.service.tagActivitySummary(from: monthInterval.start, to: monthInterval.end, includeArchived: !hideArchived)
+                tagActivitySummaries = tags
             }
         } catch {
             print("Error loading report: \(error)")
