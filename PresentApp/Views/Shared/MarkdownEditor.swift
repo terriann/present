@@ -66,6 +66,7 @@ struct MarkdownEditor: NSViewRepresentable {
             textStorage.beginEditing()
             textStorage.addAttribute(.font, value: baseFont, range: fullRange)
             textStorage.addAttribute(.foregroundColor, value: NSColor.textColor, range: fullRange)
+            textStorage.removeAttribute(.strikethroughStyle, range: fullRange)
 
             let lines = content as NSString
 
