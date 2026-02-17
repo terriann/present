@@ -678,6 +678,8 @@ struct NotificationSettingsTab: View {
 // MARK: - Palette Row
 
 private struct PaletteRow: View {
+    @Environment(ThemeManager.self) private var theme
+
     let palette: ColorPalette
     let isSelected: Bool
     let colors: [Color]
@@ -689,7 +691,7 @@ private struct PaletteRow: View {
         Button(action: onSelect) {
             HStack(spacing: 12) {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(isSelected ? colors.first ?? .accentColor : .secondary)
+                    .foregroundStyle(isSelected ? colors.first ?? theme.accent : .secondary)
                     .font(.title3)
 
                 VStack(alignment: .leading, spacing: 6) {
