@@ -6,12 +6,15 @@ struct SettingsView: View {
     @Environment(ThemeManager.self) private var theme
     @State private var selectedTab = SettingsTab.general
 
+    static let openCLITabNotification = Notification.Name("openCLITab")
+
     enum SettingsTab: String, CaseIterable {
-        case general, sessions, notifications, about
+        case general, cli, sessions, notifications, about
 
         var label: String {
             switch self {
             case .general: "General"
+            case .cli: "CLI"
             case .sessions: "Sessions"
             case .notifications: "Notifications"
             case .about: "About"
@@ -21,6 +24,7 @@ struct SettingsView: View {
         var icon: String {
             switch self {
             case .general: "gear"
+            case .cli: "terminal"
             case .sessions: "timer"
             case .notifications: "bell"
             case .about: "info.circle"
@@ -65,6 +69,8 @@ struct SettingsView: View {
                 switch selectedTab {
                 case .general:
                     GeneralSettingsTab()
+                case .cli:
+                    CLISettingsTab()
                 case .sessions:
                     SessionSettingsTab()
                 case .notifications:
@@ -75,7 +81,10 @@ struct SettingsView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(width: 450, height: 520)
+        .frame(width: 500, height: 520)
+        .onReceive(NotificationCenter.default.publisher(for: Self.openCLITabNotification)) { _ in
+            selectedTab = .cli
+        }
     }
 }
 
@@ -84,11 +93,6 @@ struct GeneralSettingsTab: View {
     @Environment(ThemeManager.self) private var theme
     @State private var baseUrl = ""
     @State private var weekStartDay = "sunday"
-
-    // MARK: - CLI Install State
-
-    @State private var cliInstallStatus: String?
-    @State private var showCLIResult = false
 
     // MARK: - Danger Zone State
 
@@ -152,21 +156,6 @@ struct GeneralSettingsTab: View {
                     }
 
                 Text("Activity external IDs will be appended to this URL to create clickable links.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Section("CLI") {
-                Button("Install CLI to /usr/local/bin") {
-                    installCLI()
-                }
-                .alert("CLI Install", isPresented: $showCLIResult) {
-                    Button("OK") {}
-                } message: {
-                    Text(cliInstallStatus ?? "")
-                }
-
-                Text("Copies the `present-cli` command-line tool so you can use it from Terminal.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -284,7 +273,7 @@ struct GeneralSettingsTab: View {
             SoundManager.shared.play(.dip)
             await appState.refreshAll()
         } catch {
-            print("Error deleting sessions: \(error)")
+            appState.showError(error, context: "Could not delete sessions")
         }
     }
 
@@ -294,7 +283,7 @@ struct GeneralSettingsTab: View {
             SoundManager.shared.play(.dip)
             await appState.refreshAll()
         } catch {
-            print("Error deleting activities: \(error)")
+            appState.showError(error, context: "Could not delete activities")
         }
     }
 
@@ -304,7 +293,7 @@ struct GeneralSettingsTab: View {
             SoundManager.shared.play(.dip)
             await appState.refreshAll()
         } catch {
-            print("Error deleting tags: \(error)")
+            appState.showError(error, context: "Could not delete tags")
         }
     }
 
@@ -314,7 +303,7 @@ struct GeneralSettingsTab: View {
             SoundManager.shared.play(.dip)
             await appState.refreshAll()
         } catch {
-            print("Error performing factory reset: \(error)")
+            appState.showError(error, context: "Could not perform factory reset")
         }
     }
 
@@ -331,6 +320,63 @@ struct GeneralSettingsTab: View {
             weekStartDay = try await appState.service.getPreference(key: PreferenceKey.weekStartDay) ?? "sunday"
         }
     }
+
+}
+
+struct CLISettingsTab: View {
+    @State private var cliInstallStatus: String?
+    @State private var showCLIResult = false
+
+    var body: some View {
+        Form {
+            Section("Install") {
+                Button("Install CLI to /usr/local/bin") {
+                    installCLI()
+                }
+                .alert("CLI Install", isPresented: $showCLIResult) {
+                    Button("OK") {}
+                } message: {
+                    Text(cliInstallStatus ?? "")
+                }
+
+                Text("Copies the `present-cli` command-line tool so you can use it from Terminal.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section("What you can do") {
+                VStack(alignment: .leading, spacing: 8) {
+                    cliFeatureRow(icon: "play.fill", text: "Start, pause, and stop sessions")
+                    cliFeatureRow(icon: "list.bullet", text: "Manage activities and tags")
+                    cliFeatureRow(icon: "chart.bar.fill", text: "Export reports as CSV or JSON")
+                    cliFeatureRow(icon: "magnifyingglass", text: "Search and filter session history")
+                    cliFeatureRow(icon: "gearshape.fill", text: "Automate workflows with scripts")
+                }
+            }
+
+            Section {
+                Text("Run `present-cli --help` for a full list of commands.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+        .padding()
+    }
+
+    // MARK: - Subviews
+
+    private func cliFeatureRow(icon: String, text: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .foregroundStyle(.secondary)
+                .frame(width: 16)
+            Text(text)
+                .font(.callout)
+        }
+    }
+
+    // MARK: - Helpers
 
     private func installCLI() {
         guard let bundlePath = Bundle.main.path(forAuxiliaryExecutable: "present-cli") else {

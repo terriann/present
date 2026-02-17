@@ -23,7 +23,7 @@ struct ThemedToggleStyle: ToggleStyle {
                         .offset(x: configuration.isOn ? 9 : -9)
                 )
                 .onTapGesture {
-                    withAnimation(.snappy(duration: 0.15)) {
+                    withAdaptiveAnimation(.snappy(duration: 0.15)) {
                         configuration.isOn.toggle()
                     }
                 }

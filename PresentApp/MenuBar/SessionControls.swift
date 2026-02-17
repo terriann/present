@@ -63,10 +63,10 @@ struct SessionControls: View {
                 }
             }
         }
-        .animation(.easeOut(duration: 2), value: showCancelButton)
+        .adaptiveAnimation(.easeOut(duration: 2), reduced: .linear(duration: 0.6), value: showCancelButton)
         .onChange(of: appState.timerElapsedSeconds) { _, newValue in
             if newValue > 10 && showCancelButton {
-                withAnimation(.easeOut(duration: 2)) {
+                withAdaptiveAnimation(.easeOut(duration: 2), reduced: .linear(duration: 0.6)) {
                     showCancelButton = false
                 }
             }

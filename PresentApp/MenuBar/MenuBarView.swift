@@ -109,7 +109,7 @@ struct MenuBarView: View {
                     ForEach(menuBarSessionTypes, id: \.self) { type in
                         let isSelected = selectedSessionType == type
                         Button {
-                            withAnimation(.easeInOut(duration: 0.15)) {
+                            withAdaptiveAnimation(.easeInOut(duration: 0.15)) {
                                 selectedSessionType = type
                             }
                         } label: {

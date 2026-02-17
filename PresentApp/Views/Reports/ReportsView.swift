@@ -20,6 +20,11 @@ struct ReportsView: View {
     @State private var earliestDate: Date?
     @State private var weekStartDay: Int = 1 // Calendar.firstWeekday: 1=Sunday, 2=Monday
 
+    // CLI promo card
+    @State private var currentCommandIndex = 0
+    @Environment(\.openSettings) private var openSettings
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     // Hover state
     @State private var hoveredBarLabel: String?
     @State private var barHoverLocation: CGPoint = .zero
@@ -48,12 +53,7 @@ struct ReportsView: View {
                     }
                 }
 
-                HStack {
-                    Spacer()
-                    Text("Use present-cli report export for CSV export")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                cliPromoCard
             }
             .padding(20)
         }
@@ -695,6 +695,77 @@ struct ReportsView: View {
         }
     }
 
+    // MARK: - CLI Promo Card
+
+    private static let cliCommands: [(command: String, output: String)] = [
+        ("$ present-cli session start \"Deep Work\"", "✓ Session started (Focus: 25m)"),
+        ("$ present-cli report export --period weekly", "✓ Exported to weekly-report.csv"),
+        ("$ present-cli activity list", "  Reading · Writing · Deep Work"),
+        ("$ present-cli session stop", "✓ Session saved — 1h 23m"),
+    ]
+
+    private var cliPromoCard: some View {
+        let pair = Self.cliCommands[currentCommandIndex]
+
+        return GroupBox {
+            VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "terminal")
+                            .foregroundStyle(.secondary)
+                        Text("Power up with ")
+                            .foregroundStyle(.primary)
+                        + Text("present-cli")
+                            .font(.system(.body, design: .monospaced))
+                            .foregroundStyle(.primary)
+                    }
+                    .font(.headline)
+
+                    Text("Export reports, manage sessions, and automate your workflow from the terminal.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                HStack(spacing: 16) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(pair.command)
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(.green)
+                        Text(pair.output)
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(.green.opacity(0.7))
+                    }
+                    .id(currentCommandIndex)
+                    .contentTransition(.opacity)
+                    .adaptiveAnimation(.easeInOut(duration: 0.4), reduced: .linear(duration: 0.25), value: currentCommandIndex)
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color.black.opacity(0.85))
+                    )
+
+                    Button {
+                        openSettings()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            NotificationCenter.default.post(name: SettingsView.openCLITabNotification, object: nil)
+                        }
+                    } label: {
+                        Text("Install CLI")
+                            .fontWeight(.medium)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(theme.accent)
+                }
+            }
+            .padding(4)
+        }
+        .onReceive(Timer.publish(every: 3, on: .main, in: .common).autoconnect()) { _ in
+            guard !reduceMotion else { return }
+            currentCommandIndex = (currentCommandIndex + 1) % Self.cliCommands.count
+        }
+    }
+
     // MARK: - Helpers
 
     /// Calculates tooltip center position near the cursor, flipping sides and clamping to stay
@@ -803,7 +874,7 @@ struct ReportsView: View {
         do {
             earliestDate = try await appState.service.earliestSessionDate()
         } catch {
-            print("Error loading initial state: \(error)")
+            appState.showError(error, context: "Could not load report data")
         }
     }
 
@@ -855,7 +926,7 @@ struct ReportsView: View {
                 tagActivitySummaries = tags
             }
         } catch {
-            print("Error loading report: \(error)")
+            appState.showError(error, context: "Could not load report")
         }
     }
 }

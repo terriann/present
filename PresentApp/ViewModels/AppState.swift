@@ -3,6 +3,12 @@ import PresentCore
 import GRDB
 import Combine
 
+struct AppError: Identifiable {
+    let id = UUID()
+    let title: String
+    let message: String
+}
+
 @MainActor @Observable
 final class AppState {
     // MARK: - Published State
@@ -35,6 +41,10 @@ final class AppState {
     var showBreakSuggestion = false
     var suggestedBreakMinutes: Int = 5
     var isLongBreak = false
+
+    // MARK: - Error Feedback
+
+    var presentedError: AppError?
 
     // MARK: - Navigation
 
@@ -178,7 +188,7 @@ final class AppState {
             SoundManager.shared.play(.blow)
             await refreshAll()
         } catch {
-            print("Error starting session: \(error)")
+            showError(error, context: "Could not start session")
         }
     }
 
@@ -188,7 +198,7 @@ final class AppState {
             currentSession = session
             stopTimer(resetElapsed: false)
         } catch {
-            print("Error pausing session: \(error)")
+            showError(error, context: "Could not pause session")
         }
     }
 
@@ -199,7 +209,7 @@ final class AppState {
             startTimer()
             SoundManager.shared.play(.blow)
         } catch {
-            print("Error resuming session: \(error)")
+            showError(error, context: "Could not resume session")
         }
     }
 
@@ -224,7 +234,7 @@ final class AppState {
 
             await refreshAll()
         } catch {
-            print("Error stopping session: \(error)")
+            showError(error, context: "Could not stop session")
         }
     }
 
@@ -237,7 +247,7 @@ final class AppState {
             SoundManager.shared.play(.dip)
             await refreshAll()
         } catch {
-            print("Error cancelling session: \(error)")
+            showError(error, context: "Could not cancel session")
         }
     }
 
@@ -384,6 +394,16 @@ final class AppState {
             }
         }
         try? ipcServer?.start()
+    }
+
+    // MARK: - Error Feedback
+
+    func showError(_ error: Error, context: String? = nil) {
+        let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        presentedError = AppError(
+            title: context ?? "Something went wrong",
+            message: message
+        )
     }
 
     // MARK: - Dock Icon

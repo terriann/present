@@ -71,7 +71,7 @@ struct LogView: View {
                 includeArchived: true
             )
         } catch {
-            print("Error loading sessions: \(error)")
+            appState.showError(error, context: "Could not load sessions")
         }
     }
 }

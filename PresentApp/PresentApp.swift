@@ -16,6 +16,7 @@ struct PresentApp: App {
                 .environment(appState)
                 .environment(themeManager)
                 .tint(themeManager.accent)
+                .modifier(ErrorAlertModifier(appState: appState))
         } label: {
             MenuBarLabelView()
                 .environment(appState)
@@ -27,6 +28,7 @@ struct PresentApp: App {
                 .environment(appState)
                 .environment(themeManager)
                 .tint(themeManager.accent)
+                .modifier(ErrorAlertModifier(appState: appState))
                 .onAppear {
                     appDelegate.appState = appState
                     appState.showDockIcon(true)
@@ -40,6 +42,7 @@ struct PresentApp: App {
                 .environment(appState)
                 .environment(themeManager)
                 .tint(themeManager.accent)
+                .modifier(ErrorAlertModifier(appState: appState))
         }
     }
 
@@ -57,6 +60,26 @@ struct PresentApp: App {
         let manager = StatusItemMenuManager(appState: appState)
         appDelegate.statusItemMenuManager = manager
         manager.start()
+    }
+}
+
+// MARK: - Error Alert Modifier
+
+private struct ErrorAlertModifier: ViewModifier {
+    @Bindable var appState: AppState
+
+    func body(content: Content) -> some View {
+        content.alert(
+            appState.presentedError?.title ?? "Error",
+            isPresented: Binding(
+                get: { appState.presentedError != nil },
+                set: { if !$0 { appState.presentedError = nil } }
+            )
+        ) {
+            Button("OK") { }
+        } message: {
+            Text(appState.presentedError?.message ?? "")
+        }
     }
 }
 

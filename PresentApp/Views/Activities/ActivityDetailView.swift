@@ -77,7 +77,7 @@ struct ActivityDetailView: View {
                         _ = try await appState.service.archiveActivity(id: activity.id!)
                         await reload()
                     } catch {
-                        print("Error archiving: \(error)")
+                        appState.showError(error, context: "Could not archive activity")
                     }
                 }
             }
@@ -87,7 +87,7 @@ struct ActivityDetailView: View {
                         try await appState.service.deleteActivity(id: activity.id!)
                         await appState.refreshAll()
                     } catch {
-                        print("Error deleting: \(error)")
+                        appState.showError(error, context: "Could not delete activity")
                     }
                 }
             }
@@ -103,7 +103,7 @@ struct ActivityDetailView: View {
                         try await appState.service.deleteActivity(id: activity.id!)
                         await appState.refreshAll()
                     } catch {
-                        print("Error deleting: \(error)")
+                        appState.showError(error, context: "Could not delete activity")
                     }
                 }
             }
@@ -343,7 +343,7 @@ struct ActivityDetailView: View {
             await loadTags()
             await appState.refreshAll()
         } catch {
-            print("Error reloading activity: \(error)")
+            appState.showError(error, context: "Could not reload activity")
         }
     }
 
@@ -359,7 +359,7 @@ struct ActivityDetailView: View {
             // Actually fetch assigned tags properly
             tags = try await loadAssignedTags()
         } catch {
-            print("Error loading tags: \(error)")
+            appState.showError(error, context: "Could not load tags")
         }
     }
 
@@ -376,7 +376,7 @@ struct ActivityDetailView: View {
             )
             activity.notes = notes.isEmpty ? nil : notes
         } catch {
-            print("Error saving notes: \(error)")
+            appState.showError(error, context: "Could not save notes")
         }
     }
 
@@ -385,7 +385,7 @@ struct ActivityDetailView: View {
             try await appState.service.tagActivity(activityId: activity.id!, tagId: tag.id!)
             await loadTags()
         } catch {
-            print("Error adding tag: \(error)")
+            appState.showError(error, context: "Could not add tag")
         }
     }
 
@@ -394,7 +394,7 @@ struct ActivityDetailView: View {
             try await appState.service.untagActivity(activityId: activity.id!, tagId: tag.id!)
             await loadTags()
         } catch {
-            print("Error removing tag: \(error)")
+            appState.showError(error, context: "Could not remove tag")
         }
     }
 
@@ -408,7 +408,7 @@ struct ActivityDetailView: View {
                 await reload()
             }
         } catch {
-            print("Error archiving: \(error)")
+            appState.showError(error, context: "Could not archive activity")
         }
     }
 
@@ -417,7 +417,7 @@ struct ActivityDetailView: View {
             _ = try await appState.service.unarchiveActivity(id: activity.id!)
             await reload()
         } catch {
-            print("Error unarchiving: \(error)")
+            appState.showError(error, context: "Could not unarchive activity")
         }
     }
 }
@@ -461,7 +461,7 @@ struct TagPicker: View {
                             onAdd(tag)
                             await appState.refreshAll()
                         } catch {
-                            print("Error creating tag: \(error)")
+                            appState.showError(error, context: "Could not create tag")
                         }
                     }
                 }
