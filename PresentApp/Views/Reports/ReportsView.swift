@@ -342,6 +342,13 @@ struct ReportsView: View {
         let domain = xAxisDomain
 
         return GroupBox {
+            Text("Time by \(selectedPeriod.timeLabel)")
+                .font(.largeTitle.bold())
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 12)
+                .padding(.top, 12)
+                .padding(.bottom, 12)
+
             Chart(entries, id: \.id) { entry in
                 BarMark(
                     x: .value(selectedPeriod.timeLabel, entry.label),
@@ -398,11 +405,9 @@ struct ReportsView: View {
                     }
                 }
             }
+            .chartLegend(position: .bottom, spacing: 12)
             .frame(height: 250)
-            .padding(4)
-        } label: {
-            Text("Time by \(selectedPeriod.timeLabel)")
-                .font(.subheadline.weight(.semibold))
+            .padding(12)
         }
     }
 
@@ -464,6 +469,13 @@ struct ReportsView: View {
 
     private var activityPieChartCard: some View {
         GroupBox {
+            Text("Activity Distribution")
+                .font(.largeTitle.bold())
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 12)
+                .padding(.top, 12)
+                .padding(.bottom, 12)
+
             Chart(activities, id: \.activity.id) { summary in
                 SectorMark(
                     angle: .value("Time", summary.totalSeconds),
@@ -497,10 +509,7 @@ struct ReportsView: View {
                 }
             }
             .frame(height: 250)
-            .padding(4)
-        } label: {
-            Text("Activity Distribution")
-                .font(.subheadline.weight(.semibold))
+            .padding(12)
         }
     }
 
@@ -513,6 +522,13 @@ struct ReportsView: View {
         let barHeight: CGFloat = max(120, CGFloat(sorted.count) * 36 + 40)
 
         return GroupBox {
+            Text("Tag Distribution")
+                .font(.largeTitle.bold())
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 12)
+                .padding(.top, 12)
+                .padding(.bottom, 12)
+
             Chart(sorted, id: \.tagName) { summary in
                 BarMark(
                     x: .value("Hours", Double(summary.totalSeconds) / 3600.0),
@@ -538,10 +554,7 @@ struct ReportsView: View {
                 }
             }
             .frame(height: barHeight)
-            .padding(4)
-        } label: {
-            Text("Tag Distribution")
-                .font(.subheadline.weight(.semibold))
+            .padding(12)
         }
     }
 
