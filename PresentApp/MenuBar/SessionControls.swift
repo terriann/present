@@ -4,6 +4,7 @@ import PresentCore
 struct SessionControls: View {
     @Environment(AppState.self) private var appState
     @Environment(ThemeManager.self) private var theme
+    @State private var showCancelButton = true
 
     var body: some View {
         HStack(spacing: 16) {
@@ -46,7 +47,7 @@ struct SessionControls: View {
                 .accessibilityLabel("Stop session")
                 .help("Stop session")
 
-                if appState.timerElapsedSeconds <= 10 {
+                if showCancelButton {
                     Button {
                         Task { await appState.cancelSession() }
                     } label: {
@@ -57,8 +58,21 @@ struct SessionControls: View {
                     .buttonStyle(.plain)
                     .accessibilityLabel("Discard session")
                     .help("Discard session")
+                    .allowsHitTesting(appState.timerElapsedSeconds <= 10)
+                    .transition(.opacity)
                 }
             }
+        }
+        .animation(.easeOut(duration: 2), value: showCancelButton)
+        .onChange(of: appState.timerElapsedSeconds) { _, newValue in
+            if newValue > 10 && showCancelButton {
+                withAnimation(.easeOut(duration: 2)) {
+                    showCancelButton = false
+                }
+            }
+        }
+        .onChange(of: appState.currentSession?.id) { _, _ in
+            showCancelButton = true
         }
     }
 }
