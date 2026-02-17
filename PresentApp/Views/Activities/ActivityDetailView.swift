@@ -28,6 +28,7 @@ struct ActivityDetailView: View {
                 linksSection
                 notesSection
                 tagsSection
+                activityFooter
             }
             .padding(20)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -111,35 +112,6 @@ struct ActivityDetailView: View {
             }
 
             Spacer()
-
-            HStack(spacing: 8) {
-                if !activity.isArchived {
-                    Button {
-                        Task { await handleArchive() }
-                    } label: {
-                        Label("Archive", systemImage: "archivebox")
-                    }
-                    .buttonStyle(.bordered)
-                    .accessibilityLabel("Archive activity")
-                } else {
-                    Button {
-                        Task { await handleUnarchive() }
-                    } label: {
-                        Label("Unarchive", systemImage: "arrow.uturn.backward")
-                    }
-                    .buttonStyle(.bordered)
-                    .accessibilityLabel("Unarchive activity")
-
-                    Button(role: .destructive) {
-                        showingDeleteConfirm = true
-                    } label: {
-                        Label("Delete", systemImage: "trash")
-                    }
-                    .buttonStyle(.bordered)
-                    .accessibilityLabel("Delete activity")
-                }
-            }
-            .labelStyle(.iconOnly)
         }
     }
 
@@ -149,10 +121,6 @@ struct ActivityDetailView: View {
         Group {
             if !activity.isArchived {
                 HStack {
-                    Text("Created \(TimeFormatting.formatDate(activity.createdAt))")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
                     Spacer()
 
                     VStack(alignment: .trailing, spacing: 10) {
@@ -236,10 +204,6 @@ struct ActivityDetailView: View {
                         .disabled(appState.isSessionActive)
                     }
                 }
-            } else {
-                Text("Created \(TimeFormatting.formatDate(activity.createdAt))")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
         }
     }
@@ -406,6 +370,53 @@ struct ActivityDetailView: View {
         } label: {
             Label("Tags", systemImage: "tag")
         }
+    }
+
+    // MARK: - Footer
+
+    private var activityFooter: some View {
+        HStack(alignment: .bottom) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Created \(TimeFormatting.formatRelativeWithTimestamp(activity.createdAt))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text("Updated \(TimeFormatting.formatRelativeWithTimestamp(activity.updatedAt))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            HStack(spacing: 8) {
+                if !activity.isArchived {
+                    Button {
+                        Task { await handleArchive() }
+                    } label: {
+                        Label("Archive", systemImage: "archivebox")
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(theme.warning)
+                    .accessibilityLabel("Archive activity")
+                } else {
+                    Button {
+                        Task { await handleUnarchive() }
+                    } label: {
+                        Label("Unarchive", systemImage: "arrow.uturn.backward")
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityLabel("Unarchive activity")
+
+                    Button(role: .destructive) {
+                        showingDeleteConfirm = true
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityLabel("Delete activity")
+                }
+            }
+        }
+        .padding(.top, 12)
     }
 
     // MARK: - Actions

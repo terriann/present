@@ -48,4 +48,17 @@ public enum TimeFormatting {
         formatter.timeStyle = .short
         return formatter.string(from: date)
     }
+
+    /// Format a date as relative time + full timestamp (e.g., "2 days ago (2026-02-14 15:30:45)")
+    public static func formatRelativeWithTimestamp(_ date: Date) -> String {
+        let relative = RelativeDateTimeFormatter()
+        relative.unitsStyle = .full
+        let relativeString = relative.localizedString(for: date, relativeTo: Date())
+
+        let absolute = DateFormatter()
+        absolute.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        let absoluteString = absolute.string(from: date)
+
+        return "\(relativeString) (\(absoluteString))"
+    }
 }
