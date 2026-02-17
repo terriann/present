@@ -83,7 +83,7 @@ struct ReportsView: View {
                 }
             }
             .pickerStyle(.segmented)
-            .frame(width: 250)
+            .fixedSize()
 
             Spacer()
 
