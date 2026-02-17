@@ -70,6 +70,7 @@ struct ActivityDetailView: View {
             ActivityFormSheet(mode: .edit(activity))
         }
         .alert("Archive Activity?", isPresented: $showingArchiveConfirm) {
+            Button("Cancel", role: .cancel) {}
             Button("Archive") {
                 Task {
                     do {
@@ -90,7 +91,6 @@ struct ActivityDetailView: View {
                     }
                 }
             }
-            Button("Cancel", role: .cancel) {}
         } message: {
             if case .promptDelete(let totalSeconds) = archiveResult {
                 Text("This activity has less than 10 minutes of tracked time (\(TimeFormatting.formatDuration(seconds: totalSeconds))). Would you like to delete it instead?")
@@ -161,7 +161,7 @@ struct ActivityDetailView: View {
                         ForEach(SessionType.allCases, id: \.self) { type in
                             let isSelected = selectedSessionType == type
                             Button {
-                                withAnimation(.easeInOut(duration: 0.15)) {
+                                withAdaptiveAnimation(.easeInOut(duration: 0.15)) {
                                     selectedSessionType = type
                                 }
                             } label: {
