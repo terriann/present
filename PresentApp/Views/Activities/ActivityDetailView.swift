@@ -133,7 +133,7 @@ struct ActivityDetailView: View {
                                     }
                                 } label: {
                                     Text(SessionTypeConfig.config(for: type).displayName)
-                                        .font(.caption.weight(isSelected ? .semibold : .regular))
+                                        .font(.callout.weight(isSelected ? .semibold : .regular))
                                         .padding(.horizontal, 10)
                                         .padding(.vertical, 5)
                                         .background(isSelected ? theme.accent.opacity(0.15) : Color.clear, in: Capsule())
@@ -151,7 +151,7 @@ struct ActivityDetailView: View {
                                         selectedRhythmOption = option
                                     } label: {
                                         Text("\(option.focusMinutes) min (\(option.breakMinutes)m)")
-                                            .font(.caption2.weight(isSelected ? .semibold : .regular))
+                                            .font(.caption.weight(isSelected ? .semibold : .regular))
                                             .padding(.horizontal, 8)
                                             .padding(.vertical, 3)
                                             .background(isSelected ? theme.accent.opacity(0.12) : Color.secondary.opacity(0.08), in: Capsule())
@@ -163,14 +163,14 @@ struct ActivityDetailView: View {
                         } else if selectedSessionType == .timebound {
                             HStack(spacing: 4) {
                                 Text("Duration:")
-                                    .font(.caption)
+                                    .font(.callout)
                                     .foregroundStyle(.secondary)
                                 TextField("", value: $timeboundMinutes, format: .number)
                                     .textFieldStyle(.roundedBorder)
                                     .frame(width: 48)
-                                    .font(.caption)
+                                    .font(.callout)
                                 Text("min")
-                                    .font(.caption)
+                                    .font(.callout)
                                     .foregroundStyle(.secondary)
                             }
                         }
@@ -219,7 +219,7 @@ struct ActivityDetailView: View {
                         if !activity.isArchived || activity.externalId != nil {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("External ID")
-                                    .font(.caption)
+                                    .font(.subheadline)
                                     .foregroundStyle(.secondary)
 
                                 if let externalId = activity.externalId, !externalId.isEmpty,
@@ -254,7 +254,7 @@ struct ActivityDetailView: View {
                         if !activity.isArchived || activity.link != nil {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Link")
-                                    .font(.caption)
+                                    .font(.subheadline)
                                     .foregroundStyle(.secondary)
 
                                 if let link = activity.link, !link.isEmpty,
@@ -319,7 +319,7 @@ struct ActivityDetailView: View {
                 Label("Notes", systemImage: "doc.text")
                 Spacer()
                 Text("Markdown")
-                    .font(.caption)
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
         }
@@ -332,21 +332,21 @@ struct ActivityDetailView: View {
             VStack(alignment: .leading, spacing: 8) {
                 if tags.isEmpty {
                     Text("No tags assigned")
-                        .font(.caption)
+                        .font(.callout)
                         .foregroundStyle(.secondary)
                 } else {
                     FlowLayout(spacing: 6) {
                         ForEach(tags) { tag in
                             HStack(spacing: 4) {
                                 Text(tag.name)
-                                    .font(.caption)
+                                    .font(.callout)
 
                                 if !activity.isArchived {
                                     Button {
                                         Task { await removeTag(tag) }
                                     } label: {
                                         Image(systemName: "xmark")
-                                            .font(.caption2)
+                                            .font(.caption)
                                     }
                                     .buttonStyle(.plain)
                                 }
@@ -378,10 +378,10 @@ struct ActivityDetailView: View {
         HStack(alignment: .bottom) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Created \(TimeFormatting.formatRelativeWithTimestamp(activity.createdAt))")
-                    .font(.caption)
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
                 Text("Updated \(TimeFormatting.formatRelativeWithTimestamp(activity.updatedAt))")
-                    .font(.caption)
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
 

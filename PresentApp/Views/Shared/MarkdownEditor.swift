@@ -17,7 +17,7 @@ struct MarkdownEditor: NSViewRepresentable {
         textView.isAutomaticQuoteSubstitutionEnabled = false
         textView.isAutomaticDashSubstitutionEnabled = false
         textView.isAutomaticTextReplacementEnabled = false
-        textView.font = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
+        textView.font = NSFont.monospacedSystemFont(ofSize: 14, weight: .regular)
         textView.textColor = NSColor.textColor
         textView.backgroundColor = NSColor.textBackgroundColor
         textView.textContainerInset = NSSize(width: 8, height: 8)
@@ -62,7 +62,7 @@ struct MarkdownEditor: NSViewRepresentable {
             let content = textStorage.string
 
             // Reset to base style
-            let baseFont = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
+            let baseFont = NSFont.monospacedSystemFont(ofSize: 14, weight: .regular)
             textStorage.beginEditing()
             textStorage.addAttribute(.font, value: baseFont, range: fullRange)
             textStorage.addAttribute(.foregroundColor, value: NSColor.textColor, range: fullRange)
@@ -73,30 +73,30 @@ struct MarkdownEditor: NSViewRepresentable {
             // Heading patterns
             applyPattern(#"^#{1,3}\s+.*$"#, to: textStorage, in: lines,
                         attributes: [
-                            .font: NSFont.monospacedSystemFont(ofSize: 15, weight: .bold),
+                            .font: NSFont.monospacedSystemFont(ofSize: 17, weight: .bold),
                             .foregroundColor: NSColor.labelColor
                         ])
 
             // Bold **text** or __text__
             applyPattern(#"(\*\*|__)(.*?)\1"#, to: textStorage, in: lines,
-                        attributes: [.font: NSFont.monospacedSystemFont(ofSize: 13, weight: .bold)])
+                        attributes: [.font: NSFont.monospacedSystemFont(ofSize: 14, weight: .bold)])
 
             // Italic *text* or _text_ (not preceded by * or _)
             applyPattern(#"(?<![*_])([*_])(?![*_])(.*?)\1(?![*_])"#, to: textStorage, in: lines,
-                        attributes: [.font: NSFont.monospacedSystemFont(ofSize: 13, weight: .regular).withTraits(.italicFontMask)])
+                        attributes: [.font: NSFont.monospacedSystemFont(ofSize: 14, weight: .regular).withTraits(.italicFontMask)])
 
             // Inline code `text`
             applyPattern(#"`[^`]+`"#, to: textStorage, in: lines,
                         attributes: [
                             .foregroundColor: NSColor.systemPink,
-                            .font: NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+                            .font: NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
                         ])
 
             // Fenced code blocks ```
             applyPattern(#"```[\s\S]*?```"#, to: textStorage, in: lines,
                         attributes: [
                             .foregroundColor: NSColor.systemGreen,
-                            .font: NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+                            .font: NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
                         ])
 
             // Links [text](url)
