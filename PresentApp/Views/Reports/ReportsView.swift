@@ -24,6 +24,8 @@ struct ReportsView: View {
     @State private var hoveredBarLabel: String?
     @State private var barHoverLocation: CGPoint = .zero
     @State private var activityAngleSelection: Int?
+    @State private var hoveredActivityName: String?
+    @State private var legendHoveredActivity: String?
 
     var body: some View {
         ScrollView {
@@ -458,10 +460,6 @@ struct ReportsView: View {
 
     // MARK: - Activity Pie Chart
 
-    private var hoveredActivityName: String? {
-        findActivity(for: activityAngleSelection)
-    }
-
     private func findActivity(for value: Int?) -> String? {
         guard let value else { return nil }
         var cumulative = 0
@@ -494,29 +492,77 @@ struct ReportsView: View {
             }
             .chartForegroundStyleScale(domain: chartColorDomain, range: chartColorRange)
             .chartAngleSelection(value: $activityAngleSelection)
-            .chartLegend(position: .trailing, alignment: .center, spacing: 12)
-            .overlay {
-                if let name = hoveredActivityName,
-                   let summary = activities.first(where: { $0.activity.title == name }) {
-                    donutCenterTooltip {
-                        Text(summary.activity.title)
-                            .font(.caption.bold())
-                            .lineLimit(2)
-                            .multilineTextAlignment(.center)
-                        Text(TimeFormatting.formatDuration(seconds: summary.totalSeconds))
-                            .font(.caption.monospacedDigit())
-                        let pct = totalSeconds > 0 ? Double(summary.totalSeconds) / Double(totalSeconds) * 100 : 0
-                        Text(String(format: "%.1f%%", pct))
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                        Text("\(summary.sessionCount) sessions")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+            .onChange(of: activityAngleSelection) {
+                if legendHoveredActivity == nil {
+                    hoveredActivityName = findActivity(for: activityAngleSelection)
+                }
+            }
+            .chartLegend(.hidden)
+            .chartOverlay { proxy in
+                GeometryReader { geometry in
+                    let plotFrame = geometry[proxy.plotAreaFrame]
+                    if let name = hoveredActivityName,
+                       let summary = activities.first(where: { $0.activity.title == name }) {
+                        donutCenterTooltip {
+                            Text(summary.activity.title)
+                                .font(.caption.bold())
+                                .lineLimit(2)
+                                .multilineTextAlignment(.center)
+                            Text(TimeFormatting.formatDuration(seconds: summary.totalSeconds))
+                                .font(.caption.monospacedDigit())
+                            let pct = totalSeconds > 0 ? Double(summary.totalSeconds) / Double(totalSeconds) * 100 : 0
+                            Text(String(format: "%.1f%%", pct))
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                            Text("\(summary.sessionCount) sessions")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        .position(
+                            x: plotFrame.midX,
+                            y: plotFrame.midY
+                        )
                     }
                 }
+                .allowsHitTesting(false)
             }
             .frame(height: 250)
             .padding(12)
+
+            donutLegend
+                .padding(.horizontal, 12)
+                .padding(.bottom, 12)
+        }
+    }
+
+    private var donutLegend: some View {
+        let palette = ThemeManager.chartColors(for: theme.activePalette)
+        return FlowLayout(spacing: 8) {
+            ForEach(Array(activities.enumerated()), id: \.element.activity.id) { index, summary in
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(palette[index % palette.count])
+                        .frame(width: 8, height: 8)
+                    Text(summary.activity.title)
+                        .font(.caption)
+                        .lineLimit(1)
+                }
+                .padding(.vertical, 2)
+                .padding(.horizontal, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(hoveredActivityName == summary.activity.title ? Color.primary.opacity(0.08) : Color.clear)
+                )
+                .onHover { hovering in
+                    if hovering {
+                        legendHoveredActivity = summary.activity.title
+                        hoveredActivityName = summary.activity.title
+                    } else {
+                        legendHoveredActivity = nil
+                        hoveredActivityName = findActivity(for: activityAngleSelection)
+                    }
+                }
+            }
         }
     }
 
