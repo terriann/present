@@ -19,6 +19,7 @@ struct ReportsView: View {
     // Navigation state
     @State private var earliestDate: Date?
     @State private var weekStartDay: Int = 1 // Calendar.firstWeekday: 1=Sunday, 2=Monday
+    @State private var loadTask: Task<Void, Never>?
 
     // CLI promo card
     @State private var currentCommandIndex = 0
@@ -68,13 +69,13 @@ struct ReportsView: View {
             await loadReport()
         }
         .onChange(of: selectedPeriod) {
-            Task { await loadReport() }
+            reloadReport()
         }
         .onChange(of: selectedDate) {
-            Task { await loadReport() }
+            reloadReport()
         }
         .onChange(of: hideArchived) {
-            Task { await loadReport() }
+            reloadReport()
         }
     }
 
@@ -190,7 +191,7 @@ struct ReportsView: View {
         case .weekly:
             return weekStart(for: date)
         case .monthly:
-            return calendar.dateInterval(of: .month, for: date)!.start
+            return calendar.dateInterval(of: .month, for: date)?.start ?? calendar.startOfDay(for: date)
         }
     }
 
@@ -198,12 +199,12 @@ struct ReportsView: View {
         let calendar = Calendar.current
         switch selectedPeriod {
         case .daily:
-            return calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: date))!
+            return calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: date)) ?? date
         case .weekly:
             let start = weekStart(for: date)
-            return calendar.date(byAdding: .day, value: 7, to: start)!
+            return calendar.date(byAdding: .day, value: 7, to: start) ?? date
         case .monthly:
-            return calendar.dateInterval(of: .month, for: date)!.end
+            return calendar.dateInterval(of: .month, for: date)?.end ?? date
         }
     }
 
@@ -211,7 +212,7 @@ struct ReportsView: View {
     private func weekStart(for date: Date) -> Date {
         var calendar = Calendar.current
         calendar.firstWeekday = weekStartDay
-        return calendar.dateInterval(of: .weekOfYear, for: date)!.start
+        return calendar.dateInterval(of: .weekOfYear, for: date)?.start ?? calendar.startOfDay(for: date)
     }
 
     private var summaryBar: some View {
@@ -267,15 +268,15 @@ struct ReportsView: View {
         let formatter = DateFormatter()
         formatter.dateFormat = "EEE"
         let start = weekStart(for: selectedDate)
-        return (0..<7).map { offset in
-            let date = calendar.date(byAdding: .day, value: offset, to: start)!
+        return (0..<7).compactMap { offset in
+            guard let date = calendar.date(byAdding: .day, value: offset, to: start) else { return nil }
             return formatter.string(from: date)
         }
     }
 
     private var allDayNumberLabels: [String] {
         let calendar = Calendar.current
-        let range = calendar.range(of: .day, in: .month, for: selectedDate)!
+        guard let range = calendar.range(of: .day, in: .month, for: selectedDate) else { return [] }
         return range.map { String($0) }
     }
 
@@ -995,6 +996,22 @@ struct ReportsView: View {
 
     // MARK: - Data Loading
 
+    private func resetHoverState() {
+        hoveredBarLabel = nil
+        activityAngleSelection = nil
+        hoveredActivityName = nil
+        legendHoveredActivity = nil
+        hoveredTagLabel = nil
+        externalIdAngleSelection = nil
+        hoveredExternalSegment = nil
+    }
+
+    private func reloadReport() {
+        loadTask?.cancel()
+        resetHoverState()
+        loadTask = Task { await loadReport() }
+    }
+
     private func loadInitialState() async {
         do {
             earliestDate = try await appState.service.earliestSessionDate()
@@ -1010,6 +1027,10 @@ struct ReportsView: View {
             if let weekStartPref = try await appState.service.getPreference(key: PreferenceKey.weekStartDay) {
                 effectiveWeekStartDay = PreferenceKey.parseWeekStartDay(weekStartPref)
             }
+
+            // Bail out if this task was cancelled (user switched periods/dates)
+            try Task.checkCancellation()
+
             var calendar = Calendar.current
             calendar.firstWeekday = effectiveWeekStartDay
 
@@ -1017,8 +1038,9 @@ struct ReportsView: View {
             case .daily:
                 let summary = try await appState.service.dailySummary(date: selectedDate, includeArchived: !hideArchived)
                 let startOfDay = calendar.startOfDay(for: selectedDate)
-                let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+                let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? selectedDate
                 let tags = try await appState.service.tagActivitySummary(from: startOfDay, to: endOfDay, includeArchived: !hideArchived)
+                try Task.checkCancellation()
                 // Batch all state updates together to avoid mid-render inconsistencies
                 weekStartDay = effectiveWeekStartDay
                 dailySummaryData = summary
@@ -1030,8 +1052,9 @@ struct ReportsView: View {
             case .weekly:
                 let summary = try await appState.service.weeklySummary(weekOf: selectedDate, includeArchived: !hideArchived)
                 let wStart = weekStart(for: selectedDate)
-                let weekEnd = calendar.date(byAdding: .day, value: 7, to: wStart)!
+                let weekEnd = calendar.date(byAdding: .day, value: 7, to: wStart) ?? selectedDate
                 let tags = try await appState.service.tagActivitySummary(from: wStart, to: weekEnd, includeArchived: !hideArchived)
+                try Task.checkCancellation()
                 weekStartDay = effectiveWeekStartDay
                 weeklySummaryData = summary
                 activities = summary.activities
@@ -1041,8 +1064,9 @@ struct ReportsView: View {
 
             case .monthly:
                 let summary = try await appState.service.monthlySummary(monthOf: selectedDate, includeArchived: !hideArchived)
-                let monthInterval = calendar.dateInterval(of: .month, for: selectedDate)!
+                guard let monthInterval = calendar.dateInterval(of: .month, for: selectedDate) else { return }
                 let tags = try await appState.service.tagActivitySummary(from: monthInterval.start, to: monthInterval.end, includeArchived: !hideArchived)
+                try Task.checkCancellation()
                 weekStartDay = effectiveWeekStartDay
                 monthlySummaryData = summary
                 activities = summary.activities
@@ -1050,6 +1074,8 @@ struct ReportsView: View {
                 sessionCount = summary.sessionCount
                 tagActivitySummaries = tags
             }
+        } catch is CancellationError {
+            // Task was cancelled because user switched periods/dates — ignore
         } catch {
             appState.showError(error, context: "Could not load report")
         }
