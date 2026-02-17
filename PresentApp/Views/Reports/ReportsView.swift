@@ -73,18 +73,22 @@ struct ReportsView: View {
 
     private var controlsBar: some View {
         HStack {
-            Picker("Period", selection: $selectedPeriod) {
+            Picker("", selection: $selectedPeriod) {
                 ForEach(ReportPeriod.allCases, id: \.self) { period in
                     Text(period.rawValue).tag(period)
                 }
             }
+            .labelsHidden()
             .pickerStyle(.segmented)
             .frame(width: 250)
 
             Spacer()
 
-            Toggle("Include archived", isOn: $includeArchived)
-                .toggleStyle(ThemedToggleStyle(tintColor: theme.accent))
+            Toggle("Hide archived", isOn: Binding(
+                get: { !includeArchived },
+                set: { includeArchived = !$0 }
+            ))
+            .toggleStyle(ThemedToggleStyle(tintColor: theme.accent))
         }
     }
 
@@ -121,19 +125,19 @@ struct ReportsView: View {
         switch selectedPeriod {
         case .daily:
             let formatter = DateFormatter()
-            formatter.dateFormat = "EEEE, MMM d, yyyy"
+            formatter.dateStyle = .full
             return formatter.string(from: selectedDate)
         case .weekly:
             let weekStart = weekStart(for: selectedDate)
-            let weekEnd = calendar.date(byAdding: .day, value: 6, to: weekStart)!
+            let weekEnd = calendar.date(byAdding: .day, value: 6, to: weekStart) ?? weekStart
             let startFormatter = DateFormatter()
             let endFormatter = DateFormatter()
             if calendar.component(.year, from: weekStart) == calendar.component(.year, from: weekEnd) {
-                startFormatter.dateFormat = "MMM d"
-                endFormatter.dateFormat = "MMM d, yyyy"
+                startFormatter.dateFormat = "MMMM d"
+                endFormatter.dateFormat = "MMMM d, yyyy"
             } else {
-                startFormatter.dateFormat = "MMM d, yyyy"
-                endFormatter.dateFormat = "MMM d, yyyy"
+                startFormatter.dateFormat = "MMMM d, yyyy"
+                endFormatter.dateFormat = "MMMM d, yyyy"
             }
             return "\(startFormatter.string(from: weekStart)) – \(endFormatter.string(from: weekEnd))"
         case .monthly:
