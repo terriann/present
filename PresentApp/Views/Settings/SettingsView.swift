@@ -83,6 +83,7 @@ struct GeneralSettingsTab: View {
     @Environment(AppState.self) private var appState
     @Environment(ThemeManager.self) private var theme
     @State private var baseUrl = ""
+    @State private var weekStartDay = "sunday"
 
     // MARK: - CLI Install State
 
@@ -104,6 +105,22 @@ struct GeneralSettingsTab: View {
         @Bindable var theme = theme
 
         Form {
+            Section("Week Start") {
+                Picker("Start week on", selection: $weekStartDay) {
+                    Text("Sunday").tag("sunday")
+                    Text("Monday").tag("monday")
+                }
+                .onAppear { loadWeekStartDay() }
+                .onChange(of: weekStartDay) {
+                    Task {
+                        try? await appState.service.setPreference(
+                            key: PreferenceKey.weekStartDay,
+                            value: weekStartDay
+                        )
+                    }
+                }
+            }
+
             Section("Appearance") {
                 ForEach(ColorPalette.allCases, id: \.self) { palette in
                     PaletteRow(
@@ -306,6 +323,12 @@ struct GeneralSettingsTab: View {
     private func loadBaseUrl() {
         Task {
             baseUrl = try await appState.service.getPreference(key: PreferenceKey.externalIdBaseUrl) ?? ""
+        }
+    }
+
+    private func loadWeekStartDay() {
+        Task {
+            weekStartDay = try await appState.service.getPreference(key: PreferenceKey.weekStartDay) ?? "sunday"
         }
     }
 
