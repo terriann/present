@@ -8,15 +8,12 @@ struct ActivityListCommand: AsyncParsableCommand {
         abstract: "List activities."
     )
 
-    @Flag(name: .long, help: "Include archived activities.")
-    var includeArchived = false
-
     @OptionGroup var outputOptions: OutputOptions
 
     func run() async throws {
         try outputOptions.validateOptions()
         let service = try CLIServiceFactory.makeService()
-        let activities = try await service.listActivities(includeArchived: includeArchived)
+        let activities = try await service.listActivities(includeArchived: true)
         let activityIds = activities.compactMap(\.id)
         let tagsByActivity = try await service.tagsForActivities(activityIds: activityIds)
 

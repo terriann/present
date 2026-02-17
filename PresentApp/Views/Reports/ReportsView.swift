@@ -7,7 +7,7 @@ struct ReportsView: View {
     @Environment(ThemeManager.self) private var theme
     @State private var selectedPeriod: ReportPeriod = .daily
     @State private var selectedDate: Date = Date()
-    @State private var includeArchived = false
+    @State private var hideArchived = true
     @State private var activities: [ActivitySummary] = []
     @State private var totalSeconds: Int = 0
     @State private var sessionCount: Int = 0
@@ -64,7 +64,7 @@ struct ReportsView: View {
         .onChange(of: selectedDate) {
             Task { await loadReport() }
         }
-        .onChange(of: includeArchived) {
+        .onChange(of: hideArchived) {
             Task { await loadReport() }
         }
     }
@@ -84,10 +84,7 @@ struct ReportsView: View {
 
             Spacer()
 
-            Toggle("Hide archived", isOn: Binding(
-                get: { !includeArchived },
-                set: { includeArchived = !$0 }
-            ))
+            Toggle("Hide archived", isOn: $hideArchived)
             .toggleStyle(ThemedToggleStyle(tintColor: theme.accent))
         }
     }
@@ -645,7 +642,7 @@ struct ReportsView: View {
 
             switch selectedPeriod {
             case .daily:
-                let summary = try await appState.service.dailySummary(date: selectedDate, includeArchived: includeArchived)
+                let summary = try await appState.service.dailySummary(date: selectedDate, includeArchived: !hideArchived)
                 dailySummaryData = summary
                 activities = summary.activities
                 totalSeconds = summary.totalSeconds
@@ -653,10 +650,10 @@ struct ReportsView: View {
 
                 let startOfDay = calendar.startOfDay(for: selectedDate)
                 let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
-                tagSummaries = try await appState.service.tagSummary(from: startOfDay, to: endOfDay, includeArchived: includeArchived)
+                tagSummaries = try await appState.service.tagSummary(from: startOfDay, to: endOfDay, includeArchived: !hideArchived)
 
             case .weekly:
-                let summary = try await appState.service.weeklySummary(weekOf: selectedDate, includeArchived: includeArchived)
+                let summary = try await appState.service.weeklySummary(weekOf: selectedDate, includeArchived: !hideArchived)
                 weeklySummaryData = summary
                 activities = summary.activities
                 totalSeconds = summary.totalSeconds
@@ -664,17 +661,17 @@ struct ReportsView: View {
 
                 let wStart = weekStart(for: selectedDate)
                 let weekEnd = calendar.date(byAdding: .day, value: 7, to: wStart)!
-                tagSummaries = try await appState.service.tagSummary(from: wStart, to: weekEnd, includeArchived: includeArchived)
+                tagSummaries = try await appState.service.tagSummary(from: wStart, to: weekEnd, includeArchived: !hideArchived)
 
             case .monthly:
-                let summary = try await appState.service.monthlySummary(monthOf: selectedDate, includeArchived: includeArchived)
+                let summary = try await appState.service.monthlySummary(monthOf: selectedDate, includeArchived: !hideArchived)
                 monthlySummaryData = summary
                 activities = summary.activities
                 totalSeconds = summary.totalSeconds
                 sessionCount = summary.sessionCount
 
                 let monthInterval = calendar.dateInterval(of: .month, for: selectedDate)!
-                tagSummaries = try await appState.service.tagSummary(from: monthInterval.start, to: monthInterval.end, includeArchived: includeArchived)
+                tagSummaries = try await appState.service.tagSummary(from: monthInterval.start, to: monthInterval.end, includeArchived: !hideArchived)
             }
         } catch {
             print("Error loading report: \(error)")

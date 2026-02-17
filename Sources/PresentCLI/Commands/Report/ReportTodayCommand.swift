@@ -13,7 +13,7 @@ struct ReportTodayCommand: AsyncParsableCommand {
     func run() async throws {
         try outputOptions.validateOptions()
         let service = try CLIServiceFactory.makeService()
-        let summary = try await service.dailySummary(date: Date(), includeArchived: false)
+        let summary = try await service.dailySummary(date: Date(), includeArchived: true)
 
         switch outputOptions.format {
         case .json:

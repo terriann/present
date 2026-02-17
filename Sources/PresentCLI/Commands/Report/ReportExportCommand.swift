@@ -14,9 +14,6 @@ struct ReportExportCommand: AsyncParsableCommand {
     @Option(name: .long, help: "End date (YYYY-MM-DD, inclusive). Defaults to today.")
     var to: String?
 
-    @Flag(name: .long, help: "Include archived activities in the export.")
-    var includeArchived = false
-
     func run() async throws {
         let service = try CLIServiceFactory.makeService()
 
@@ -50,7 +47,7 @@ struct ReportExportCommand: AsyncParsableCommand {
             toDate = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: Date()))!
         }
 
-        let data = try await service.exportCSV(from: fromDate, to: toDate, includeArchived: includeArchived)
+        let data = try await service.exportCSV(from: fromDate, to: toDate, includeArchived: true)
         if let csv = String(data: data, encoding: .utf8) {
             print(csv, terminator: "")
         }

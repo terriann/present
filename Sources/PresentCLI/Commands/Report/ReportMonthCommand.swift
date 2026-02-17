@@ -13,7 +13,7 @@ struct ReportMonthCommand: AsyncParsableCommand {
     func run() async throws {
         try outputOptions.validateOptions()
         let service = try CLIServiceFactory.makeService()
-        let summary = try await service.monthlySummary(monthOf: Date(), includeArchived: false)
+        let summary = try await service.monthlySummary(monthOf: Date(), includeArchived: true)
 
         let monthFormatter = DateFormatter()
         monthFormatter.dateFormat = "MMMM yyyy"
