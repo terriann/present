@@ -33,6 +33,8 @@ struct ReportsView: View {
     @State private var legendHoveredActivity: String?
     @State private var hoveredTagLabel: String?
     @State private var tagHoverLocation: CGPoint = .zero
+    @State private var externalIdAngleSelection: Int?
+    @State private var hoveredExternalSegment: String?
 
     var body: some View {
         ScrollView {
@@ -50,6 +52,9 @@ struct ReportsView: View {
                             tagBarChartCard
                                 .frame(maxWidth: .infinity)
                         }
+                    }
+                    if !externalIdGroups.isEmpty {
+                        externalIdBreakdownCard
                     }
                 }
 
@@ -498,6 +503,126 @@ struct ReportsView: View {
                     }
                 }
             }
+        }
+    }
+
+    // MARK: - External ID Breakdown Chart
+
+    private var externalIdGroups: [(externalId: String, activities: [ActivitySummary], totalSeconds: Int)] {
+        var grouped: [String: [ActivitySummary]] = [:]
+        for summary in activities {
+            if let externalId = summary.activity.externalId {
+                grouped[externalId, default: []].append(summary)
+            }
+        }
+        return grouped.map { (externalId: $0.key, activities: $0.value, totalSeconds: $0.value.reduce(0) { $0 + $1.totalSeconds }) }
+            .sorted { $0.totalSeconds > $1.totalSeconds }
+    }
+
+    private var externalActivitiesSeconds: Int {
+        externalIdGroups.reduce(0) { $0 + $1.totalSeconds }
+    }
+
+    private func findExternalSegment(for value: Int?) -> String? {
+        guard let value else { return nil }
+        var cumulative = 0
+        for group in externalIdGroups {
+            cumulative += group.totalSeconds
+            if value <= cumulative {
+                return group.externalId
+            }
+        }
+        return nil
+    }
+
+    private var externalIdBreakdownCard: some View {
+        let groups = externalIdGroups
+        let combinedTotal = groups.reduce(0) { $0 + $1.totalSeconds }
+        let palette = ThemeManager.chartColors(for: theme.activePalette)
+
+        return GroupBox {
+            Text("External ID Breakdown")
+                .font(.largeTitle.bold())
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 12)
+                .padding(.top, 12)
+                .padding(.bottom, 12)
+
+            Chart(groups, id: \.externalId) { group in
+                SectorMark(
+                    angle: .value("Time", group.totalSeconds),
+                    innerRadius: .ratio(0.5),
+                    angularInset: 1
+                )
+                .foregroundStyle(by: .value("External ID", group.externalId))
+                .opacity(hoveredExternalSegment == nil || hoveredExternalSegment == group.externalId ? 1.0 : 0.4)
+            }
+            .chartForegroundStyleScale(
+                domain: groups.map(\.externalId),
+                range: groups.indices.map { palette[$0 % palette.count] }
+            )
+            .chartAngleSelection(value: $externalIdAngleSelection)
+            .onChange(of: externalIdAngleSelection) {
+                hoveredExternalSegment = findExternalSegment(for: externalIdAngleSelection)
+            }
+            .chartLegend(.hidden)
+            .chartOverlay { proxy in
+                GeometryReader { geometry in
+                    let plotFrame = geometry[proxy.plotAreaFrame]
+                    if let segmentId = hoveredExternalSegment,
+                       let group = groups.first(where: { $0.externalId == segmentId }) {
+                        donutCenterTooltip {
+                            Text(group.externalId)
+                                .font(.caption.bold())
+                                .lineLimit(2)
+                                .multilineTextAlignment(.center)
+                            Text(TimeFormatting.formatDuration(seconds: group.totalSeconds))
+                                .font(.caption.monospacedDigit())
+                            let pct = combinedTotal > 0 ? Double(group.totalSeconds) / Double(combinedTotal) * 100 : 0
+                            Text(String(format: "%.1f%%", pct))
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                            ForEach(group.activities, id: \.activity.id) { summary in
+                                Text(summary.activity.title)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                            }
+                        }
+                        .position(
+                            x: plotFrame.midX,
+                            y: plotFrame.midY
+                        )
+                    }
+                }
+                .allowsHitTesting(false)
+            }
+            .frame(height: 250)
+            .padding(12)
+
+            FlowLayout(spacing: 8) {
+                ForEach(Array(groups.enumerated()), id: \.element.externalId) { index, group in
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(palette[index % palette.count])
+                            .frame(width: 8, height: 8)
+                        Text(group.externalId)
+                            .font(.caption)
+                            .lineLimit(1)
+                    }
+                    .padding(.vertical, 2)
+                    .padding(.horizontal, 6)
+                    .background(
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(hoveredExternalSegment == group.externalId ? Color.primary.opacity(0.08) : Color.clear)
+                    )
+                    .onHover { hovering in
+                        hoveredExternalSegment = hovering ? group.externalId : findExternalSegment(for: externalIdAngleSelection)
+                    }
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.bottom, 12)
         }
     }
 
