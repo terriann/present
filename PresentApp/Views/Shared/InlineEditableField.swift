@@ -5,7 +5,9 @@ struct InlineEditableField: View {
     var placeholder: String = ""
     var font: Font = .body
     var isEditable: Bool = true
+    var startInEditMode: Bool = false
     var onSave: (String) -> Void
+    var onCancel: (() -> Void)?
 
     @State private var isEditing = false
     @State private var editText = ""
@@ -53,6 +55,11 @@ struct InlineEditableField: View {
             beginEditing()
         }
         .accessibilityHint(isEditable ? "Click to edit" : "")
+        .onAppear {
+            if startInEditMode && isEditable {
+                beginEditing()
+            }
+        }
     }
 
     // MARK: - Edit State
@@ -122,6 +129,8 @@ struct InlineEditableField: View {
         }
         if trimmed != value {
             onSave(trimmed)
+        } else {
+            onCancel?()
         }
     }
 
@@ -129,5 +138,6 @@ struct InlineEditableField: View {
         withAdaptiveAnimation(.easeInOut(duration: 0.15)) {
             isEditing = false
         }
+        onCancel?()
     }
 }

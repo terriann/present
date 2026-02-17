@@ -20,11 +20,13 @@ struct ActivityDetailView: View {
         _notes = State(initialValue: activity.notes ?? "")
     }
 
+    @State private var editingExternalId = false
+    @State private var editingLink = false
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                titleRow
-                sessionControls
+                headerRow
                 linksSection
                 notesSection
                 tagsSection
@@ -89,121 +91,118 @@ struct ActivityDetailView: View {
         }
     }
 
-    // MARK: - Title Row
+    // MARK: - Header Row
 
-    private var titleRow: some View {
-        HStack(alignment: .center) {
-            InlineEditableField(
-                value: activity.title,
-                placeholder: "Activity title",
-                font: .title.bold(),
-                isEditable: !activity.isArchived,
-                onSave: { newTitle in
-                    Task { await updateTitle(newTitle) }
+    private var headerRow: some View {
+        HStack(alignment: .top) {
+            // Left: title + badge
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    InlineEditableField(
+                        value: activity.title,
+                        placeholder: "Activity title",
+                        font: .title.bold(),
+                        isEditable: !activity.isArchived,
+                        onSave: { newTitle in
+                            Task { await updateTitle(newTitle) }
+                        }
+                    )
+
+                    if activity.isArchived {
+                        Text("Archived")
+                            .font(.caption)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(.secondary.opacity(0.2), in: Capsule())
+                    }
                 }
-            )
-
-            if activity.isArchived {
-                Text("Archived")
-                    .font(.caption)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(.secondary.opacity(0.2), in: Capsule())
             }
 
             Spacer()
-        }
-    }
 
-    // MARK: - Session Controls
-
-    private var sessionControls: some View {
-        Group {
+            // Right: session controls (fixed position, not affected by title editing)
             if !activity.isArchived {
-                HStack {
-                    Spacer()
+                VStack(alignment: .trailing, spacing: 10) {
+                    HStack(spacing: 4) {
+                        ForEach(SessionType.allCases, id: \.self) { type in
+                            let isSelected = selectedSessionType == type
+                            Button {
+                                withAdaptiveAnimation(.easeInOut(duration: 0.15)) {
+                                    selectedSessionType = type
+                                }
+                            } label: {
+                                Text(SessionTypeConfig.config(for: type).displayName)
+                                    .font(.callout.weight(isSelected ? .semibold : .regular))
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 5)
+                                    .background(isSelected ? theme.accent.opacity(0.15) : Color.clear, in: Capsule())
+                                    .foregroundStyle(isSelected ? theme.accent : .secondary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
 
-                    VStack(alignment: .trailing, spacing: 10) {
+                    if selectedSessionType == .rhythm {
                         HStack(spacing: 4) {
-                            ForEach(SessionType.allCases, id: \.self) { type in
-                                let isSelected = selectedSessionType == type
+                            ForEach(appState.rhythmDurationOptions, id: \.self) { option in
+                                let isSelected = selectedRhythmOption == option
                                 Button {
-                                    withAdaptiveAnimation(.easeInOut(duration: 0.15)) {
-                                        selectedSessionType = type
-                                    }
+                                    selectedRhythmOption = option
                                 } label: {
-                                    Text(SessionTypeConfig.config(for: type).displayName)
-                                        .font(.callout.weight(isSelected ? .semibold : .regular))
-                                        .padding(.horizontal, 10)
-                                        .padding(.vertical, 5)
-                                        .background(isSelected ? theme.accent.opacity(0.15) : Color.clear, in: Capsule())
+                                    Text("\(option.focusMinutes) min (\(option.breakMinutes)m)")
+                                        .font(.caption.weight(isSelected ? .semibold : .regular))
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 3)
+                                        .background(isSelected ? theme.accent.opacity(0.12) : Color.secondary.opacity(0.08), in: Capsule())
                                         .foregroundStyle(isSelected ? theme.accent : .secondary)
                                 }
                                 .buttonStyle(.plain)
                             }
                         }
-
-                        if selectedSessionType == .rhythm {
-                            HStack(spacing: 4) {
-                                ForEach(appState.rhythmDurationOptions, id: \.self) { option in
-                                    let isSelected = selectedRhythmOption == option
-                                    Button {
-                                        selectedRhythmOption = option
-                                    } label: {
-                                        Text("\(option.focusMinutes) min (\(option.breakMinutes)m)")
-                                            .font(.caption.weight(isSelected ? .semibold : .regular))
-                                            .padding(.horizontal, 8)
-                                            .padding(.vertical, 3)
-                                            .background(isSelected ? theme.accent.opacity(0.12) : Color.secondary.opacity(0.08), in: Capsule())
-                                            .foregroundStyle(isSelected ? theme.accent : .secondary)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                            }
-                        } else if selectedSessionType == .timebound {
-                            HStack(spacing: 4) {
-                                Text("Duration:")
-                                    .font(.callout)
-                                    .foregroundStyle(.secondary)
-                                TextField("", value: $timeboundMinutes, format: .number)
-                                    .textFieldStyle(.roundedBorder)
-                                    .frame(width: 48)
-                                    .font(.callout)
-                                Text("min")
-                                    .font(.callout)
-                                    .foregroundStyle(.secondary)
-                            }
+                    } else if selectedSessionType == .timebound {
+                        HStack(spacing: 4) {
+                            Text("Duration:")
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                            TextField("", value: $timeboundMinutes, format: .number)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 48)
+                                .font(.callout)
+                            Text("min")
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
                         }
-
-                        Button("Start Session") {
-                            Task {
-                                switch selectedSessionType {
-                                case .rhythm:
-                                    let option = selectedRhythmOption ?? appState.rhythmDurationOptions.first
-                                    await appState.startSession(
-                                        activityId: activity.id!,
-                                        type: .rhythm,
-                                        timerMinutes: option?.focusMinutes,
-                                        breakMinutes: option?.breakMinutes
-                                    )
-                                case .timebound:
-                                    await appState.startSession(
-                                        activityId: activity.id!,
-                                        type: .timebound,
-                                        timerMinutes: timeboundMinutes
-                                    )
-                                default:
-                                    await appState.startSession(
-                                        activityId: activity.id!,
-                                        type: selectedSessionType
-                                    )
-                                }
-                            }
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(appState.isSessionActive)
                     }
+
+                    Button("Start Session") {
+                        Task {
+                            switch selectedSessionType {
+                            case .rhythm:
+                                let option = selectedRhythmOption ?? appState.rhythmDurationOptions.first
+                                await appState.startSession(
+                                    activityId: activity.id!,
+                                    type: .rhythm,
+                                    timerMinutes: option?.focusMinutes,
+                                    breakMinutes: option?.breakMinutes
+                                )
+                            case .timebound:
+                                await appState.startSession(
+                                    activityId: activity.id!,
+                                    type: .timebound,
+                                    timerMinutes: timeboundMinutes
+                                )
+                            default:
+                                await appState.startSession(
+                                    activityId: activity.id!,
+                                    type: selectedSessionType
+                                )
+                            }
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(appState.isSessionActive)
                 }
+                .fixedSize(horizontal: true, vertical: false)
             }
         }
     }
@@ -222,17 +221,28 @@ struct ActivityDetailView: View {
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
 
-                                if let externalId = activity.externalId, !externalId.isEmpty,
-                                   let url = resolvedExternalURL(for: externalId) {
-                                    Link(destination: url) {
-                                        HStack(spacing: 4) {
-                                            Text(externalId)
-                                            Image(systemName: "arrow.up.right")
-                                                .font(.caption)
-                                        }
-                                        .font(.body)
-                                        .foregroundStyle(theme.accent)
-                                    }
+                                if editingExternalId {
+                                    InlineEditableField(
+                                        value: activity.externalId ?? "",
+                                        placeholder: "Add external ID",
+                                        font: .body,
+                                        isEditable: true,
+                                        startInEditMode: true,
+                                        onSave: { newValue in
+                                            editingExternalId = false
+                                            Task { await updateExternalId(newValue) }
+                                        },
+                                        onCancel: { editingExternalId = false }
+                                    )
+                                } else if let externalId = activity.externalId, !externalId.isEmpty,
+                                          let url = resolvedExternalURL(for: externalId) {
+                                    EditableLinkDisplay(
+                                        text: externalId,
+                                        url: url,
+                                        accentColor: theme.accent,
+                                        isEditable: !activity.isArchived,
+                                        onEdit: { editingExternalId = true }
+                                    )
                                 } else if !activity.isArchived {
                                     InlineEditableField(
                                         value: activity.externalId ?? "",
@@ -257,18 +267,28 @@ struct ActivityDetailView: View {
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
 
-                                if let link = activity.link, !link.isEmpty,
-                                   let url = URL(string: link) {
-                                    Link(destination: url) {
-                                        HStack(spacing: 4) {
-                                            Text(link)
-                                                .lineLimit(1)
-                                            Image(systemName: "arrow.up.right")
-                                                .font(.caption)
-                                        }
-                                        .font(.body)
-                                        .foregroundStyle(theme.accent)
-                                    }
+                                if editingLink {
+                                    InlineEditableField(
+                                        value: activity.link ?? "",
+                                        placeholder: "Add link URL",
+                                        font: .body,
+                                        isEditable: true,
+                                        startInEditMode: true,
+                                        onSave: { newValue in
+                                            editingLink = false
+                                            Task { await updateLink(newValue) }
+                                        },
+                                        onCancel: { editingLink = false }
+                                    )
+                                } else if let link = activity.link, !link.isEmpty,
+                                          let url = URL(string: link), url.scheme != nil, url.host != nil {
+                                    EditableLinkDisplay(
+                                        text: link,
+                                        url: url,
+                                        accentColor: theme.accent,
+                                        isEditable: !activity.isArchived,
+                                        onEdit: { editingLink = true }
+                                    )
                                 } else if !activity.isArchived {
                                     InlineEditableField(
                                         value: activity.link ?? "",
@@ -289,6 +309,10 @@ struct ActivityDetailView: View {
                     .padding(4)
                 } label: {
                     Label("Links", systemImage: "link")
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .containerRelativeFrame(.horizontal) { width, _ in
+                    width * 0.6
                 }
             }
         }
@@ -555,6 +579,51 @@ struct ActivityDetailView: View {
     private func resolvedExternalURL(for externalId: String) -> URL? {
         guard !baseUrl.isEmpty else { return nil }
         return URL(string: baseUrl + externalId)
+    }
+}
+
+// MARK: - Editable Link Display
+
+private struct EditableLinkDisplay: View {
+    let text: String
+    let url: URL
+    let accentColor: Color
+    var isEditable: Bool = true
+    var onEdit: () -> Void = {}
+
+    @State private var isHovering = false
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Link(destination: url) {
+                Text(text)
+                    .underline()
+                    .font(.body)
+                    .foregroundStyle(accentColor)
+                    .lineLimit(1)
+            }
+
+            Link(destination: url) {
+                Image(systemName: "arrow.up.right")
+                    .font(.caption)
+                    .foregroundStyle(accentColor)
+            }
+
+            if isEditable && isHovering {
+                Button {
+                    onEdit()
+                } label: {
+                    Image(systemName: "pencil")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Edit")
+            }
+        }
+        .onHover { hovering in
+            isHovering = hovering
+        }
     }
 }
 
