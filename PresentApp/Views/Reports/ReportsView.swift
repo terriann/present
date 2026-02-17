@@ -7,7 +7,7 @@ struct ReportsView: View {
     @Environment(ThemeManager.self) private var theme
     @State private var selectedPeriod: ReportPeriod = .daily
     @State private var selectedDate: Date = Date()
-    @State private var hideArchived = true
+    @State private var hideArchived = false
     @State private var activities: [ActivitySummary] = []
     @State private var totalSeconds: Int = 0
     @State private var sessionCount: Int = 0
