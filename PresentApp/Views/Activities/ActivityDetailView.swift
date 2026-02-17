@@ -18,10 +18,12 @@ struct ActivityDetailView: View {
     init(activity: Activity) {
         _activity = State(initialValue: activity)
         _notes = State(initialValue: activity.notes ?? "")
+        _editExternalId = State(initialValue: activity.externalId ?? "")
+        _editLink = State(initialValue: activity.link ?? "")
     }
 
-    @State private var editingExternalId = false
-    @State private var editingLink = false
+    @State private var editExternalId: String = ""
+    @State private var editLink: String = ""
 
     var body: some View {
         ScrollView {
@@ -209,6 +211,10 @@ struct ActivityDetailView: View {
 
     // MARK: - Links
 
+    private var hasLinkChanges: Bool {
+        editExternalId != (activity.externalId ?? "") || editLink != (activity.link ?? "")
+    }
+
     private var linksSection: some View {
         Group {
             if !activity.isArchived || activity.externalId != nil || activity.link != nil {
@@ -216,93 +222,98 @@ struct ActivityDetailView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         // External ID
                         if !activity.isArchived || activity.externalId != nil {
-                            VStack(alignment: .leading, spacing: 2) {
+                            VStack(alignment: .leading, spacing: 4) {
                                 Text("External ID")
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
 
-                                if editingExternalId {
-                                    InlineEditableField(
-                                        value: activity.externalId ?? "",
-                                        placeholder: "Add external ID",
-                                        font: .body,
-                                        isEditable: true,
-                                        startInEditMode: true,
-                                        onSave: { newValue in
-                                            editingExternalId = false
-                                            Task { await updateExternalId(newValue) }
-                                        },
-                                        onCancel: { editingExternalId = false }
-                                    )
-                                } else if let externalId = activity.externalId, !externalId.isEmpty,
-                                          let url = resolvedExternalURL(for: externalId) {
-                                    EditableLinkDisplay(
-                                        text: externalId,
-                                        url: url,
-                                        accentColor: theme.accent,
-                                        isEditable: !activity.isArchived,
-                                        onEdit: { editingExternalId = true }
-                                    )
-                                } else if !activity.isArchived {
-                                    InlineEditableField(
-                                        value: activity.externalId ?? "",
-                                        placeholder: "Add external ID",
-                                        font: .body,
-                                        isEditable: true,
-                                        onSave: { newValue in
-                                            Task { await updateExternalId(newValue) }
-                                        }
-                                    )
-                                } else if let externalId = activity.externalId, !externalId.isEmpty {
-                                    Text(externalId)
+                                if activity.isArchived {
+                                    Text(activity.externalId ?? "")
                                         .font(.body)
+                                } else {
+                                    HStack(spacing: 6) {
+                                        TextField("Add external ID", text: $editExternalId)
+                                            .textFieldStyle(.roundedBorder)
+                                            .font(.body)
+
+                                        if let url = resolvedExternalURL(for: editExternalId), !editExternalId.isEmpty {
+                                            Link(destination: url) {
+                                                Image(systemName: "arrow.up.right")
+                                                    .font(.body)
+                                                    .foregroundStyle(theme.accent)
+                                            }
+                                            .accessibilityLabel("Open external ID link")
+                                        }
+                                    }
                                 }
                             }
                         }
 
                         // Link
                         if !activity.isArchived || activity.link != nil {
-                            VStack(alignment: .leading, spacing: 2) {
+                            VStack(alignment: .leading, spacing: 4) {
                                 Text("Link")
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
 
-                                if editingLink {
-                                    InlineEditableField(
-                                        value: activity.link ?? "",
-                                        placeholder: "Add link URL",
-                                        font: .body,
-                                        isEditable: true,
-                                        startInEditMode: true,
-                                        onSave: { newValue in
-                                            editingLink = false
-                                            Task { await updateLink(newValue) }
-                                        },
-                                        onCancel: { editingLink = false }
-                                    )
-                                } else if let link = activity.link, !link.isEmpty,
-                                          let url = URL(string: link), url.scheme != nil, url.host != nil {
-                                    EditableLinkDisplay(
-                                        text: link,
-                                        url: url,
-                                        accentColor: theme.accent,
-                                        isEditable: !activity.isArchived,
-                                        onEdit: { editingLink = true }
-                                    )
-                                } else if !activity.isArchived {
-                                    InlineEditableField(
-                                        value: activity.link ?? "",
-                                        placeholder: "Add link URL",
-                                        font: .body,
-                                        isEditable: true,
-                                        onSave: { newValue in
-                                            Task { await updateLink(newValue) }
+                                if activity.isArchived {
+                                    if let link = activity.link, !link.isEmpty,
+                                       let url = URL(string: link) {
+                                        Link(destination: url) {
+                                            Text(link)
+                                                .underline()
+                                                .font(.body)
+                                                .foregroundStyle(theme.accent)
+                                                .lineLimit(1)
                                         }
-                                    )
-                                } else if let link = activity.link, !link.isEmpty {
-                                    Text(link)
-                                        .font(.body)
+                                    } else {
+                                        Text(activity.link ?? "")
+                                            .font(.body)
+                                    }
+                                } else {
+                                    HStack(spacing: 6) {
+                                        TextField("Add link URL", text: $editLink)
+                                            .textFieldStyle(.roundedBorder)
+                                            .font(.body)
+
+                                        if let url = URL(string: editLink), url.scheme != nil, url.host != nil, !editLink.isEmpty {
+                                            Link(destination: url) {
+                                                Image(systemName: "arrow.up.right")
+                                                    .font(.body)
+                                                    .foregroundStyle(theme.accent)
+                                            }
+                                            .accessibilityLabel("Open link")
+                                        }
+                                    }
                                 }
+                            }
+                        }
+
+                        // Save/Cancel when changes exist
+                        if !activity.isArchived && hasLinkChanges {
+                            HStack {
+                                Spacer()
+
+                                Button {
+                                    editExternalId = activity.externalId ?? ""
+                                    editLink = activity.link ?? ""
+                                } label: {
+                                    Image(systemName: "xmark")
+                                        .font(.caption.weight(.semibold))
+                                }
+                                .buttonStyle(.bordered)
+                                .tint(theme.alert)
+                                .accessibilityLabel("Cancel link changes")
+
+                                Button {
+                                    Task { await saveLinks() }
+                                } label: {
+                                    Image(systemName: "checkmark")
+                                        .font(.caption.weight(.semibold))
+                                }
+                                .buttonStyle(.bordered)
+                                .tint(theme.success)
+                                .accessibilityLabel("Save links")
                             }
                         }
                     }
@@ -469,6 +480,8 @@ struct ActivityDetailView: View {
         do {
             activity = try await appState.service.getActivity(id: activity.id!)
             notes = activity.notes ?? ""
+            editExternalId = activity.externalId ?? ""
+            editLink = activity.link ?? ""
             await loadTags()
             await appState.refreshAll()
         } catch {
@@ -510,25 +523,16 @@ struct ActivityDetailView: View {
         }
     }
 
-    private func updateExternalId(_ newValue: String) async {
+    private func saveLinks() async {
         do {
             activity = try await appState.service.updateActivity(
                 id: activity.id!,
-                UpdateActivityInput(externalId: newValue)
+                UpdateActivityInput(externalId: editExternalId, link: editLink)
             )
+            editExternalId = activity.externalId ?? ""
+            editLink = activity.link ?? ""
         } catch {
-            appState.showError(error, context: "Could not update external ID")
-        }
-    }
-
-    private func updateLink(_ newValue: String) async {
-        do {
-            activity = try await appState.service.updateActivity(
-                id: activity.id!,
-                UpdateActivityInput(link: newValue)
-            )
-        } catch {
-            appState.showError(error, context: "Could not update link")
+            appState.showError(error, context: "Could not update links")
         }
     }
 
@@ -590,51 +594,6 @@ struct ActivityDetailView: View {
     private func resolvedExternalURL(for externalId: String) -> URL? {
         guard !baseUrl.isEmpty else { return nil }
         return URL(string: baseUrl + externalId)
-    }
-}
-
-// MARK: - Editable Link Display
-
-private struct EditableLinkDisplay: View {
-    let text: String
-    let url: URL
-    let accentColor: Color
-    var isEditable: Bool = true
-    var onEdit: () -> Void = {}
-
-    @State private var isHovering = false
-
-    var body: some View {
-        HStack(spacing: 4) {
-            Link(destination: url) {
-                Text(text)
-                    .underline()
-                    .font(.body)
-                    .foregroundStyle(accentColor)
-                    .lineLimit(1)
-            }
-
-            Link(destination: url) {
-                Image(systemName: "arrow.up.right")
-                    .font(.caption)
-                    .foregroundStyle(accentColor)
-            }
-
-            if isEditable && isHovering {
-                Button {
-                    onEdit()
-                } label: {
-                    Image(systemName: "pencil")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Edit")
-            }
-        }
-        .onHover { hovering in
-            isHovering = hovering
-        }
     }
 }
 
