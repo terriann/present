@@ -109,6 +109,9 @@ CLI Commands ──────────────────────�
 - `.secondary` (system) is fine for non-semantic muted text — no theme wrapper needed.
 - To add a new palette: add a case to `ColorPalette`, add color definitions in `ThemeManager`'s computed properties.
 
+### Swift Safety
+- **Never force unwrap** (`!`) optionals. Use `if let`, `guard let`, `??` (nil coalescing), or `compactMap` instead. Force unwraps compile fine but crash at runtime when the value is `nil` — use safe alternatives that handle the nil case gracefully.
+
 ## Conventional Commits
 
 Use [Conventional Commits](https://www.conventionalcommits.org/) format: `type(scope): description`

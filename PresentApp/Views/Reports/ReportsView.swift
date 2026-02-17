@@ -416,9 +416,10 @@ struct ReportsView: View {
 
             ForEach(matching, id: \.id) { entry in
                 HStack(spacing: 6) {
-                    let index = activities.firstIndex(where: { $0.activity.title == entry.activity })
+                    let color = activities.firstIndex(where: { $0.activity.title == entry.activity })
+                        .map { palette[$0 % palette.count] } ?? .secondary
                     Circle()
-                        .fill(index != nil ? palette[index! % palette.count] : .secondary)
+                        .fill(color)
                         .frame(width: 8, height: 8)
                     Text(entry.activity)
                         .font(.caption)
@@ -507,6 +508,7 @@ struct ReportsView: View {
     private var tagBarChartCard: some View {
         let palette = ThemeManager.chartColors(for: theme.activePalette)
         let sorted = tagSummaries.sorted { $0.totalSeconds > $1.totalSeconds }
+        let colorMap = Dictionary(uniqueKeysWithValues: sorted.enumerated().map { ($1.tagName, palette[$0 % palette.count]) })
         let barHeight: CGFloat = max(120, CGFloat(sorted.count) * 36 + 40)
 
         return GroupBox {
@@ -515,7 +517,7 @@ struct ReportsView: View {
                     x: .value("Hours", Double(summary.totalSeconds) / 3600.0),
                     y: .value("Tag", summary.tagName)
                 )
-                .foregroundStyle(palette[sorted.firstIndex(where: { $0.tagName == summary.tagName })! % palette.count])
+                .foregroundStyle(colorMap[summary.tagName] ?? .secondary)
                 .annotation(position: .trailing, spacing: 6) {
                     Text(TimeFormatting.formatDuration(seconds: summary.totalSeconds))
                         .font(.caption.monospacedDigit())
