@@ -48,11 +48,11 @@ struct InlineEditableField: View {
                 NSCursor.pop()
             }
         }
-        .onTapGesture(count: 2) {
+        .onTapGesture {
             guard isEditable else { return }
             beginEditing()
         }
-        .accessibilityHint(isEditable ? "Double-click to edit" : "")
+        .accessibilityHint(isEditable ? "Click to edit" : "")
     }
 
     // MARK: - Edit State
