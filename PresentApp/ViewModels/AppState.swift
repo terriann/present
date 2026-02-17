@@ -27,7 +27,6 @@ final class AppState {
     // MARK: - Completed Timer Linger
 
     var completedTimerText: String?
-    var isCountdownCompletion: Bool = false
     var isCompletedTimerFading: Bool = false
     private var completedTimerLingerTask: Task<Void, Never>?
 
@@ -306,7 +305,7 @@ final class AppState {
     private func startCompletedTimerLinger(text: String, isCountdown: Bool) {
         clearCompletedTimerLinger()
         completedTimerText = text
-        isCountdownCompletion = isCountdown
+
         isCompletedTimerFading = false
 
         completedTimerLingerTask = Task {
@@ -314,9 +313,7 @@ final class AppState {
             guard !Task.isCancelled else { return }
 
             isCompletedTimerFading = true
-
-            try? await Task.sleep(for: .seconds(Constants.completedTimerFadeSeconds))
-            guard !Task.isCancelled else { return }
+            completedTimerText = nil
 
             clearCompletedTimerLinger()
         }
@@ -326,7 +323,7 @@ final class AppState {
         completedTimerLingerTask?.cancel()
         completedTimerLingerTask = nil
         completedTimerText = nil
-        isCountdownCompletion = false
+
         isCompletedTimerFading = false
     }
 
