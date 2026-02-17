@@ -56,6 +56,81 @@ struct MarkdownEditor: NSViewRepresentable {
             applyHighlighting(to: textView)
         }
 
+        // MARK: - List Auto-Continuation
+
+        func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+            guard commandSelector == #selector(NSResponder.insertNewline(_:)) else {
+                return false
+            }
+            return handleListContinuation(in: textView)
+        }
+
+        private func handleListContinuation(in textView: NSTextView) -> Bool {
+            let content = textView.string as NSString
+            let cursorLocation = textView.selectedRange().location
+
+            // Find the current line
+            let lineRange = content.lineRange(for: NSRange(location: cursorLocation, length: 0))
+            let currentLine = content.substring(with: lineRange)
+
+            // Try to match a list prefix
+            guard let match = matchListPrefix(currentLine) else {
+                return false
+            }
+
+            let lineContent = match.contentAfterPrefix
+
+            // If the line content after the prefix is empty, remove the prefix and add blank line
+            if lineContent.trimmingCharacters(in: .whitespaces).isEmpty {
+                let deleteRange = NSRange(location: lineRange.location, length: lineRange.length)
+                // Replace the empty list item with a blank line
+                textView.insertText("\n", replacementRange: deleteRange)
+                return true
+            }
+
+            // Insert newline + the next list prefix
+            let nextPrefix = match.nextPrefix
+            textView.insertText("\n\(nextPrefix)", replacementRange: textView.selectedRange())
+            return true
+        }
+
+        private struct ListMatch {
+            let contentAfterPrefix: String
+            let nextPrefix: String
+        }
+
+        private func matchListPrefix(_ line: String) -> ListMatch? {
+            // Checkbox: "- [ ] " or "- [x] " or "- [X] "
+            if let range = line.range(of: #"^(\s*)- \[[ xX]\] "#, options: .regularExpression) {
+                let indent = String(line[line.startIndex..<line.firstIndex(of: "-")!])
+                let content = String(line[range.upperBound...])
+                return ListMatch(contentAfterPrefix: content, nextPrefix: "\(indent)- [ ] ")
+            }
+
+            // Unordered list: "- " or "* "
+            if let range = line.range(of: #"^(\s*)[-*] "#, options: .regularExpression) {
+                let marker = line.contains("- ") ? "- " : "* "
+                let indent = String(line.prefix(while: { $0 == " " || $0 == "\t" }))
+                let content = String(line[range.upperBound...])
+                return ListMatch(contentAfterPrefix: content, nextPrefix: "\(indent)\(marker)")
+            }
+
+            // Ordered list: "1. ", "2. ", etc.
+            if let range = line.range(of: #"^(\s*)(\d+)\. "#, options: .regularExpression) {
+                let indent = String(line.prefix(while: { $0 == " " || $0 == "\t" }))
+                // Extract the number and increment
+                let numberStr = String(line[line.index(line.startIndex, offsetBy: indent.count)...])
+                    .prefix(while: { $0.isNumber })
+                let number = Int(numberStr) ?? 0
+                let content = String(line[range.upperBound...])
+                return ListMatch(contentAfterPrefix: content, nextPrefix: "\(indent)\(number + 1). ")
+            }
+
+            return nil
+        }
+
+        // MARK: - Syntax Highlighting
+
         @MainActor func applyHighlighting(to textView: NSTextView) {
             guard let textStorage = textView.textStorage else { return }
             let fullRange = NSRange(location: 0, length: textStorage.length)

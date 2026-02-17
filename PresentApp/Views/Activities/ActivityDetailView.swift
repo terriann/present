@@ -329,15 +329,26 @@ struct ActivityDetailView: View {
                 if !activity.isArchived && notes != (activity.notes ?? "") {
                     HStack {
                         Spacer()
-                        Button("Cancel") {
-                            notes = activity.notes ?? ""
-                        }
-                        .buttonStyle(.bordered)
 
-                        Button("Save Notes") {
-                            Task { await saveNotes() }
+                        Button {
+                            notes = activity.notes ?? ""
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.caption.weight(.semibold))
                         }
                         .buttonStyle(.bordered)
+                        .tint(theme.alert)
+                        .accessibilityLabel("Cancel note changes")
+
+                        Button {
+                            Task { await saveNotes() }
+                        } label: {
+                            Image(systemName: "checkmark")
+                                .font(.caption.weight(.semibold))
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(theme.success)
+                        .accessibilityLabel("Save notes")
                     }
                 }
             }

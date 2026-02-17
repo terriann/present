@@ -1,4 +1,5 @@
 import SwiftUI
+import PresentCore
 
 struct InlineEditableField: View {
     let value: String
@@ -9,6 +10,7 @@ struct InlineEditableField: View {
     var onSave: (String) -> Void
     var onCancel: (() -> Void)?
 
+    @Environment(ThemeManager.self) private var theme
     @State private var isEditing = false
     @State private var editText = ""
     @State private var isHovering = false
@@ -79,23 +81,24 @@ struct InlineEditableField: View {
                 }
 
             Button {
-                commitEdit()
-            } label: {
-                Image(systemName: "checkmark")
-                    .font(.caption.weight(.semibold))
-            }
-            .buttonStyle(.bordered)
-            .tint(.green)
-            .accessibilityLabel("Save")
-
-            Button {
                 cancelEdit()
             } label: {
                 Image(systemName: "xmark")
                     .font(.caption.weight(.semibold))
             }
             .buttonStyle(.bordered)
+            .tint(theme.alert)
             .accessibilityLabel("Cancel")
+
+            Button {
+                commitEdit()
+            } label: {
+                Image(systemName: "checkmark")
+                    .font(.caption.weight(.semibold))
+            }
+            .buttonStyle(.bordered)
+            .tint(theme.success)
+            .accessibilityLabel("Save")
         }
         .onChange(of: isFocused) {
             if !isFocused {
