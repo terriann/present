@@ -302,14 +302,18 @@ struct ActivityDetailView: View {
                 MarkdownEditor(text: $notes, isEditable: !activity.isArchived)
                     .frame(minHeight: 200)
 
-                if !activity.isArchived {
+                if !activity.isArchived && notes != (activity.notes ?? "") {
                     HStack {
                         Spacer()
+                        Button("Cancel") {
+                            notes = activity.notes ?? ""
+                        }
+                        .buttonStyle(.bordered)
+
                         Button("Save Notes") {
                             Task { await saveNotes() }
                         }
                         .buttonStyle(.bordered)
-                        .disabled(notes == (activity.notes ?? ""))
                     }
                 }
             }

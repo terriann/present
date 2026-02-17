@@ -58,22 +58,48 @@ struct InlineEditableField: View {
     // MARK: - Edit State
 
     private var editView: some View {
-        TextField(placeholder, text: $editText)
-            .font(font)
-            .textFieldStyle(.plain)
-            .focused($isFocused)
-            .onSubmit {
-                commitEdit()
-            }
-            .onKeyPress(.escape) {
-                cancelEdit()
-                return .handled
-            }
-            .onChange(of: isFocused) {
-                if !isFocused {
+        HStack(spacing: 6) {
+            TextField(placeholder, text: $editText)
+                .font(font)
+                .textFieldStyle(.roundedBorder)
+                .focused($isFocused)
+                .onSubmit {
                     commitEdit()
                 }
+                .onKeyPress(.escape) {
+                    cancelEdit()
+                    return .handled
+                }
+
+            Button {
+                commitEdit()
+            } label: {
+                Image(systemName: "checkmark")
+                    .font(.caption.weight(.semibold))
             }
+            .buttonStyle(.bordered)
+            .tint(.green)
+            .accessibilityLabel("Save")
+
+            Button {
+                cancelEdit()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.caption.weight(.semibold))
+            }
+            .buttonStyle(.bordered)
+            .accessibilityLabel("Cancel")
+        }
+        .onChange(of: isFocused) {
+            if !isFocused {
+                // Delay slightly to allow button clicks to register first
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    if !isFocused && isEditing {
+                        cancelEdit()
+                    }
+                }
+            }
+        }
     }
 
     // MARK: - Helpers
