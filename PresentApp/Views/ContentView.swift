@@ -45,8 +45,6 @@ struct ContentView: View {
             switch appState.selectedSidebarItem {
             case .dashboard:
                 DashboardView()
-            case .log:
-                LogView()
             case .reports:
                 ReportsView()
             case .activities:

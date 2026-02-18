@@ -15,6 +15,7 @@ struct ReportsView: View {
     @State private var weeklySummaryData: WeeklySummary?
     @State private var monthlySummaryData: MonthlySummary?
     @State private var tagActivitySummaries: [TagActivitySummary] = []
+    @State private var sessionEntries: [(Session, Activity)] = []
 
     // Navigation state
     @State private var earliestDate: Date?
@@ -72,6 +73,7 @@ struct ReportsView: View {
                     }
                 }
 
+                sessionLogCard
                 cliPromoCard
             }
             .padding(20)
@@ -838,6 +840,37 @@ struct ReportsView: View {
         }
     }
 
+    // MARK: - Session Log Card
+
+    private var sessionLogCard: some View {
+        GroupBox {
+            Text("Session Log")
+                .font(.largeTitle.bold())
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 12)
+                .padding(.top, 12)
+                .padding(.bottom, 12)
+
+            if sessionEntries.isEmpty {
+                Text("No sessions for this period.")
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 20)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(Array(sessionEntries.enumerated()), id: \.element.0.id) { index, entry in
+                        SessionRow(session: entry.0, activityTitle: entry.1.title)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                        if index < sessionEntries.count - 1 {
+                            Divider()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // MARK: - CLI Promo Card
 
     private static let cliCommands: [(command: String, output: String)] = [
@@ -1051,6 +1084,7 @@ struct ReportsView: View {
         totalSeconds = 0
         sessionCount = 0
         tagActivitySummaries = []
+        sessionEntries = []
         loadTask = Task { await loadReport() }
     }
 
@@ -1084,12 +1118,15 @@ struct ReportsView: View {
                 let tags = try await appState.service.tagActivitySummary(from: startOfDay, to: endOfDay, includeArchived: !hideArchived)
                 try Task.checkCancellation()
                 // Batch all state updates together to avoid mid-render inconsistencies
+                let sessions = try await appState.service.listSessions(from: startOfDay, to: endOfDay, type: nil, activityId: nil, includeArchived: !hideArchived)
+                try Task.checkCancellation()
                 weekStartDay = effectiveWeekStartDay
                 dailySummaryData = summary
                 activities = summary.activities
                 totalSeconds = summary.totalSeconds
                 sessionCount = summary.sessionCount
                 tagActivitySummaries = tags
+                sessionEntries = sessions
 
             case .weekly:
                 let summary = try await appState.service.weeklySummary(weekOf: selectedDate, includeArchived: !hideArchived, weekStartDay: effectiveWeekStartDay)
@@ -1097,17 +1134,22 @@ struct ReportsView: View {
                 let weekEnd = calendar.date(byAdding: .day, value: 7, to: wStart) ?? selectedDate
                 let tags = try await appState.service.tagActivitySummary(from: wStart, to: weekEnd, includeArchived: !hideArchived)
                 try Task.checkCancellation()
+                let sessions = try await appState.service.listSessions(from: wStart, to: weekEnd, type: nil, activityId: nil, includeArchived: !hideArchived)
+                try Task.checkCancellation()
                 weekStartDay = effectiveWeekStartDay
                 weeklySummaryData = summary
                 activities = summary.activities
                 totalSeconds = summary.totalSeconds
                 sessionCount = summary.sessionCount
                 tagActivitySummaries = tags
+                sessionEntries = sessions
 
             case .monthly:
                 let summary = try await appState.service.monthlySummary(monthOf: selectedDate, includeArchived: !hideArchived, weekStartDay: effectiveWeekStartDay)
                 guard let monthInterval = calendar.dateInterval(of: .month, for: selectedDate) else { return }
                 let tags = try await appState.service.tagActivitySummary(from: monthInterval.start, to: monthInterval.end, includeArchived: !hideArchived)
+                try Task.checkCancellation()
+                let sessions = try await appState.service.listSessions(from: monthInterval.start, to: monthInterval.end, type: nil, activityId: nil, includeArchived: !hideArchived)
                 try Task.checkCancellation()
                 weekStartDay = effectiveWeekStartDay
                 monthlySummaryData = summary
@@ -1115,6 +1157,7 @@ struct ReportsView: View {
                 totalSeconds = summary.totalSeconds
                 sessionCount = summary.sessionCount
                 tagActivitySummaries = tags
+                sessionEntries = sessions
             }
         } catch is CancellationError {
             // Task was cancelled because user switched periods/dates — ignore
