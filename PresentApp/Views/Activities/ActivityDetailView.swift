@@ -335,6 +335,7 @@ struct ActivityDetailView: View {
         GroupBox {
             VStack(alignment: .leading, spacing: 8) {
                 MarkdownEditor(text: $notes, isEditable: !activity.isArchived)
+                    .frame(maxWidth: 700, alignment: .leading)
                     .frame(minHeight: 200)
 
                 if !activity.isArchived && notes != (activity.notes ?? "") {
