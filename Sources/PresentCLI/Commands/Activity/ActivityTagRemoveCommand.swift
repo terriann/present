@@ -2,9 +2,9 @@ import ArgumentParser
 import Foundation
 import PresentCore
 
-struct ActivityUntagCommand: AsyncParsableCommand {
+struct ActivityTagRemoveCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
-        commandName: "untag",
+        commandName: "remove",
         abstract: "Remove a tag from an activity.",
         discussion: """
             Removes the association between a tag and an activity. The tag \
@@ -13,10 +13,10 @@ struct ActivityUntagCommand: AsyncParsableCommand {
             ## Examples
 
             # Remove tag 2 from activity 1
-            $ present-cli activity untag 1 2
+            $ present-cli activity tag remove 1 2
 
             # Remove and confirm via text output
-            $ present-cli activity untag 1 2 -f text
+            $ present-cli activity tag remove 1 2 -f text
             """
     )
 
@@ -57,7 +57,7 @@ struct ActivityUntagCommand: AsyncParsableCommand {
             print("Removed \(tag.name) from \"\(activity.title)\"")
 
         case .csv:
-            print("CSV output not supported for activity untag.")
+            print("CSV output not supported for activity tag remove.")
             throw ExitCode.failure
         }
 

@@ -20,7 +20,6 @@ struct ActivityCommand: AsyncParsableCommand {
             ActivityDeleteCommand.self,
             ActivityNoteCommand.self,
             ActivityTagCommand.self,
-            ActivityUntagCommand.self,
         ],
     )
 }

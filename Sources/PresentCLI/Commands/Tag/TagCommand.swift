@@ -6,7 +6,7 @@ struct TagCommand: AsyncParsableCommand {
         abstract: "Manage tags.",
         discussion: """
             Tags are labels you can attach to activities for grouping and \
-            filtering. Use `activity tag` and `activity untag` to associate \
+            filtering. Use `activity tag add` and `activity tag remove` to associate \
             tags with activities.
             """,
         subcommands: [

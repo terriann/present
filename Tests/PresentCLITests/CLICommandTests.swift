@@ -264,7 +264,7 @@ struct CLICommandTests {
     @Test func activityGroupConfiguration() {
         #expect(ActivityCommand.configuration.commandName == "activity")
         let subcommands = ActivityCommand.configuration.subcommands
-        #expect(subcommands.count == 11)
+        #expect(subcommands.count == 10)
 
         let names = subcommands.map { $0.configuration.commandName ?? "" }
         #expect(names.contains("list"))
@@ -277,7 +277,6 @@ struct CLICommandTests {
         #expect(names.contains("delete"))
         #expect(names.contains("note"))
         #expect(names.contains("tag"))
-        #expect(names.contains("untag"))
     }
 
     @Test func activityRequiresSubcommand() throws {
@@ -419,32 +418,56 @@ struct CLICommandTests {
         }
     }
 
-    // MARK: - Activity Tag / Untag
+    // MARK: - Activity Tag Group
 
-    @Test func activityTagParsesArguments() throws {
-        let command = try PresentCLI.parseAsRoot(["activity", "tag", "1", "2"])
-        let tag = try #require(command as? ActivityTagCommand)
-        #expect(tag.activityId == 1)
-        #expect(tag.tagId == 2)
+    @Test func activityTagGroupConfiguration() {
+        let subcommands = ActivityTagCommand.configuration.subcommands
+        #expect(subcommands.count == 4)
+
+        let names = subcommands.map { $0.configuration.commandName ?? "" }
+        #expect(names.contains("add"))
+        #expect(names.contains("remove"))
+        #expect(names.contains("set"))
+        #expect(names.contains("list"))
     }
 
-    @Test func activityTagRequiresArguments() {
-        #expect(throws: (any Error).self) {
-            try PresentCLI.parseAsRoot(["activity", "tag"])
-        }
+    @Test func activityTagAddParsesArguments() throws {
+        let command = try PresentCLI.parseAsRoot(["activity", "tag", "add", "1", "2"])
+        let add = try #require(command as? ActivityTagAddCommand)
+        #expect(add.activityId == 1)
+        #expect(add.tagId == 2)
     }
 
-    @Test func activityUntagParsesArguments() throws {
-        let command = try PresentCLI.parseAsRoot(["activity", "untag", "1", "2"])
-        let untag = try #require(command as? ActivityUntagCommand)
-        #expect(untag.activityId == 1)
-        #expect(untag.tagId == 2)
+    @Test func activityTagRemoveParsesArguments() throws {
+        let command = try PresentCLI.parseAsRoot(["activity", "tag", "remove", "1", "2"])
+        let remove = try #require(command as? ActivityTagRemoveCommand)
+        #expect(remove.activityId == 1)
+        #expect(remove.tagId == 2)
     }
 
-    @Test func activityUntagRequiresArguments() {
-        #expect(throws: (any Error).self) {
-            try PresentCLI.parseAsRoot(["activity", "untag"])
-        }
+    @Test func activityTagSetParsesArguments() throws {
+        let command = try PresentCLI.parseAsRoot(["activity", "tag", "set", "1", "2", "3"])
+        let set = try #require(command as? ActivityTagSetCommand)
+        #expect(set.activityId == 1)
+        #expect(set.tagIds == [2, 3])
+    }
+
+    @Test func activityTagSetEmptyTags() throws {
+        let command = try PresentCLI.parseAsRoot(["activity", "tag", "set", "1"])
+        let set = try #require(command as? ActivityTagSetCommand)
+        #expect(set.activityId == 1)
+        #expect(set.tagIds.isEmpty)
+    }
+
+    @Test func activityTagListParsesArguments() throws {
+        let command = try PresentCLI.parseAsRoot(["activity", "tag", "list", "1"])
+        let list = try #require(command as? ActivityTagListCommand)
+        #expect(list.activityId == 1)
+    }
+
+    @Test func activityTagRequiresSubcommand() throws {
+        let command = try PresentCLI.parseAsRoot(["activity", "tag"])
+        #expect(command is ActivityTagCommand)
     }
 
     // MARK: - Tag Group
