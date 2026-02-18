@@ -765,9 +765,18 @@ private struct PaletteRow: View {
                 Spacer()
             }
             .padding(.vertical, 4)
+            .padding(.horizontal, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(isHovered ? Color.secondary.opacity(0.05) : Color.clear)
+            )
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .onHover { hovering in isHovered = hovering }
+        .onHover { hovering in
+            withAdaptiveAnimation(.easeInOut(duration: 0.1)) {
+                isHovered = hovering
+            }
+        }
     }
 }
