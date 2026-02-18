@@ -343,7 +343,7 @@ struct CLISettingsTab: View {
                     Text(cliInstallStatus ?? "")
                 }
 
-                Text("Copies the `present-cli` command-line tool so you can use it from Terminal.")
+                Text("Copies the `present-cli` (\(Constants.cliVersion)) command-line tool so you can use it from Terminal.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
@@ -717,6 +717,8 @@ struct SessionSettingsTab: View {
 
 struct AboutTab: View {
     @Environment(ThemeManager.self) private var theme
+    @State private var installedCLIVersion: String?
+    @State private var isDetectingCLI = true
 
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1"
@@ -724,6 +726,11 @@ struct AboutTab: View {
 
     private var buildNumber: String {
         Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
+    }
+
+    private var cliIsOutdated: Bool {
+        guard let installed = installedCLIVersion else { return false }
+        return installed != Constants.cliVersion
     }
 
     var body: some View {
@@ -737,9 +744,13 @@ struct AboutTab: View {
             Text("Present")
                 .font(.title.bold())
 
-            Text("Version \(appVersion) (\(buildNumber))")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            VStack(spacing: 4) {
+                Text("Version \(appVersion) (\(buildNumber))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                cliVersionLine
+            }
 
             Text("Developed by Terri Ann Swallow")
                 .font(.body)
@@ -758,6 +769,58 @@ struct AboutTab: View {
         }
         .frame(maxWidth: .infinity)
         .padding()
+        .task {
+            await detectInstalledCLI()
+        }
+    }
+
+    // MARK: - Subviews
+
+    @ViewBuilder
+    private var cliVersionLine: some View {
+        if !isDetectingCLI && cliIsOutdated {
+            Button {
+                NotificationCenter.default.post(name: SettingsView.openCLITabNotification, object: nil)
+            } label: {
+                Text("CLI: v\(Constants.cliVersion) — Update Available")
+                    .font(.caption)
+                    .foregroundStyle(theme.primary)
+            }
+            .buttonStyle(.plain)
+        } else {
+            Text("CLI: v\(Constants.cliVersion)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func detectInstalledCLI() async {
+        isDetectingCLI = true
+        defer { isDetectingCLI = false }
+
+        let path = "/usr/local/bin/present-cli"
+        guard FileManager.default.fileExists(atPath: path) else {
+            installedCLIVersion = nil
+            return
+        }
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: path)
+        process.arguments = ["--version"]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = Pipe()
+        do {
+            try process.run()
+            process.waitUntilExit()
+            if let data = try pipe.fileHandleForReading.readToEnd(),
+               let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) {
+                installedCLIVersion = output
+            }
+        } catch {
+            installedCLIVersion = nil
+        }
     }
 }
 

@@ -3,7 +3,7 @@ import PresentCore
 
 @main
 struct PresentCLI: AsyncParsableCommand {
-    static let version = "0.2.0 (0)"
+    static let version = Constants.cliVersion
 
     static let configuration = CommandConfiguration(
         commandName: "present-cli",

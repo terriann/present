@@ -36,4 +36,8 @@ public enum Constants {
 
     public static let completedTimerLingerSeconds = 120
     public static let completedTimerFadeSeconds = 10
+
+    // MARK: - CLI
+
+    public static let cliVersion = "0.2.0 (0)"
 }
