@@ -4,7 +4,7 @@
 
 > Present — time tracking from the command line.
 
-*Auto-generated on 2026-02-18 02:17 UTC from `present-cli --experimental-dump-help`.*
+*Auto-generated on 2026-02-18 04:35 UTC from `present-cli --experimental-dump-help`.*
 
 ## Commands
 
@@ -16,28 +16,29 @@
   - [`activity list`](#present-cli-activity-list)
   - [`activity note`](#present-cli-activity-note-text)
   - [`activity search`](#present-cli-activity-search-query)
-  - [`activity tag`](#present-cli-activity-tag-activity-id-tag-id)
+  - [`activity tag`](#present-cli-activity-tag)
+    - [`activity tag add`](#present-cli-activity-tag-add-activity-id-tag-id)
+    - [`activity tag list`](#present-cli-activity-tag-list-activity-id)
+    - [`activity tag remove`](#present-cli-activity-tag-remove-activity-id-tag-id)
+    - [`activity tag set`](#present-cli-activity-tag-set-activity-id-tag-ids)
   - [`activity unarchive`](#present-cli-activity-unarchive-id)
-  - [`activity untag`](#present-cli-activity-untag-activity-id-tag-id)
   - [`activity update`](#present-cli-activity-update-id)
 - [`config`](#present-cli-config)
   - [`config get`](#present-cli-config-get-key)
   - [`config list`](#present-cli-config-list)
   - [`config set`](#present-cli-config-set-key-value)
 - [`report`](#present-cli-report)
-  - [`report export`](#present-cli-report-export)
-  - [`report month`](#present-cli-report-month)
-  - [`report today`](#present-cli-report-today)
-  - [`report week`](#present-cli-report-week)
 - [`session`](#present-cli-session)
-  - [`session cancel`](#present-cli-session-cancel)
+  - [`session add`](#present-cli-session-add-activity-id)
+  - [`session current`](#present-cli-session-current)
+    - [`session current cancel`](#present-cli-session-current-cancel)
+    - [`session current pause`](#present-cli-session-current-pause)
+    - [`session current resume`](#present-cli-session-current-resume)
+    - [`session current status`](#present-cli-session-current-status) *(default)*
+    - [`session current stop`](#present-cli-session-current-stop)
   - [`session get`](#present-cli-session-get-id)
-  - [`session pause`](#present-cli-session-pause)
-  - [`session resume`](#present-cli-session-resume)
-  - [`session search`](#present-cli-session-search)
+  - [`session list`](#present-cli-session-list)
   - [`session start`](#present-cli-session-start-activity-name)
-  - [`session status`](#present-cli-session-status)
-  - [`session stop`](#present-cli-session-stop)
 - [`tag`](#present-cli-tag)
   - [`tag add`](#present-cli-tag-add-name)
   - [`tag delete`](#present-cli-tag-delete-id)
@@ -65,9 +66,8 @@ Activities are the things you track time against. Each activity can have tags, n
 | [`list`](#present-cli-activity-list) | List activities. |
 | [`note`](#present-cli-activity-note-text) | Append a note to an activity. |
 | [`search`](#present-cli-activity-search-query) | Search activities by name. |
-| [`tag`](#present-cli-activity-tag-activity-id-tag-id) | Add a tag to an activity. |
+| [`tag`](#present-cli-activity-tag) | Manage tags on an activity. |
 | [`unarchive`](#present-cli-activity-unarchive-id) | Unarchive an activity. |
-| [`untag`](#present-cli-activity-untag-activity-id-tag-id) | Remove a tag from an activity. |
 | [`update`](#present-cli-activity-update-id) | Update an activity. |
 
 #### `present-cli activity add <name>`
@@ -331,7 +331,25 @@ $ present-cli activity search "client" -f csv
 `[--field=<field>]`
 : Extract a single field value from the response.
 
-#### `present-cli activity tag <activity-id> <tag-id>`
+#### `present-cli activity tag`
+
+Manage tags on an activity.
+
+Add, remove, set, or list tags associated with an activity. Use `tag list` to find available tag IDs, or `tag add` to create a new tag first.
+
+**Flags**
+
+`[--version]`
+: Show the version.
+
+**Subcommands**
+
+| [`add`](#present-cli-activity-tag-add-activity-id-tag-id) | Add a tag to an activity. |
+| [`list`](#present-cli-activity-tag-list-activity-id) | List tags on an activity. |
+| [`remove`](#present-cli-activity-tag-remove-activity-id-tag-id) | Remove a tag from an activity. |
+| [`set`](#present-cli-activity-tag-set-activity-id-tag-ids) | Replace all tags on an activity. |
+
+##### `present-cli activity tag add <activity-id> <tag-id>`
 
 Add a tag to an activity.
 
@@ -354,10 +372,121 @@ Associates an existing tag with an activity. Use `tag list` to find available ta
 
 ```bash
 # Tag activity 1 with tag 2
-$ present-cli activity tag 1 2
+$ present-cli activity tag add 1 2
 
 # Tag and show result as text
-$ present-cli activity tag 1 2 -f text
+$ present-cli activity tag add 1 2 -f text
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
+
+##### `present-cli activity tag list <activity-id>`
+
+List tags on an activity.
+
+Shows all tags currently associated with an activity.
+
+**Arguments**
+
+`<activity-id>`
+: Activity ID. *(required)*
+
+**Flags**
+
+`[--version]`
+: Show the version.
+
+**Examples**
+
+```bash
+# List tags on activity 1
+$ present-cli activity tag list 1
+
+# List in text format
+$ present-cli activity tag list 1 -f text
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
+
+##### `present-cli activity tag remove <activity-id> <tag-id>`
+
+Remove a tag from an activity.
+
+Removes the association between a tag and an activity. The tag itself is not deleted.
+
+**Arguments**
+
+`<activity-id>`
+: Activity ID. *(required)*
+
+`<tag-id>`
+: Tag ID. *(required)*
+
+**Flags**
+
+`[--version]`
+: Show the version.
+
+**Examples**
+
+```bash
+# Remove tag 2 from activity 1
+$ present-cli activity tag remove 1 2
+
+# Remove and confirm via text output
+$ present-cli activity tag remove 1 2 -f text
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
+
+##### `present-cli activity tag set <activity-id> [<tag-ids>]`
+
+Replace all tags on an activity.
+
+Atomically replaces all tags on an activity with the specified set. Pass zero or more tag IDs to set the exact tag list.
+
+**Arguments**
+
+`<activity-id>`
+: Activity ID. *(required)*
+
+`<tag-ids>`
+: Tag IDs to set.
+
+**Flags**
+
+`[--version]`
+: Show the version.
+
+**Examples**
+
+```bash
+# Set activity 1 to have tags 2 and 3
+$ present-cli activity tag set 1 2 3
+
+# Remove all tags from activity 1
+$ present-cli activity tag set 1
+
+# Set tags and show result as text
+$ present-cli activity tag set 1 2 3 -f text
 ```
 
 **Global Options**
@@ -392,43 +521,6 @@ $ present-cli activity unarchive 3
 
 # Unarchive and show details
 $ present-cli activity unarchive 3 -f text
-```
-
-**Global Options**
-
-`[-f, --format=<format>]`
-: Output format: json, text, csv. Default: `json`.
-
-`[--field=<field>]`
-: Extract a single field value from the response.
-
-#### `present-cli activity untag <activity-id> <tag-id>`
-
-Remove a tag from an activity.
-
-Removes the association between a tag and an activity. The tag itself is not deleted.
-
-**Arguments**
-
-`<activity-id>`
-: Activity ID. *(required)*
-
-`<tag-id>`
-: Tag ID. *(required)*
-
-**Flags**
-
-`[--version]`
-: Show the version.
-
-**Examples**
-
-```bash
-# Remove tag 2 from activity 1
-$ present-cli activity untag 1 2
-
-# Remove and confirm via text output
-$ present-cli activity untag 1 2 -f text
 ```
 
 **Global Options**
@@ -612,36 +704,18 @@ $ present-cli config set weekStartDay 2 -f text
 
 ### `present-cli report`
 
-View reports and summaries.
+View activity summary for a date range.
 
-View time tracking summaries for today, this week, or this month. Use `report export` to export raw session data as CSV.
+Shows total tracked time and session count per activity for a date range. Defaults to today when no flags are given.
 
-**Flags**
-
-`[--version]`
-: Show the version.
-
-**Subcommands**
-
-| [`export`](#present-cli-report-export) | Export sessions as CSV. |
-| [`month`](#present-cli-report-month) | Show this month's summary. |
-| [`today`](#present-cli-report-today) | Show today's summary. |
-| [`week`](#present-cli-report-week) | Show this week's summary. |
-
-#### `present-cli report export`
-
-Export sessions as CSV.
-
-Exports raw session data as CSV. By default, exports the current month. Use --from and --to to specify a custom date range.
-
-Output goes directly to stdout so it can be redirected to a file.
+Dates use YYYY-MM-DD format and are inclusive on both ends.
 
 **Options**
 
-`[--from=<from>]`
-: Start date (YYYY-MM-DD, inclusive). Defaults to start of current month.
+`[--after=<after>]`
+: Start date (YYYY-MM-DD, inclusive). Defaults to today.
 
-`[--to=<to>]`
+`[--before=<before>]`
 : End date (YYYY-MM-DD, inclusive). Defaults to today.
 
 **Flags**
@@ -652,111 +726,20 @@ Output goes directly to stdout so it can be redirected to a file.
 **Examples**
 
 ```bash
-# Export this month's sessions
-$ present-cli report export
+# Today's summary (default)
+$ present-cli report
 
-# Export a specific date range
-$ present-cli report export --from 2025-01-01 --to 2025-01-31
-
-# Save to a file
-$ present-cli report export --from 2025-01-01 > sessions.csv
-```
-
-#### `present-cli report month`
-
-Show this month's summary.
-
-Shows total tracked time for the current month with a weekly breakdown and per-activity totals.
-
-**Flags**
-
-`[--version]`
-: Show the version.
-
-**Examples**
-
-```bash
-# Show this month's summary
-$ present-cli report month
-
-# Show as text with weekly breakdown
-$ present-cli report month -f text
+# This week
+$ present-cli report --after 2026-02-10 --before 2026-02-16
 
 # Get total seconds for scripting
-$ present-cli report month --field totalSeconds
+$ present-cli report --field totalSeconds
 
-# Export weekly breakdown as CSV
-$ present-cli report month -f csv
-```
-
-**Global Options**
-
-`[-f, --format=<format>]`
-: Output format: json, text, csv. Default: `json`.
-
-`[--field=<field>]`
-: Extract a single field value from the response.
-
-#### `present-cli report today`
-
-Show today's summary.
-
-Shows total tracked time and session count for today, broken down by activity.
-
-**Flags**
-
-`[--version]`
-: Show the version.
-
-**Examples**
-
-```bash
-# Show today's summary
-$ present-cli report today
+# Export as CSV
+$ present-cli report --after 2026-01-01 --before 2026-01-31 -f csv
 
 # Show as text
-$ present-cli report today -f text
-
-# Get just the total seconds for scripting
-$ present-cli report today --field totalSeconds
-
-# Export today's breakdown as CSV
-$ present-cli report today -f csv
-```
-
-**Global Options**
-
-`[-f, --format=<format>]`
-: Output format: json, text, csv. Default: `json`.
-
-`[--field=<field>]`
-: Extract a single field value from the response.
-
-#### `present-cli report week`
-
-Show this week's summary.
-
-Shows total tracked time for the current week with a daily breakdown and per-activity totals.
-
-**Flags**
-
-`[--version]`
-: Show the version.
-
-**Examples**
-
-```bash
-# Show this week's summary
-$ present-cli report week
-
-# Show as text with daily breakdown
-$ present-cli report week -f text
-
-# Get total seconds for scripting
-$ present-cli report week --field totalSeconds
-
-# Export daily breakdown as CSV
-$ present-cli report week -f csv
+$ present-cli report -f text
 ```
 
 **Global Options**
@@ -773,6 +756,8 @@ Manage sessions.
 
 Sessions track time spent on activities. Each session has a type (work, rhythm, or timebound), a state (running, paused, or completed), and belongs to a single activity.
 
+Use `session start` to begin a new session, `session current` to interact with the active session, and `session list` to browse past sessions.
+
 **Flags**
 
 `[--version]`
@@ -780,16 +765,96 @@ Sessions track time spent on activities. Each session has a type (work, rhythm, 
 
 **Subcommands**
 
-| [`cancel`](#present-cli-session-cancel) | Cancel the current session without logging it. |
+| [`add`](#present-cli-session-add-activity-id) | Add a completed session with specific start and end times. |
+| [`current`](#present-cli-session-current) | Manage the current session. |
 | [`get`](#present-cli-session-get-id) | Show session details. |
-| [`pause`](#present-cli-session-pause) | Pause the current session. |
-| [`resume`](#present-cli-session-resume) | Resume a paused session. |
-| [`search`](#present-cli-session-search) | Search sessions with filters. |
+| [`list`](#present-cli-session-list) | List sessions with filters. |
 | [`start`](#present-cli-session-start-activity-name) | Start a session for an activity. |
-| [`status`](#present-cli-session-status) | Show current session or today's summary. |
-| [`stop`](#present-cli-session-stop) | Stop the current session. |
 
-#### `present-cli session cancel`
+#### `present-cli session add <activity-id>`
+
+Add a completed session with specific start and end times.
+
+Creates a backdated completed session. Useful for logging time that was tracked elsewhere or forgotten. The session is inserted as completed with the duration calculated from the timestamps.
+
+Timestamps use ISO8601 format (e.g., 2026-01-15T09:30:00). Start time must be in the past, and end time must be after start.
+
+**Arguments**
+
+`<activity-id>`
+: Activity ID. *(required)*
+
+**Options**
+
+`[--started-at=<started-at>]`
+: Session start time (ISO8601, e.g., 2026-01-15T09:30:00).
+
+`[--ended-at=<ended-at>]`
+: Session end time (ISO8601, e.g., 2026-01-15T10:30:00).
+
+`[--type=<type>]`
+: Session type: work, rhythm, timebound. Default: `work`.
+
+`[--minutes=<minutes>]`
+: Timer duration in minutes (for rhythm/timebound).
+
+`[--break-minutes=<break-minutes>]`
+: Break duration in minutes (for rhythm).
+
+**Flags**
+
+`[--version]`
+: Show the version.
+
+**Examples**
+
+```bash
+# Add a 1-hour work session
+$ present-cli session add 1 \
+    --started-at 2026-01-15T09:00:00 \
+    --ended-at 2026-01-15T10:00:00
+
+# Add a rhythm session with timer info
+$ present-cli session add 1 \
+    --started-at 2026-01-15T09:00:00 \
+    --ended-at 2026-01-15T09:25:00 \
+    --type rhythm --minutes 25 --break-minutes 5
+
+# Get just the session ID
+$ present-cli session add 1 \
+    --started-at 2026-01-15T09:00:00 \
+    --ended-at 2026-01-15T10:00:00 \
+    --field sessionId
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
+
+#### `present-cli session current`
+
+Manage the current session.
+
+Commands for interacting with the currently active session: check status, stop, pause, resume, or cancel.
+
+**Flags**
+
+`[--version]`
+: Show the version.
+
+**Subcommands**
+
+| [`cancel`](#present-cli-session-current-cancel) | Cancel the current session without logging it. |
+| [`pause`](#present-cli-session-current-pause) | Pause the current session. |
+| [`resume`](#present-cli-session-current-resume) | Resume a paused session. |
+| [`status`](#present-cli-session-current-status) | Show current session status. *(default)* |
+| [`stop`](#present-cli-session-current-stop) | Stop the current session. |
+
+##### `present-cli session current cancel`
 
 Cancel the current session without logging it.
 
@@ -808,6 +873,128 @@ $ present-cli session cancel
 
 # Cancel and confirm via text output
 $ present-cli session cancel -f text
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
+
+##### `present-cli session current pause`
+
+Pause the current session.
+
+Pauses the currently running session. Paused time is not counted toward the session duration. Use `session resume` to continue.
+
+**Flags**
+
+`[--version]`
+: Show the version.
+
+**Examples**
+
+```bash
+# Pause the current session
+$ present-cli session pause
+
+# Pause and get the session state as text
+$ present-cli session pause -f text
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
+
+##### `present-cli session current resume`
+
+Resume a paused session.
+
+Resumes a previously paused session. The session timer continues from where it left off. Returns an error if no session is paused.
+
+**Flags**
+
+`[--version]`
+: Show the version.
+
+**Examples**
+
+```bash
+# Resume the paused session
+$ present-cli session resume
+
+# Resume and display as text
+$ present-cli session resume -f text
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
+
+##### `present-cli session current status`
+
+Show current session status. *(default)*
+
+If a session is running, shows its details including elapsed time and remaining time (for timed sessions). If no session is active, reports that no session is running.
+
+**Flags**
+
+`[--version]`
+: Show the version.
+
+**Examples**
+
+```bash
+# Check if a session is running
+$ present-cli session current status
+
+# Shorthand (status is the default subcommand)
+$ present-cli session current
+
+# Get elapsed seconds for scripting
+$ present-cli session current status --field elapsedSeconds
+
+# Check status in text format
+$ present-cli session current status -f text
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
+
+##### `present-cli session current stop`
+
+Stop the current session.
+
+Ends the currently running session and records the duration. If no session is active, an error is returned.
+
+**Flags**
+
+`[--version]`
+: Show the version.
+
+**Examples**
+
+```bash
+# Stop the current session
+$ present-cli session stop
+
+# Stop and show duration in text format
+$ present-cli session stop -f text
 ```
 
 **Global Options**
@@ -855,69 +1042,11 @@ $ present-cli session get 42 -f text
 `[--field=<field>]`
 : Extract a single field value from the response.
 
-#### `present-cli session pause`
+#### `present-cli session list`
 
-Pause the current session.
+List sessions with filters.
 
-Pauses the currently running session. Paused time is not counted toward the session duration. Use `session resume` to continue.
-
-**Flags**
-
-`[--version]`
-: Show the version.
-
-**Examples**
-
-```bash
-# Pause the current session
-$ present-cli session pause
-
-# Pause and get the session state as text
-$ present-cli session pause -f text
-```
-
-**Global Options**
-
-`[-f, --format=<format>]`
-: Output format: json, text, csv. Default: `json`.
-
-`[--field=<field>]`
-: Extract a single field value from the response.
-
-#### `present-cli session resume`
-
-Resume a paused session.
-
-Resumes a previously paused session. The session timer continues from where it left off. Returns an error if no session is paused.
-
-**Flags**
-
-`[--version]`
-: Show the version.
-
-**Examples**
-
-```bash
-# Resume the paused session
-$ present-cli session resume
-
-# Resume and display as text
-$ present-cli session resume -f text
-```
-
-**Global Options**
-
-`[-f, --format=<format>]`
-: Output format: json, text, csv. Default: `json`.
-
-`[--field=<field>]`
-: Extract a single field value from the response.
-
-#### `present-cli session search`
-
-Search sessions with filters.
-
-Search and filter sessions by date range, type, or activity name. Results are paginated (max 100 per page). All filters are optional and can be combined.
+List and filter sessions by date range, type, or activity name. Results are paginated (max 100 per page). All filters are optional and can be combined.
 
 Dates use YYYY-MM-DD format and are inclusive on both ends.
 
@@ -947,16 +1076,16 @@ Dates use YYYY-MM-DD format and are inclusive on both ends.
 
 ```bash
 # List all sessions from this week
-$ present-cli session search --after 2025-01-13 --before 2025-01-17
+$ present-cli session list --after 2025-01-13 --before 2025-01-17
 
 # Find rhythm sessions for a specific activity
-$ present-cli session search --type rhythm --activity "Deep Work"
+$ present-cli session list --type rhythm --activity "Deep Work"
 
 # Export sessions as CSV
-$ present-cli session search --after 2025-01-01 -f csv
+$ present-cli session list --after 2025-01-01 -f csv
 
 # Get page 2 of results
-$ present-cli session search --page 2
+$ present-cli session list --page 2
 ```
 
 **Global Options**
@@ -1020,72 +1149,11 @@ $ present-cli session start "My Project" --field id
 `[--field=<field>]`
 : Extract a single field value from the response.
 
-#### `present-cli session status`
-
-Show current session or today's summary.
-
-If a session is running, shows its details including elapsed time and remaining time (for timed sessions). If no session is active, shows today's session count and total tracked time.
-
-**Flags**
-
-`[--version]`
-: Show the version.
-
-**Examples**
-
-```bash
-# Check if a session is running
-$ present-cli session status
-
-# Get elapsed seconds for scripting
-$ present-cli session status --field elapsedSeconds
-
-# Check status in text format
-$ present-cli session status -f text
-```
-
-**Global Options**
-
-`[-f, --format=<format>]`
-: Output format: json, text, csv. Default: `json`.
-
-`[--field=<field>]`
-: Extract a single field value from the response.
-
-#### `present-cli session stop`
-
-Stop the current session.
-
-Ends the currently running session and records the duration. If no session is active, an error is returned.
-
-**Flags**
-
-`[--version]`
-: Show the version.
-
-**Examples**
-
-```bash
-# Stop the current session
-$ present-cli session stop
-
-# Stop and show duration in text format
-$ present-cli session stop -f text
-```
-
-**Global Options**
-
-`[-f, --format=<format>]`
-: Output format: json, text, csv. Default: `json`.
-
-`[--field=<field>]`
-: Extract a single field value from the response.
-
 ### `present-cli tag`
 
 Manage tags.
 
-Tags are labels you can attach to activities for grouping and filtering. Use `activity tag` and `activity untag` to associate tags with activities.
+Tags are labels you can attach to activities for grouping and filtering. Use `activity tag add` and `activity tag remove` to associate tags with activities.
 
 **Flags**
 
