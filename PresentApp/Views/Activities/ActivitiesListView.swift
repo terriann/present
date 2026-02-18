@@ -38,6 +38,7 @@ struct ActivitiesListView: View {
                 } label: {
                     Label("New Activity", systemImage: "plus")
                 }
+                .keyboardShortcut("n", modifiers: .command)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
