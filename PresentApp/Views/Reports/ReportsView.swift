@@ -1043,6 +1043,14 @@ struct ReportsView: View {
     private func reloadReport() {
         loadTask?.cancel()
         resetHoverState()
+        // Clear stale summary data so computed chart properties don't mix periods
+        dailySummaryData = nil
+        weeklySummaryData = nil
+        monthlySummaryData = nil
+        activities = []
+        totalSeconds = 0
+        sessionCount = 0
+        tagActivitySummaries = []
         loadTask = Task { await loadReport() }
     }
 
