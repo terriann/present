@@ -2,25 +2,28 @@ import ArgumentParser
 import Foundation
 import PresentCore
 
-struct SessionStatusCommand: AsyncParsableCommand {
+struct SessionCurrentStatusCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "status",
-        abstract: "Show current session or today's summary.",
+        abstract: "Show current session status.",
         discussion: """
             If a session is running, shows its details including elapsed time \
             and remaining time (for timed sessions). If no session is active, \
-            shows today's session count and total tracked time.
+            reports that no session is running.
 
             ## Examples
 
             # Check if a session is running
-            $ present-cli session status
+            $ present-cli session current status
+
+            # Shorthand (status is the default subcommand)
+            $ present-cli session current
 
             # Get elapsed seconds for scripting
-            $ present-cli session status --field elapsedSeconds
+            $ present-cli session current status --field elapsedSeconds
 
             # Check status in text format
-            $ present-cli session status -f text
+            $ present-cli session current status -f text
             """
     )
 
@@ -66,36 +69,26 @@ struct SessionStatusCommand: AsyncParsableCommand {
                 }
 
             case .csv:
-                print("CSV output not supported for session status.")
+                print("CSV output not supported for session current status.")
                 throw ExitCode.failure
             }
         } else {
-            let summary = try await service.todaySummary()
-
             switch outputOptions.format {
             case .json:
                 let dict: [String: Any] = [
                     "active": false,
-                    "todaySessions": summary.sessionCount,
-                    "todaySeconds": summary.totalSeconds,
                 ]
                 try outputOptions.printJSON(dict)
 
             case .text:
                 let textFields: [String: String] = [
                     "active": "false",
-                    "todaySessions": "\(summary.sessionCount)",
-                    "todaySeconds": "\(summary.totalSeconds)",
                 ]
                 if try outputOptions.printTextField(textFields) { return }
-
                 print("No active session.")
-                if summary.sessionCount > 0 {
-                    print("Today: \(summary.sessionCount) sessions, \(TimeFormatting.formatDuration(seconds: summary.totalSeconds))")
-                }
 
             case .csv:
-                print("CSV output not supported for session status.")
+                print("CSV output not supported for session current status.")
                 throw ExitCode.failure
             }
         }

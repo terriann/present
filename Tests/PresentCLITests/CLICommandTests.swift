@@ -38,18 +38,14 @@ struct CLICommandTests {
     @Test func sessionGroupConfiguration() {
         #expect(SessionCommand.configuration.commandName == "session")
         let subcommands = SessionCommand.configuration.subcommands
-        #expect(subcommands.count == 9)
+        #expect(subcommands.count == 5)
 
         let names = subcommands.map { $0.configuration.commandName ?? "" }
-        #expect(names.contains("status"))
-        #expect(names.contains("get"))
         #expect(names.contains("start"))
         #expect(names.contains("add"))
+        #expect(names.contains("get"))
         #expect(names.contains("list"))
-        #expect(names.contains("stop"))
-        #expect(names.contains("pause"))
-        #expect(names.contains("resume"))
-        #expect(names.contains("cancel"))
+        #expect(names.contains("current"))
     }
 
     @Test func sessionRequiresSubcommand() throws {
@@ -57,14 +53,33 @@ struct CLICommandTests {
         #expect(command is SessionCommand)
     }
 
-    @Test func sessionStatusParses() throws {
-        let command = try PresentCLI.parseAsRoot(["session", "status"])
-        #expect(command is SessionStatusCommand)
+    // MARK: - Session Current Group
+
+    @Test func sessionCurrentGroupConfiguration() {
+        let subcommands = SessionCurrentCommand.configuration.subcommands
+        #expect(subcommands.count == 5)
+
+        let names = subcommands.map { $0.configuration.commandName ?? "" }
+        #expect(names.contains("status"))
+        #expect(names.contains("stop"))
+        #expect(names.contains("pause"))
+        #expect(names.contains("resume"))
+        #expect(names.contains("cancel"))
     }
 
-    @Test func sessionStatusParsesTextOutput() throws {
-        let command = try PresentCLI.parseAsRoot(["session", "status", "-f", "text"])
-        let status = try #require(command as? SessionStatusCommand)
+    @Test func sessionCurrentDefaultsToStatus() throws {
+        let command = try PresentCLI.parseAsRoot(["session", "current"])
+        #expect(command is SessionCurrentStatusCommand)
+    }
+
+    @Test func sessionCurrentStatusParses() throws {
+        let command = try PresentCLI.parseAsRoot(["session", "current", "status"])
+        #expect(command is SessionCurrentStatusCommand)
+    }
+
+    @Test func sessionCurrentStatusParsesTextOutput() throws {
+        let command = try PresentCLI.parseAsRoot(["session", "current", "status", "-f", "text"])
+        let status = try #require(command as? SessionCurrentStatusCommand)
         #expect(status.outputOptions.format == .text)
     }
 
@@ -138,46 +153,26 @@ struct CLICommandTests {
         #expect(SessionStartCommand.configuration.abstract == "Start a session for an activity.")
     }
 
-    // MARK: - Session Stop / Pause / Resume / Cancel
+    // MARK: - Session Current Subcommands
 
-    @Test func sessionStopParses() throws {
-        let command = try PresentCLI.parseAsRoot(["session", "stop"])
+    @Test func sessionCurrentStopParses() throws {
+        let command = try PresentCLI.parseAsRoot(["session", "current", "stop"])
         #expect(command is SessionStopCommand)
     }
 
-    @Test func sessionStopConfiguration() {
-        #expect(SessionStopCommand.configuration.commandName == "stop")
-        #expect(SessionStopCommand.configuration.abstract == "Stop the current session.")
-    }
-
-    @Test func sessionPauseParses() throws {
-        let command = try PresentCLI.parseAsRoot(["session", "pause"])
+    @Test func sessionCurrentPauseParses() throws {
+        let command = try PresentCLI.parseAsRoot(["session", "current", "pause"])
         #expect(command is SessionPauseCommand)
     }
 
-    @Test func sessionPauseConfiguration() {
-        #expect(SessionPauseCommand.configuration.commandName == "pause")
-        #expect(SessionPauseCommand.configuration.abstract == "Pause the current session.")
-    }
-
-    @Test func sessionResumeParses() throws {
-        let command = try PresentCLI.parseAsRoot(["session", "resume"])
+    @Test func sessionCurrentResumeParses() throws {
+        let command = try PresentCLI.parseAsRoot(["session", "current", "resume"])
         #expect(command is SessionResumeCommand)
     }
 
-    @Test func sessionResumeConfiguration() {
-        #expect(SessionResumeCommand.configuration.commandName == "resume")
-        #expect(SessionResumeCommand.configuration.abstract == "Resume a paused session.")
-    }
-
-    @Test func sessionCancelParses() throws {
-        let command = try PresentCLI.parseAsRoot(["session", "cancel"])
+    @Test func sessionCurrentCancelParses() throws {
+        let command = try PresentCLI.parseAsRoot(["session", "current", "cancel"])
         #expect(command is SessionCancelCommand)
-    }
-
-    @Test func sessionCancelConfiguration() {
-        #expect(SessionCancelCommand.configuration.commandName == "cancel")
-        #expect(SessionCancelCommand.configuration.abstract == "Cancel the current session without logging it.")
     }
 
     // MARK: - Session List
@@ -533,64 +528,39 @@ struct CLICommandTests {
         #expect(delete.id == 3)
     }
 
-    // MARK: - Report Group
+    // MARK: - Report (Leaf Command)
 
-    @Test func reportGroupConfiguration() {
+    @Test func reportConfiguration() {
         #expect(ReportCommand.configuration.commandName == "report")
-        let subcommands = ReportCommand.configuration.subcommands
-        #expect(subcommands.count == 4)
-
-        let names = subcommands.map { $0.configuration.commandName ?? "" }
-        #expect(names.contains("today"))
-        #expect(names.contains("week"))
-        #expect(names.contains("month"))
-        #expect(names.contains("export"))
+        #expect(ReportCommand.configuration.subcommands.isEmpty)
     }
 
-    @Test func reportRequiresSubcommand() throws {
+    @Test func reportDefaultsToToday() throws {
         let command = try PresentCLI.parseAsRoot(["report"])
-        #expect(command is ReportCommand)
+        let report = try #require(command as? ReportCommand)
+        #expect(report.after == nil)
+        #expect(report.before == nil)
     }
 
-    @Test func reportTodayParses() throws {
-        let command = try PresentCLI.parseAsRoot(["report", "today"])
-        #expect(command is ReportTodayCommand)
-    }
-
-    @Test func reportWeekParses() throws {
-        let command = try PresentCLI.parseAsRoot(["report", "week"])
-        #expect(command is ReportWeekCommand)
-    }
-
-    @Test func reportMonthParses() throws {
-        let command = try PresentCLI.parseAsRoot(["report", "month"])
-        #expect(command is ReportMonthCommand)
-    }
-
-    @Test func reportExportParses() throws {
-        let command = try PresentCLI.parseAsRoot(["report", "export"])
-        #expect(command is ReportExportCommand)
-    }
-
-    @Test func reportExportParsesDateRange() throws {
+    @Test func reportParsesDateRange() throws {
         let command = try PresentCLI.parseAsRoot([
-            "report", "export", "--from", "2024-01-01", "--to", "2024-01-31"
+            "report", "--after", "2024-01-01", "--before", "2024-01-31"
         ])
-        let export = try #require(command as? ReportExportCommand)
-        #expect(export.from == "2024-01-01")
-        #expect(export.to == "2024-01-31")
+        let report = try #require(command as? ReportCommand)
+        #expect(report.after == "2024-01-01")
+        #expect(report.before == "2024-01-31")
     }
 
-    @Test func reportTodayTextOutput() throws {
-        let command = try PresentCLI.parseAsRoot(["report", "today", "-f", "text"])
-        let today = try #require(command as? ReportTodayCommand)
-        #expect(today.outputOptions.format == .text)
+    @Test func reportTextOutput() throws {
+        let command = try PresentCLI.parseAsRoot(["report", "-f", "text"])
+        let report = try #require(command as? ReportCommand)
+        #expect(report.outputOptions.format == .text)
     }
 
-    @Test func reportTodayCsvOutput() throws {
-        let command = try PresentCLI.parseAsRoot(["report", "today", "-f", "csv"])
-        let today = try #require(command as? ReportTodayCommand)
-        #expect(today.outputOptions.format == .csv)
+    @Test func reportCsvOutput() throws {
+        let command = try PresentCLI.parseAsRoot(["report", "-f", "csv"])
+        let report = try #require(command as? ReportCommand)
+        #expect(report.outputOptions.format == .csv)
     }
 
     // MARK: - Config Group
@@ -639,46 +609,46 @@ struct CLICommandTests {
     // MARK: - Output Format
 
     @Test func outputFormatDefaultsToJSON() throws {
-        let command = try PresentCLI.parseAsRoot(["session", "status"])
-        let status = try #require(command as? SessionStatusCommand)
+        let command = try PresentCLI.parseAsRoot(["session", "current", "status"])
+        let status = try #require(command as? SessionCurrentStatusCommand)
         #expect(status.outputOptions.format == .json)
     }
 
     @Test func outputFormatShortFlag() throws {
-        let command = try PresentCLI.parseAsRoot(["session", "status", "-f", "text"])
-        let status = try #require(command as? SessionStatusCommand)
+        let command = try PresentCLI.parseAsRoot(["session", "current", "status", "-f", "text"])
+        let status = try #require(command as? SessionCurrentStatusCommand)
         #expect(status.outputOptions.format == .text)
     }
 
     @Test func outputFormatLongFlag() throws {
-        let command = try PresentCLI.parseAsRoot(["session", "status", "--format", "csv"])
-        let status = try #require(command as? SessionStatusCommand)
+        let command = try PresentCLI.parseAsRoot(["session", "current", "status", "--format", "csv"])
+        let status = try #require(command as? SessionCurrentStatusCommand)
         #expect(status.outputOptions.format == .csv)
     }
 
     @Test func invalidOutputFormatThrows() {
         #expect(throws: (any Error).self) {
-            try PresentCLI.parseAsRoot(["session", "status", "-f", "xml"])
+            try PresentCLI.parseAsRoot(["session", "current", "status", "-f", "xml"])
         }
     }
 
     // MARK: - --field Option
 
     @Test func fieldOptionParses() throws {
-        let command = try PresentCLI.parseAsRoot(["session", "status", "--field", "state"])
-        let status = try #require(command as? SessionStatusCommand)
+        let command = try PresentCLI.parseAsRoot(["session", "current", "status", "--field", "state"])
+        let status = try #require(command as? SessionCurrentStatusCommand)
         #expect(status.outputOptions.field == "state")
     }
 
     @Test func fieldOptionDefaultsToNil() throws {
-        let command = try PresentCLI.parseAsRoot(["session", "status"])
-        let status = try #require(command as? SessionStatusCommand)
+        let command = try PresentCLI.parseAsRoot(["session", "current", "status"])
+        let status = try #require(command as? SessionCurrentStatusCommand)
         #expect(status.outputOptions.field == nil)
     }
 
     @Test func fieldOptionCombinesWithTextOutput() throws {
-        let command = try PresentCLI.parseAsRoot(["session", "status", "--field", "elapsed", "-f", "text"])
-        let status = try #require(command as? SessionStatusCommand)
+        let command = try PresentCLI.parseAsRoot(["session", "current", "status", "--field", "elapsed", "-f", "text"])
+        let status = try #require(command as? SessionCurrentStatusCommand)
         #expect(status.outputOptions.field == "elapsed")
         #expect(status.outputOptions.format == .text)
     }
@@ -692,9 +662,9 @@ struct CLICommandTests {
         let tagAdd = try #require(tagCmd as? TagAddCommand)
         #expect(tagAdd.outputOptions.field == "id")
 
-        let reportCmd = try PresentCLI.parseAsRoot(["report", "today", "--field", "sessionCount"])
-        let reportToday = try #require(reportCmd as? ReportTodayCommand)
-        #expect(reportToday.outputOptions.field == "sessionCount")
+        let reportCmd = try PresentCLI.parseAsRoot(["report", "--field", "sessionCount"])
+        let report = try #require(reportCmd as? ReportCommand)
+        #expect(report.outputOptions.field == "sessionCount")
     }
 
     // MARK: - Invalid Subcommand
