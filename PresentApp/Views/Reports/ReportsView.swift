@@ -409,33 +409,35 @@ struct ReportsView: View {
             }
             .chartOverlay { proxy in
                 GeometryReader { geometry in
-                    let plotFrame = geometry[proxy.plotAreaFrame]
+                    if let plotFrame = proxy.plotFrame {
+                        let frame = geometry[plotFrame]
 
-                    Rectangle()
-                        .fill(.clear)
-                        .contentShape(Rectangle())
-                        .onContinuousHover { phase in
-                            switch phase {
-                            case .active(let location):
-                                let relativeX = location.x - plotFrame.origin.x
-                                if let label: String = proxy.value(atX: relativeX),
-                                   entries.contains(where: { $0.label == label }) {
-                                    hoveredBarLabel = label
-                                    barHoverLocation = location
-                                } else {
+                        Rectangle()
+                            .fill(.clear)
+                            .contentShape(Rectangle())
+                            .onContinuousHover { phase in
+                                switch phase {
+                                case .active(let location):
+                                    let relativeX = location.x - frame.origin.x
+                                    if let label: String = proxy.value(atX: relativeX),
+                                       entries.contains(where: { $0.label == label }) {
+                                        hoveredBarLabel = label
+                                        barHoverLocation = location
+                                    } else {
+                                        hoveredBarLabel = nil
+                                    }
+                                case .ended:
                                     hoveredBarLabel = nil
                                 }
-                            case .ended:
-                                hoveredBarLabel = nil
                             }
-                        }
 
-                    if let label = hoveredBarLabel {
-                        let pos = tooltipPosition(cursor: barHoverLocation, containerSize: geometry.size)
-                        barTooltip(for: label, entries: entries)
-                            .fixedSize()
-                            .frame(maxWidth: 180, alignment: .leading)
-                            .position(x: pos.x, y: pos.y)
+                        if let label = hoveredBarLabel {
+                            let pos = tooltipPosition(cursor: barHoverLocation, containerSize: geometry.size)
+                            barTooltip(for: label, entries: entries)
+                                .fixedSize()
+                                .frame(maxWidth: 180, alignment: .leading)
+                                .position(x: pos.x, y: pos.y)
+                        }
                     }
                 }
             }
@@ -588,31 +590,33 @@ struct ReportsView: View {
             .chartLegend(.hidden)
             .chartOverlay { proxy in
                 GeometryReader { geometry in
-                    let plotFrame = geometry[proxy.plotAreaFrame]
-                    if let segmentId = hoveredExternalSegment,
-                       let group = groups.first(where: { $0.externalId == segmentId }) {
-                        donutCenterTooltip {
-                            Text(group.externalId)
-                                .font(.caption.bold())
-                                .lineLimit(2)
-                                .multilineTextAlignment(.center)
-                            Text(TimeFormatting.formatDuration(seconds: group.totalSeconds))
-                                .font(.caption.monospacedDigit())
-                            let pct = combinedTotal > 0 ? Double(group.totalSeconds) / Double(combinedTotal) * 100 : 0
-                            Text(String(format: "%.1f%%", pct))
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                            ForEach(group.activities, id: \.activity.id) { summary in
-                                Text(summary.activity.title)
+                    if let plotFrame = proxy.plotFrame {
+                        let frame = geometry[plotFrame]
+                        if let segmentId = hoveredExternalSegment,
+                           let group = groups.first(where: { $0.externalId == segmentId }) {
+                            donutCenterTooltip {
+                                Text(group.externalId)
+                                    .font(.caption.bold())
+                                    .lineLimit(2)
+                                    .multilineTextAlignment(.center)
+                                Text(TimeFormatting.formatDuration(seconds: group.totalSeconds))
+                                    .font(.caption.monospacedDigit())
+                                let pct = combinedTotal > 0 ? Double(group.totalSeconds) / Double(combinedTotal) * 100 : 0
+                                Text(String(format: "%.1f%%", pct))
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
-                                    .lineLimit(1)
+                                ForEach(group.activities, id: \.activity.id) { summary in
+                                    Text(summary.activity.title)
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(1)
+                                }
                             }
+                            .position(
+                                x: frame.midX,
+                                y: frame.midY
+                            )
                         }
-                        .position(
-                            x: plotFrame.midX,
-                            y: plotFrame.midY
-                        )
                     }
                 }
                 .allowsHitTesting(false)
@@ -688,28 +692,30 @@ struct ReportsView: View {
             .chartLegend(.hidden)
             .chartOverlay { proxy in
                 GeometryReader { geometry in
-                    let plotFrame = geometry[proxy.plotAreaFrame]
-                    if let name = hoveredActivityName,
-                       let summary = activities.first(where: { $0.activity.title == name }) {
-                        donutCenterTooltip {
-                            Text(summary.activity.title)
-                                .font(.caption.bold())
-                                .lineLimit(2)
-                                .multilineTextAlignment(.center)
-                            Text(TimeFormatting.formatDuration(seconds: summary.totalSeconds))
-                                .font(.caption.monospacedDigit())
-                            let pct = totalSeconds > 0 ? Double(summary.totalSeconds) / Double(totalSeconds) * 100 : 0
-                            Text(String(format: "%.1f%%", pct))
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                            Text("\(summary.sessionCount) sessions")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
+                    if let plotFrame = proxy.plotFrame {
+                        let frame = geometry[plotFrame]
+                        if let name = hoveredActivityName,
+                           let summary = activities.first(where: { $0.activity.title == name }) {
+                            donutCenterTooltip {
+                                Text(summary.activity.title)
+                                    .font(.caption.bold())
+                                    .lineLimit(2)
+                                    .multilineTextAlignment(.center)
+                                Text(TimeFormatting.formatDuration(seconds: summary.totalSeconds))
+                                    .font(.caption.monospacedDigit())
+                                let pct = totalSeconds > 0 ? Double(summary.totalSeconds) / Double(totalSeconds) * 100 : 0
+                                Text(String(format: "%.1f%%", pct))
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                Text("\(summary.sessionCount) sessions")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .position(
+                                x: frame.midX,
+                                y: frame.midY
+                            )
                         }
-                        .position(
-                            x: plotFrame.midX,
-                            y: plotFrame.midY
-                        )
                     }
                 }
                 .allowsHitTesting(false)
@@ -806,32 +812,34 @@ struct ReportsView: View {
             }
             .chartOverlay { proxy in
                 GeometryReader { geometry in
-                    let plotFrame = geometry[proxy.plotAreaFrame]
+                    if let plotFrame = proxy.plotFrame {
+                        let frame = geometry[plotFrame]
 
-                    Rectangle()
-                        .fill(.clear)
-                        .contentShape(Rectangle())
-                        .onContinuousHover { phase in
-                            switch phase {
-                            case .active(let location):
-                                let relativeY = location.y - plotFrame.origin.y
-                                if let label: String = proxy.value(atY: relativeY) {
-                                    hoveredTagLabel = label
-                                    tagHoverLocation = location
-                                } else {
+                        Rectangle()
+                            .fill(.clear)
+                            .contentShape(Rectangle())
+                            .onContinuousHover { phase in
+                                switch phase {
+                                case .active(let location):
+                                    let relativeY = location.y - frame.origin.y
+                                    if let label: String = proxy.value(atY: relativeY) {
+                                        hoveredTagLabel = label
+                                        tagHoverLocation = location
+                                    } else {
+                                        hoveredTagLabel = nil
+                                    }
+                                case .ended:
                                     hoveredTagLabel = nil
                                 }
-                            case .ended:
-                                hoveredTagLabel = nil
                             }
-                        }
 
-                    if let label = hoveredTagLabel {
-                        let pos = tooltipPosition(cursor: tagHoverLocation, containerSize: geometry.size)
-                        tagTooltip(for: label, summaries: sorted)
-                            .fixedSize()
-                            .frame(maxWidth: 200, alignment: .leading)
-                            .position(x: pos.x, y: pos.y)
+                        if let label = hoveredTagLabel {
+                            let pos = tooltipPosition(cursor: tagHoverLocation, containerSize: geometry.size)
+                            tagTooltip(for: label, summaries: sorted)
+                                .fixedSize()
+                                .frame(maxWidth: 200, alignment: .leading)
+                                .position(x: pos.x, y: pos.y)
+                        }
                     }
                 }
             }
