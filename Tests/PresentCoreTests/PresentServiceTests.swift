@@ -536,6 +536,210 @@ struct PresentServiceTests {
         }
     }
 
+    // MARK: - Set Activity Tags
+
+    @Test func setActivityTagsReplacesExisting() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Tagged"))
+        let tag1 = try await service.createTag(name: "frontend")
+        let tag2 = try await service.createTag(name: "backend")
+        let tag3 = try await service.createTag(name: "urgent")
+
+        try await service.tagActivity(activityId: activity.id!, tagId: tag1.id!)
+        try await service.tagActivity(activityId: activity.id!, tagId: tag2.id!)
+
+        let result = try await service.setActivityTags(activityId: activity.id!, tagIds: [tag3.id!])
+        #expect(result.count == 1)
+        #expect(result.first?.name == "urgent")
+
+        let tags = try await service.tagsForActivity(activityId: activity.id!)
+        #expect(tags.count == 1)
+        #expect(tags.first?.name == "urgent")
+    }
+
+    @Test func setActivityTagsEmptyArray() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Tagged"))
+        let tag = try await service.createTag(name: "frontend")
+        try await service.tagActivity(activityId: activity.id!, tagId: tag.id!)
+
+        let result = try await service.setActivityTags(activityId: activity.id!, tagIds: [])
+        #expect(result.isEmpty)
+
+        let tags = try await service.tagsForActivity(activityId: activity.id!)
+        #expect(tags.isEmpty)
+    }
+
+    @Test func setActivityTagsInvalidActivity() async throws {
+        let service = try makeService()
+        await #expect(throws: PresentError.self) {
+            try await service.setActivityTags(activityId: 999, tagIds: [])
+        }
+    }
+
+    @Test func setActivityTagsInvalidTag() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Test"))
+        await #expect(throws: PresentError.self) {
+            try await service.setActivityTags(activityId: activity.id!, tagIds: [999])
+        }
+    }
+
+    // MARK: - Backdated Sessions
+
+    @Test func createBackdatedSession() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Backdate"))
+        let startedAt = Date().addingTimeInterval(-7200) // 2 hours ago
+        let endedAt = Date().addingTimeInterval(-3600)   // 1 hour ago
+
+        let session = try await service.createBackdatedSession(CreateBackdatedSessionInput(
+            activityId: activity.id!,
+            startedAt: startedAt,
+            endedAt: endedAt
+        ))
+        #expect(session.state == .completed)
+        #expect(session.durationSeconds == 3600)
+        #expect(session.activityId == activity.id)
+    }
+
+    @Test func createBackdatedSessionEndBeforeStart() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Bad"))
+        let startedAt = Date().addingTimeInterval(-3600)
+        let endedAt = Date().addingTimeInterval(-7200)
+
+        await #expect(throws: PresentError.self) {
+            try await service.createBackdatedSession(CreateBackdatedSessionInput(
+                activityId: activity.id!,
+                startedAt: startedAt,
+                endedAt: endedAt
+            ))
+        }
+    }
+
+    @Test func createBackdatedSessionFutureStart() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Future"))
+        let startedAt = Date().addingTimeInterval(3600)
+        let endedAt = Date().addingTimeInterval(7200)
+
+        await #expect(throws: PresentError.self) {
+            try await service.createBackdatedSession(CreateBackdatedSessionInput(
+                activityId: activity.id!,
+                startedAt: startedAt,
+                endedAt: endedAt
+            ))
+        }
+    }
+
+    @Test func createBackdatedSessionOverlap() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Overlap"))
+
+        // Create first session: 3h ago to 2h ago
+        _ = try await service.createBackdatedSession(CreateBackdatedSessionInput(
+            activityId: activity.id!,
+            startedAt: Date().addingTimeInterval(-10800),
+            endedAt: Date().addingTimeInterval(-7200)
+        ))
+
+        // Try overlapping session: 2.5h ago to 1.5h ago
+        await #expect(throws: PresentError.self) {
+            try await service.createBackdatedSession(CreateBackdatedSessionInput(
+                activityId: activity.id!,
+                startedAt: Date().addingTimeInterval(-9000),
+                endedAt: Date().addingTimeInterval(-5400)
+            ))
+        }
+    }
+
+    @Test func createBackdatedSessionOverlapWithActive() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Active"))
+
+        // Start a running session
+        _ = try await service.startSession(activityId: activity.id!, type: .work)
+
+        // Try backdated session that overlaps with the running session
+        await #expect(throws: PresentError.self) {
+            try await service.createBackdatedSession(CreateBackdatedSessionInput(
+                activityId: activity.id!,
+                startedAt: Date().addingTimeInterval(-60),
+                endedAt: Date().addingTimeInterval(60)
+            ))
+        }
+    }
+
+    @Test func createBackdatedSessionArchivedActivity() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Archive"))
+
+        // Force archive by adding enough time then archiving
+        _ = try await service.createBackdatedSession(CreateBackdatedSessionInput(
+            activityId: activity.id!,
+            startedAt: Date().addingTimeInterval(-7200),
+            endedAt: Date().addingTimeInterval(-3600)
+        ))
+        _ = try await service.archiveActivity(id: activity.id!)
+
+        await #expect(throws: PresentError.self) {
+            try await service.createBackdatedSession(CreateBackdatedSessionInput(
+                activityId: activity.id!,
+                startedAt: Date().addingTimeInterval(-14400),
+                endedAt: Date().addingTimeInterval(-10800)
+            ))
+        }
+    }
+
+    @Test func createBackdatedSessionNoOverlapAdjacent() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Adjacent"))
+
+        let boundary = Date().addingTimeInterval(-7200)
+
+        // Create first session: 3h ago to boundary
+        _ = try await service.createBackdatedSession(CreateBackdatedSessionInput(
+            activityId: activity.id!,
+            startedAt: Date().addingTimeInterval(-10800),
+            endedAt: boundary
+        ))
+
+        // Adjacent session starting exactly at boundary should succeed
+        let session = try await service.createBackdatedSession(CreateBackdatedSessionInput(
+            activityId: activity.id!,
+            startedAt: boundary,
+            endedAt: Date().addingTimeInterval(-3600)
+        ))
+        #expect(session.state == .completed)
+    }
+
+    // MARK: - Activity Summary
+
+    @Test func activitySummaryDateRange() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Summary"))
+        _ = try await service.startSession(activityId: activity.id!, type: .work)
+        _ = try await service.stopSession()
+
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
+
+        let summaries = try await service.activitySummary(from: yesterday, to: tomorrow, includeArchived: true)
+        #expect(summaries.count == 1)
+        #expect(summaries.first?.activity.title == "Summary")
+        #expect(summaries.first?.sessionCount == 1)
+    }
+
+    @Test func activitySummaryEmpty() async throws {
+        let service = try makeService()
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
+
+        let summaries = try await service.activitySummary(from: yesterday, to: tomorrow, includeArchived: true)
+        #expect(summaries.isEmpty)
+    }
+
     // MARK: - Recent Activities
 
     @Test func recentActivities() async throws {

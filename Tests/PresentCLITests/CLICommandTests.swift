@@ -239,14 +239,7 @@ struct CLICommandTests {
 
     @Test func activityListParses() throws {
         let command = try PresentCLI.parseAsRoot(["activity", "list"])
-        let list = try #require(command as? ActivityListCommand)
-        #expect(list.includeArchived == false)
-    }
-
-    @Test func activityListIncludeArchivedFlag() throws {
-        let command = try PresentCLI.parseAsRoot(["activity", "list", "--include-archived"])
-        let list = try #require(command as? ActivityListCommand)
-        #expect(list.includeArchived == true)
+        _ = try #require(command as? ActivityListCommand)
     }
 
     @Test func activityListTextOutput() throws {

@@ -9,6 +9,7 @@ public protocol PresentAPI: Sendable {
     func cancelSession() async throws
     func currentSession() async throws -> (Session, Activity)?
     func getSession(id: Int64) async throws -> (Session, Activity)
+    func createBackdatedSession(_ input: CreateBackdatedSessionInput) async throws -> Session
     func listSessions(from: Date, to: Date, type: SessionType?, activityId: Int64?, includeArchived: Bool) async throws -> [(Session, Activity)]
     func lastCompletedSession(since: Date) async throws -> (Session, Activity)?
     func earliestSessionDate() async throws -> Date?
@@ -35,10 +36,12 @@ public protocol PresentAPI: Sendable {
     func listTags() async throws -> [Tag]
     func tagActivity(activityId: Int64, tagId: Int64) async throws
     func untagActivity(activityId: Int64, tagId: Int64) async throws
+    func setActivityTags(activityId: Int64, tagIds: [Int64]) async throws -> [Tag]
     func tagsForActivity(activityId: Int64) async throws -> [Tag]
     func tagsForActivities(activityIds: [Int64]) async throws -> [Int64: [Tag]]
 
     // Reports
+    func activitySummary(from: Date, to: Date, includeArchived: Bool) async throws -> [ActivitySummary]
     func dailySummary(date: Date, includeArchived: Bool) async throws -> DailySummary
     func weeklySummary(weekOf: Date, includeArchived: Bool, weekStartDay: Int) async throws -> WeeklySummary
     func monthlySummary(monthOf: Date, includeArchived: Bool, weekStartDay: Int) async throws -> MonthlySummary

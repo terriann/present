@@ -13,6 +13,7 @@ public enum PresentError: Error, LocalizedError, Sendable {
     case activityIsArchived(Int64)
     case invalidInput(String)
     case cannotDeleteActiveActivity
+    case sessionOverlap
 
     public var errorDescription: String? {
         switch self {
@@ -27,6 +28,7 @@ public enum PresentError: Error, LocalizedError, Sendable {
         case .activityIsArchived(let id): "Activity \(id) is archived and cannot be used for new sessions."
         case .invalidInput(let msg): msg
         case .cannotDeleteActiveActivity: "Cannot delete an activity with an active session."
+        case .sessionOverlap: "Session overlaps with an existing session."
         }
     }
 }
@@ -88,6 +90,81 @@ public final class PresentService: PresentAPI, Sendable {
                 let lastIndex = lastRhythm?.rhythmSessionIndex ?? 0
                 session.rhythmSessionIndex = (lastIndex % 4) + 1
             }
+
+            try session.insert(db)
+            session.id = db.lastInsertedRowID
+            return session
+        }
+    }
+
+    public func createBackdatedSession(_ input: CreateBackdatedSessionInput) async throws -> Session {
+        // Validate endedAt > startedAt
+        guard input.endedAt > input.startedAt else {
+            throw PresentError.invalidInput("End time must be after start time.")
+        }
+
+        // Validate startedAt not in the future
+        guard input.startedAt <= Date() else {
+            throw PresentError.invalidInput("Start time cannot be in the future.")
+        }
+
+        if let timerMinutes = input.timerLengthMinutes {
+            try Validation.validateRange(timerMinutes, range: Constants.sessionMinutesRange, fieldName: "Timer duration")
+        }
+        if let breakMinutes = input.breakMinutes {
+            try Validation.validateRange(breakMinutes, range: Constants.breakDurationRange, fieldName: "Break duration")
+        }
+
+        return try await dbWriter.write { db in
+            // Validate activity exists and is not archived
+            guard let activity = try Activity.fetchOne(db, key: input.activityId) else {
+                throw PresentError.activityNotFound(input.activityId)
+            }
+            if activity.isArchived {
+                throw PresentError.activityIsArchived(input.activityId)
+            }
+
+            // Overlap check: completed sessions
+            let overlapSQL = """
+                SELECT COUNT(*) FROM session
+                WHERE state = ?
+                  AND startedAt < ? AND endedAt > ?
+                """
+            let overlapCount = try Int.fetchOne(db, sql: overlapSQL, arguments: [
+                SessionState.completed.rawValue,
+                input.endedAt, input.startedAt
+            ]) ?? 0
+            if overlapCount > 0 {
+                throw PresentError.sessionOverlap
+            }
+
+            // Overlap check: active (running/paused) sessions
+            let activeSQL = """
+                SELECT COUNT(*) FROM session
+                WHERE state IN (?, ?)
+                  AND startedAt < ?
+                """
+            let activeOverlap = try Int.fetchOne(db, sql: activeSQL, arguments: [
+                SessionState.running.rawValue, SessionState.paused.rawValue,
+                input.endedAt
+            ]) ?? 0
+            if activeOverlap > 0 {
+                throw PresentError.sessionOverlap
+            }
+
+            let durationSeconds = Int(input.endedAt.timeIntervalSince(input.startedAt))
+            let now = Date()
+            var session = Session(
+                activityId: input.activityId,
+                sessionType: input.sessionType,
+                startedAt: input.startedAt,
+                endedAt: input.endedAt,
+                durationSeconds: durationSeconds,
+                timerLengthMinutes: input.timerLengthMinutes,
+                state: .completed,
+                breakMinutes: input.breakMinutes,
+                createdAt: now
+            )
 
             try session.insert(db)
             session.id = db.lastInsertedRowID
@@ -652,6 +729,35 @@ public final class PresentService: PresentAPI, Sendable {
         }
     }
 
+    public func setActivityTags(activityId: Int64, tagIds: [Int64]) async throws -> [Tag] {
+        try await dbWriter.write { db in
+            guard try Activity.fetchOne(db, key: activityId) != nil else {
+                throw PresentError.activityNotFound(activityId)
+            }
+
+            // Validate all tags exist
+            for tagId in tagIds {
+                guard try Tag.fetchOne(db, key: tagId) != nil else {
+                    throw PresentError.tagNotFound(tagId)
+                }
+            }
+
+            // Delete existing tags
+            try ActivityTag.filter(ActivityTag.Columns.activityId == activityId).deleteAll(db)
+
+            // Insert new tags
+            var tags: [Tag] = []
+            for tagId in tagIds {
+                try ActivityTag(activityId: activityId, tagId: tagId).insert(db)
+                if let tag = try Tag.fetchOne(db, key: tagId) {
+                    tags.append(tag)
+                }
+            }
+
+            return tags.sorted { $0.name < $1.name }
+        }
+    }
+
     public func tagsForActivity(activityId: Int64) async throws -> [Tag] {
         try await dbWriter.read { db in
             let sql = """
@@ -688,6 +794,34 @@ public final class PresentService: PresentAPI, Sendable {
     }
 
     // MARK: - Reports
+
+    public func activitySummary(from startDate: Date, to endDate: Date, includeArchived: Bool) async throws -> [ActivitySummary] {
+        try await dbWriter.read { db in
+            let archiveFilter = includeArchived ? "" : " AND a.isArchived = 0"
+            let sql = """
+                SELECT a.*, COALESCE(SUM(s.durationSeconds), 0) as totalSecs, COUNT(s.id) as sessCount
+                FROM activity a
+                INNER JOIN session s ON s.activityId = a.id
+                WHERE s.state = ?
+                  AND s.startedAt >= ? AND s.startedAt < ?
+                  \(archiveFilter)
+                GROUP BY a.id
+                ORDER BY totalSecs DESC
+                """
+
+            let rows = try Row.fetchAll(db, sql: sql, arguments: [
+                SessionState.completed.rawValue,
+                startDate, endDate
+            ])
+
+            return rows.map { row in
+                let activity = try! Activity(row: row)
+                let secs: Int = row["totalSecs"]
+                let count: Int = row["sessCount"]
+                return ActivitySummary(activity: activity, totalSeconds: secs, sessionCount: count)
+            }
+        }
+    }
 
     public func dailySummary(date: Date, includeArchived: Bool) async throws -> DailySummary {
         try await dbWriter.read { db in

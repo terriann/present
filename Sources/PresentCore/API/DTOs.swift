@@ -46,6 +46,31 @@ public struct UpdateActivityInput: Sendable {
     }
 }
 
+public struct CreateBackdatedSessionInput: Sendable {
+    public var activityId: Int64
+    public var sessionType: SessionType
+    public var startedAt: Date
+    public var endedAt: Date
+    public var timerLengthMinutes: Int?
+    public var breakMinutes: Int?
+
+    public init(
+        activityId: Int64,
+        sessionType: SessionType = .work,
+        startedAt: Date,
+        endedAt: Date,
+        timerLengthMinutes: Int? = nil,
+        breakMinutes: Int? = nil
+    ) {
+        self.activityId = activityId
+        self.sessionType = sessionType
+        self.startedAt = startedAt
+        self.endedAt = endedAt
+        self.timerLengthMinutes = timerLengthMinutes
+        self.breakMinutes = breakMinutes
+    }
+}
+
 // MARK: - Result Types
 
 public enum ArchiveResult: Sendable, Equatable {
