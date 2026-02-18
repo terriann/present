@@ -55,7 +55,7 @@ final class StatusItemMenuManager: NSObject, @unchecked Sendable {
 
     // MARK: - Menu Building
 
-    private func showMenu(in window: NSWindow) {
+    @MainActor private func showMenu(in window: NSWindow) {
         let menu = buildMenu()
         guard let view = window.contentView else { return }
         // Position first item at the bottom edge of the status bar button.
@@ -164,7 +164,7 @@ final class StatusItemMenuManager: NSObject, @unchecked Sendable {
     }
 
     @objc private func openApp() {
-        MainActor.assumeIsolated {
+        _ = MainActor.assumeIsolated {
             NSApplication.shared.setActivationPolicy(.regular)
         }
         // Defer to next run loop so activation policy takes effect before SwiftUI opens the window.
@@ -174,7 +174,7 @@ final class StatusItemMenuManager: NSObject, @unchecked Sendable {
     }
 
     @objc private func openSettings() {
-        MainActor.assumeIsolated {
+        _ = MainActor.assumeIsolated {
             NSApplication.shared.setActivationPolicy(.regular)
         }
         // Open main window first (settings needs an active window), then settings after a delay.
