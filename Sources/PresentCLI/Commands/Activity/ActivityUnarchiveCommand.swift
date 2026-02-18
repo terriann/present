@@ -5,7 +5,18 @@ import PresentCore
 struct ActivityUnarchiveCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "unarchive",
-        abstract: "Unarchive an activity."
+        abstract: "Unarchive an activity.",
+        discussion: """
+            Restores an archived activity back to the active list.
+
+            ## Examples
+
+            # Unarchive an activity
+            $ present-cli activity unarchive 3
+
+            # Unarchive and show details
+            $ present-cli activity unarchive 3 -f text
+            """
     )
 
     @Argument(help: "Activity ID to unarchive.")

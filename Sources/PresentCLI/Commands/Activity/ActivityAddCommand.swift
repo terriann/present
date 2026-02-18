@@ -5,7 +5,22 @@ import PresentCore
 struct ActivityAddCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "add",
-        abstract: "Add a new activity."
+        abstract: "Add a new activity.",
+        discussion: """
+            Creates a new activity with the given name. Optionally attach a \
+            link URL and external ID for integration with other tools.
+
+            ## Examples
+
+            # Add a simple activity
+            $ present-cli activity add "My Project"
+
+            # Add with a link and external ID
+            $ present-cli activity add "Client Work" --link "https://example.com" --external-id "PROJ-123"
+
+            # Add and get just the new ID
+            $ present-cli activity add "Reading" --field id
+            """
     )
 
     @Argument(help: "Activity name.")

@@ -5,7 +5,21 @@ import PresentCore
 struct TagListCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "list",
-        abstract: "List all tags."
+        abstract: "List all tags.",
+        discussion: """
+            Lists all tags in the system.
+
+            ## Examples
+
+            # List all tags as JSON (default)
+            $ present-cli tag list
+
+            # List as text
+            $ present-cli tag list -f text
+
+            # Export as CSV
+            $ present-cli tag list -f csv
+            """
     )
 
     @OptionGroup var outputOptions: OutputOptions

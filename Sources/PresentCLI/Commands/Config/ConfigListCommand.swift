@@ -5,7 +5,21 @@ import PresentCore
 struct ConfigListCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "list",
-        abstract: "List all preferences."
+        abstract: "List all preferences.",
+        discussion: """
+            Lists all currently set preferences with their values.
+
+            ## Examples
+
+            # List all preferences as JSON
+            $ present-cli config list
+
+            # List as key=value text
+            $ present-cli config list -f text
+
+            # Export as CSV
+            $ present-cli config list -f csv
+            """
     )
 
     @OptionGroup var outputOptions: OutputOptions

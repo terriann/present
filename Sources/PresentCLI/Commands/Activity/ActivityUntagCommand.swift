@@ -5,7 +5,19 @@ import PresentCore
 struct ActivityUntagCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "untag",
-        abstract: "Remove a tag from an activity."
+        abstract: "Remove a tag from an activity.",
+        discussion: """
+            Removes the association between a tag and an activity. The tag \
+            itself is not deleted.
+
+            ## Examples
+
+            # Remove tag 2 from activity 1
+            $ present-cli activity untag 1 2
+
+            # Remove and confirm via text output
+            $ present-cli activity untag 1 2 -f text
+            """
     )
 
     @Argument(help: "Activity ID.")

@@ -5,7 +5,18 @@ import PresentCore
 struct TagGetCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "get",
-        abstract: "Show tag details."
+        abstract: "Show tag details.",
+        discussion: """
+            Retrieves details for a specific tag by its ID.
+
+            ## Examples
+
+            # Get tag details
+            $ present-cli tag get 1
+
+            # Get just the tag name
+            $ present-cli tag get 1 --field name
+            """
     )
 
     @Argument(help: "Tag ID.")

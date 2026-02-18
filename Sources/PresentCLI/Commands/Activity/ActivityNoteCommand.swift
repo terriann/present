@@ -5,7 +5,22 @@ import PresentCore
 struct ActivityNoteCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "note",
-        abstract: "Append a note to an activity."
+        abstract: "Append a note to an activity.",
+        discussion: """
+            Appends text to an activity's notes field. If no --id is given, \
+            the note is added to the currently running session's activity.
+
+            ## Examples
+
+            # Add a note to the current session's activity
+            $ present-cli activity note "Completed the first draft"
+
+            # Add a note to a specific activity by ID
+            $ present-cli activity note "Follow up needed" --id 3
+
+            # Add a note and show the updated activity
+            $ present-cli activity note "Bug found in auth flow" -f text
+            """
     )
 
     @Argument(help: "Text to append to the activity's notes.")

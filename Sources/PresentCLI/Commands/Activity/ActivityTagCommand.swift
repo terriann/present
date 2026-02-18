@@ -5,7 +5,19 @@ import PresentCore
 struct ActivityTagCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "tag",
-        abstract: "Add a tag to an activity."
+        abstract: "Add a tag to an activity.",
+        discussion: """
+            Associates an existing tag with an activity. Use `tag list` to \
+            find available tag IDs, or `tag add` to create a new tag first.
+
+            ## Examples
+
+            # Tag activity 1 with tag 2
+            $ present-cli activity tag 1 2
+
+            # Tag and show result as text
+            $ present-cli activity tag 1 2 -f text
+            """
     )
 
     @Argument(help: "Activity ID.")

@@ -5,7 +5,22 @@ import PresentCore
 struct SessionGetCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "get",
-        abstract: "Show session details."
+        abstract: "Show session details.",
+        discussion: """
+            Retrieves full details for a specific session by its ID, \
+            including the associated activity, type, state, and duration.
+
+            ## Examples
+
+            # Get session details
+            $ present-cli session get 42
+
+            # Get session activity name
+            $ present-cli session get 42 --field activity
+
+            # Show session in text format
+            $ present-cli session get 42 -f text
+            """
     )
 
     @Argument(help: "Session ID.")

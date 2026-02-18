@@ -5,7 +5,22 @@ import PresentCore
 struct ActivityGetCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "get",
-        abstract: "Show activity details."
+        abstract: "Show activity details.",
+        discussion: """
+            Retrieves full details for a specific activity by ID, including \
+            tags, notes, link, and archive status.
+
+            ## Examples
+
+            # Get activity details
+            $ present-cli activity get 1
+
+            # Get just the title
+            $ present-cli activity get 1 --field title
+
+            # Show in text format
+            $ present-cli activity get 1 -f text
+            """
     )
 
     @Argument(help: "Activity ID.")

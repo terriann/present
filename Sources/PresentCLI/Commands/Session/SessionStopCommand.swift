@@ -5,7 +5,19 @@ import PresentCore
 struct SessionStopCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "stop",
-        abstract: "Stop the current session."
+        abstract: "Stop the current session.",
+        discussion: """
+            Ends the currently running session and records the duration. \
+            If no session is active, an error is returned.
+
+            ## Examples
+
+            # Stop the current session
+            $ present-cli session stop
+
+            # Stop and show duration in text format
+            $ present-cli session stop -f text
+            """
     )
 
     @OptionGroup var outputOptions: OutputOptions

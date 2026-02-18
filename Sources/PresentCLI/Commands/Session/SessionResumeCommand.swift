@@ -5,7 +5,19 @@ import PresentCore
 struct SessionResumeCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "resume",
-        abstract: "Resume a paused session."
+        abstract: "Resume a paused session.",
+        discussion: """
+            Resumes a previously paused session. The session timer continues \
+            from where it left off. Returns an error if no session is paused.
+
+            ## Examples
+
+            # Resume the paused session
+            $ present-cli session resume
+
+            # Resume and display as text
+            $ present-cli session resume -f text
+            """
     )
 
     @OptionGroup var outputOptions: OutputOptions

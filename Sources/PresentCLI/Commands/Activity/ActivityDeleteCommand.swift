@@ -5,7 +5,19 @@ import PresentCore
 struct ActivityDeleteCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "delete",
-        abstract: "Delete an activity and its sessions."
+        abstract: "Delete an activity and its sessions.",
+        discussion: """
+            Permanently deletes an activity and all of its associated sessions. \
+            This action cannot be undone.
+
+            ## Examples
+
+            # Delete an activity
+            $ present-cli activity delete 5
+
+            # Delete and confirm via text output
+            $ present-cli activity delete 5 -f text
+            """
     )
 
     @Argument(help: "Activity ID to delete.")

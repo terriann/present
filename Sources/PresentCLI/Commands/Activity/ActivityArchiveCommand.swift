@@ -5,7 +5,21 @@ import PresentCore
 struct ActivityArchiveCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "archive",
-        abstract: "Archive an activity."
+        abstract: "Archive an activity.",
+        discussion: """
+            Archives an activity so it no longer appears in the active list. \
+            Archived activities and their sessions are preserved. If the \
+            activity has very little tracked time, the CLI suggests deleting \
+            it instead.
+
+            ## Examples
+
+            # Archive an activity
+            $ present-cli activity archive 3
+
+            # Archive and check the result
+            $ present-cli activity archive 3 --field result
+            """
     )
 
     @Argument(help: "Activity ID to archive.")

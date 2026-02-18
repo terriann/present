@@ -5,7 +5,25 @@ import PresentCore
 struct ReportMonthCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "month",
-        abstract: "Show this month's summary."
+        abstract: "Show this month's summary.",
+        discussion: """
+            Shows total tracked time for the current month with a weekly \
+            breakdown and per-activity totals.
+
+            ## Examples
+
+            # Show this month's summary
+            $ present-cli report month
+
+            # Show as text with weekly breakdown
+            $ present-cli report month -f text
+
+            # Get total seconds for scripting
+            $ present-cli report month --field totalSeconds
+
+            # Export weekly breakdown as CSV
+            $ present-cli report month -f csv
+            """
     )
 
     @OptionGroup var outputOptions: OutputOptions

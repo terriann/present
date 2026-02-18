@@ -5,7 +5,22 @@ import PresentCore
 struct ActivitySearchCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "search",
-        abstract: "Search activities by name."
+        abstract: "Search activities by name.",
+        discussion: """
+            Searches activities using full-text search on the activity name. \
+            Returns matching activities with their tags.
+
+            ## Examples
+
+            # Search for activities matching "project"
+            $ present-cli activity search "project"
+
+            # Search and display as text
+            $ present-cli activity search "work" -f text
+
+            # Search and export as CSV
+            $ present-cli activity search "client" -f csv
+            """
     )
 
     @Argument(help: "Search query.")

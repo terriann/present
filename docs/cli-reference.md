@@ -4,7 +4,7 @@
 
 > Present — time tracking from the command line.
 
-*Auto-generated on 2026-02-16 22:31 UTC from `present-cli --experimental-dump-help`.*
+*Auto-generated on 2026-02-18 02:17 UTC from `present-cli --experimental-dump-help`.*
 
 ## Commands
 
@@ -49,16 +49,15 @@
 
 Manage activities.
 
-**Flags:**
+Activities are the things you track time against. Each activity can have tags, notes, a link, and an external ID. Activities can be archived when no longer in use.
 
-| Flag | Description |
-|---|---|
-| `--version` | Show the version. |
+**Flags**
 
-**Subcommands:**
+`[--version]`
+: Show the version.
 
-| Command | Description |
-|---|---|
+**Subcommands**
+
 | [`add`](#present-cli-activity-add-name) | Add a new activity. |
 | [`archive`](#present-cli-activity-archive-id) | Archive an activity. |
 | [`delete`](#present-cli-activity-delete-id) | Delete an activity and its sessions. |
@@ -75,272 +74,432 @@ Manage activities.
 
 Add a new activity.
 
-**Arguments:**
+Creates a new activity with the given name. Optionally attach a link URL and external ID for integration with other tools.
 
-| Argument | Required | Description |
-|---|---|---|
-| `<name>` | Yes | Activity name. |
+**Arguments**
 
-**Options:**
+`<name>`
+: Activity name. *(required)*
 
-| Option | Default | Description |
-|---|---|---|
-| `--link` | — | Link URL for the activity. |
-| `--external-id` | — | External ID for the activity. |
-| `-f, --format` | `json` | Output format: json, text, csv. |
-| `--field` | — | Extract a single field value from the response. |
+**Options**
 
-**Flags:**
+`[--link=<link>]`
+: Link URL for the activity.
 
-| Flag | Description |
-|---|---|
-| `--version` | Show the version. |
+`[--external-id=<external-id>]`
+: External ID for the activity.
+
+**Flags**
+
+`[--version]`
+: Show the version.
+
+**Examples**
+
+```bash
+# Add a simple activity
+$ present-cli activity add "My Project"
+
+# Add with a link and external ID
+$ present-cli activity add "Client Work" --link "https://example.com" --external-id "PROJ-123"
+
+# Add and get just the new ID
+$ present-cli activity add "Reading" --field id
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
 
 #### `present-cli activity archive <id>`
 
 Archive an activity.
 
-**Arguments:**
+Archives an activity so it no longer appears in the active list. Archived activities and their sessions are preserved. If the activity has very little tracked time, the CLI suggests deleting it instead.
 
-| Argument | Required | Description |
-|---|---|---|
-| `<id>` | Yes | Activity ID to archive. |
+**Arguments**
 
-**Options:**
+`<id>`
+: Activity ID to archive. *(required)*
 
-| Option | Default | Description |
-|---|---|---|
-| `-f, --format` | `json` | Output format: json, text, csv. |
-| `--field` | — | Extract a single field value from the response. |
+**Flags**
 
-**Flags:**
+`[--version]`
+: Show the version.
 
-| Flag | Description |
-|---|---|
-| `--version` | Show the version. |
+**Examples**
+
+```bash
+# Archive an activity
+$ present-cli activity archive 3
+
+# Archive and check the result
+$ present-cli activity archive 3 --field result
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
 
 #### `present-cli activity delete <id>`
 
 Delete an activity and its sessions.
 
-**Arguments:**
+Permanently deletes an activity and all of its associated sessions. This action cannot be undone.
 
-| Argument | Required | Description |
-|---|---|---|
-| `<id>` | Yes | Activity ID to delete. |
+**Arguments**
 
-**Options:**
+`<id>`
+: Activity ID to delete. *(required)*
 
-| Option | Default | Description |
-|---|---|---|
-| `-f, --format` | `json` | Output format: json, text, csv. |
-| `--field` | — | Extract a single field value from the response. |
+**Flags**
 
-**Flags:**
+`[--version]`
+: Show the version.
 
-| Flag | Description |
-|---|---|
-| `--version` | Show the version. |
+**Examples**
+
+```bash
+# Delete an activity
+$ present-cli activity delete 5
+
+# Delete and confirm via text output
+$ present-cli activity delete 5 -f text
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
 
 #### `present-cli activity get <id>`
 
 Show activity details.
 
-**Arguments:**
+Retrieves full details for a specific activity by ID, including tags, notes, link, and archive status.
 
-| Argument | Required | Description |
-|---|---|---|
-| `<id>` | Yes | Activity ID. |
+**Arguments**
 
-**Options:**
+`<id>`
+: Activity ID. *(required)*
 
-| Option | Default | Description |
-|---|---|---|
-| `-f, --format` | `json` | Output format: json, text, csv. |
-| `--field` | — | Extract a single field value from the response. |
+**Flags**
 
-**Flags:**
+`[--version]`
+: Show the version.
 
-| Flag | Description |
-|---|---|
-| `--version` | Show the version. |
+**Examples**
+
+```bash
+# Get activity details
+$ present-cli activity get 1
+
+# Get just the title
+$ present-cli activity get 1 --field title
+
+# Show in text format
+$ present-cli activity get 1 -f text
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
 
 #### `present-cli activity list`
 
 List activities.
 
-**Options:**
+Lists all activities, including archived ones. Use the output format options to control how results are displayed.
 
-| Option | Default | Description |
-|---|---|---|
-| `-f, --format` | `json` | Output format: json, text, csv. |
-| `--field` | — | Extract a single field value from the response. |
+**Flags**
 
-**Flags:**
+`[--version]`
+: Show the version.
 
-| Flag | Description |
-|---|---|
-| `--include-archived` | Include archived activities. |
-| `--version` | Show the version. |
+**Examples**
+
+```bash
+# List all activities as JSON (default)
+$ present-cli activity list
+
+# List in text format
+$ present-cli activity list -f text
+
+# Export as CSV
+$ present-cli activity list -f csv
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
 
 #### `present-cli activity note <text>`
 
 Append a note to an activity.
 
-**Arguments:**
+Appends text to an activity's notes field. If no --id is given, the note is added to the currently running session's activity.
 
-| Argument | Required | Description |
-|---|---|---|
-| `<text>` | Yes | Text to append to the activity's notes. |
+**Arguments**
 
-**Options:**
+`<text>`
+: Text to append to the activity's notes. *(required)*
 
-| Option | Default | Description |
-|---|---|---|
-| `--id` | — | Activity ID (defaults to current session's activity). |
-| `-f, --format` | `json` | Output format: json, text, csv. |
-| `--field` | — | Extract a single field value from the response. |
+**Options**
 
-**Flags:**
+`[--id=<id>]`
+: Activity ID (defaults to current session's activity).
 
-| Flag | Description |
-|---|---|
-| `--version` | Show the version. |
+**Flags**
+
+`[--version]`
+: Show the version.
+
+**Examples**
+
+```bash
+# Add a note to the current session's activity
+$ present-cli activity note "Completed the first draft"
+
+# Add a note to a specific activity by ID
+$ present-cli activity note "Follow up needed" --id 3
+
+# Add a note and show the updated activity
+$ present-cli activity note "Bug found in auth flow" -f text
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
 
 #### `present-cli activity search <query>`
 
 Search activities by name.
 
-**Arguments:**
+Searches activities using full-text search on the activity name. Returns matching activities with their tags.
 
-| Argument | Required | Description |
-|---|---|---|
-| `<query>` | Yes | Search query. |
+**Arguments**
 
-**Options:**
+`<query>`
+: Search query. *(required)*
 
-| Option | Default | Description |
-|---|---|---|
-| `-f, --format` | `json` | Output format: json, text, csv. |
-| `--field` | — | Extract a single field value from the response. |
+**Flags**
 
-**Flags:**
+`[--version]`
+: Show the version.
 
-| Flag | Description |
-|---|---|
-| `--version` | Show the version. |
+**Examples**
+
+```bash
+# Search for activities matching "project"
+$ present-cli activity search "project"
+
+# Search and display as text
+$ present-cli activity search "work" -f text
+
+# Search and export as CSV
+$ present-cli activity search "client" -f csv
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
 
 #### `present-cli activity tag <activity-id> <tag-id>`
 
 Add a tag to an activity.
 
-**Arguments:**
+Associates an existing tag with an activity. Use `tag list` to find available tag IDs, or `tag add` to create a new tag first.
 
-| Argument | Required | Description |
-|---|---|---|
-| `<activity-id>` | Yes | Activity ID. |
-| `<tag-id>` | Yes | Tag ID. |
+**Arguments**
 
-**Options:**
+`<activity-id>`
+: Activity ID. *(required)*
 
-| Option | Default | Description |
-|---|---|---|
-| `-f, --format` | `json` | Output format: json, text, csv. |
-| `--field` | — | Extract a single field value from the response. |
+`<tag-id>`
+: Tag ID. *(required)*
 
-**Flags:**
+**Flags**
 
-| Flag | Description |
-|---|---|
-| `--version` | Show the version. |
+`[--version]`
+: Show the version.
+
+**Examples**
+
+```bash
+# Tag activity 1 with tag 2
+$ present-cli activity tag 1 2
+
+# Tag and show result as text
+$ present-cli activity tag 1 2 -f text
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
 
 #### `present-cli activity unarchive <id>`
 
 Unarchive an activity.
 
-**Arguments:**
+Restores an archived activity back to the active list.
 
-| Argument | Required | Description |
-|---|---|---|
-| `<id>` | Yes | Activity ID to unarchive. |
+**Arguments**
 
-**Options:**
+`<id>`
+: Activity ID to unarchive. *(required)*
 
-| Option | Default | Description |
-|---|---|---|
-| `-f, --format` | `json` | Output format: json, text, csv. |
-| `--field` | — | Extract a single field value from the response. |
+**Flags**
 
-**Flags:**
+`[--version]`
+: Show the version.
 
-| Flag | Description |
-|---|---|
-| `--version` | Show the version. |
+**Examples**
+
+```bash
+# Unarchive an activity
+$ present-cli activity unarchive 3
+
+# Unarchive and show details
+$ present-cli activity unarchive 3 -f text
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
 
 #### `present-cli activity untag <activity-id> <tag-id>`
 
 Remove a tag from an activity.
 
-**Arguments:**
+Removes the association between a tag and an activity. The tag itself is not deleted.
 
-| Argument | Required | Description |
-|---|---|---|
-| `<activity-id>` | Yes | Activity ID. |
-| `<tag-id>` | Yes | Tag ID. |
+**Arguments**
 
-**Options:**
+`<activity-id>`
+: Activity ID. *(required)*
 
-| Option | Default | Description |
-|---|---|---|
-| `-f, --format` | `json` | Output format: json, text, csv. |
-| `--field` | — | Extract a single field value from the response. |
+`<tag-id>`
+: Tag ID. *(required)*
 
-**Flags:**
+**Flags**
 
-| Flag | Description |
-|---|---|
-| `--version` | Show the version. |
+`[--version]`
+: Show the version.
+
+**Examples**
+
+```bash
+# Remove tag 2 from activity 1
+$ present-cli activity untag 1 2
+
+# Remove and confirm via text output
+$ present-cli activity untag 1 2 -f text
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
 
 #### `present-cli activity update <id>`
 
 Update an activity.
 
-**Arguments:**
+Updates one or more fields on an existing activity. At least one field (--title, --link, or --external-id) must be provided.
 
-| Argument | Required | Description |
-|---|---|---|
-| `<id>` | Yes | Activity ID. |
+**Arguments**
 
-**Options:**
+`<id>`
+: Activity ID. *(required)*
 
-| Option | Default | Description |
-|---|---|---|
-| `--title` | — | New title. |
-| `--link` | — | Link URL. |
-| `--external-id` | — | External ID. |
-| `-f, --format` | `json` | Output format: json, text, csv. |
-| `--field` | — | Extract a single field value from the response. |
+**Options**
 
-**Flags:**
+`[--title=<title>]`
+: New title.
 
-| Flag | Description |
-|---|---|
-| `--version` | Show the version. |
+`[--link=<link>]`
+: Link URL.
+
+`[--external-id=<external-id>]`
+: External ID.
+
+**Flags**
+
+`[--version]`
+: Show the version.
+
+**Examples**
+
+```bash
+# Rename an activity
+$ present-cli activity update 1 --title "New Name"
+
+# Update the link
+$ present-cli activity update 1 --link "https://example.com/new"
+
+# Update multiple fields at once
+$ present-cli activity update 1 --title "Renamed" --external-id "NEW-456"
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
 
 ### `present-cli config`
 
 View and update preferences.
 
-**Flags:**
+Manage application preferences. Changes are synced to the app via IPC when it is running.
 
-| Flag | Description |
-|---|---|
-| `--version` | Show the version. |
+**Flags**
 
-**Subcommands:**
+`[--version]`
+: Show the version.
 
-| Command | Description |
-|---|---|
+**Subcommands**
+
 | [`get`](#present-cli-config-get-key) | Get a preference value. |
 | [`list`](#present-cli-config-list) | List all preferences. |
 | [`set`](#present-cli-config-set-key-value) | Set a preference value. |
@@ -349,80 +508,121 @@ View and update preferences.
 
 Get a preference value.
 
-**Arguments:**
+Gets the current value of a specific preference key. Returns null if the preference has not been set.
 
-| Argument | Required | Description |
-|---|---|---|
-| `<key>` | Yes | Preference key. |
+**Arguments**
 
-**Options:**
+`<key>`
+: Preference key. *(required)*
 
-| Option | Default | Description |
-|---|---|---|
-| `-f, --format` | `json` | Output format: json, text, csv. |
-| `--field` | — | Extract a single field value from the response. |
+**Flags**
 
-**Flags:**
+`[--version]`
+: Show the version.
 
-| Flag | Description |
-|---|---|
-| `--version` | Show the version. |
+**Examples**
+
+```bash
+# Get a preference value
+$ present-cli config get weekStartDay
+
+# Get just the value for scripting
+$ present-cli config get weekStartDay --field value
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
 
 #### `present-cli config list`
 
 List all preferences.
 
-**Options:**
+Lists all currently set preferences with their values.
 
-| Option | Default | Description |
-|---|---|---|
-| `-f, --format` | `json` | Output format: json, text, csv. |
-| `--field` | — | Extract a single field value from the response. |
+**Flags**
 
-**Flags:**
+`[--version]`
+: Show the version.
 
-| Flag | Description |
-|---|---|
-| `--version` | Show the version. |
+**Examples**
+
+```bash
+# List all preferences as JSON
+$ present-cli config list
+
+# List as key=value text
+$ present-cli config list -f text
+
+# Export as CSV
+$ present-cli config list -f csv
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
 
 #### `present-cli config set <key> <value>`
 
 Set a preference value.
 
-**Arguments:**
+Sets a preference to the given value. Only known preference keys are accepted. If the app is running, the change is synced automatically via IPC.
 
-| Argument | Required | Description |
-|---|---|---|
-| `<key>` | Yes | Preference key. |
-| `<value>` | Yes | Preference value. |
+**Arguments**
 
-**Options:**
+`<key>`
+: Preference key. *(required)*
 
-| Option | Default | Description |
-|---|---|---|
-| `-f, --format` | `json` | Output format: json, text, csv. |
-| `--field` | — | Extract a single field value from the response. |
+`<value>`
+: Preference value. *(required)*
 
-**Flags:**
+**Flags**
 
-| Flag | Description |
-|---|---|
-| `--version` | Show the version. |
+`[--version]`
+: Show the version.
+
+**Examples**
+
+```bash
+# Set the week start day
+$ present-cli config set weekStartDay 2
+
+# Enable sound effects
+$ present-cli config set soundEffectsEnabled true
+
+# Set and confirm
+$ present-cli config set weekStartDay 2 -f text
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
 
 ### `present-cli report`
 
 View reports and summaries.
 
-**Flags:**
+View time tracking summaries for today, this week, or this month. Use `report export` to export raw session data as CSV.
 
-| Flag | Description |
-|---|---|
-| `--version` | Show the version. |
+**Flags**
 
-**Subcommands:**
+`[--version]`
+: Show the version.
 
-| Command | Description |
-|---|---|
+**Subcommands**
+
 | [`export`](#present-cli-report-export) | Export sessions as CSV. |
 | [`month`](#present-cli-report-month) | Show this month's summary. |
 | [`today`](#present-cli-report-today) | Show today's summary. |
@@ -432,85 +632,154 @@ View reports and summaries.
 
 Export sessions as CSV.
 
-**Options:**
+Exports raw session data as CSV. By default, exports the current month. Use --from and --to to specify a custom date range.
 
-| Option | Default | Description |
-|---|---|---|
-| `--from` | — | Start date (YYYY-MM-DD, inclusive). Defaults to start of current month. |
-| `--to` | — | End date (YYYY-MM-DD, inclusive). Defaults to today. |
+Output goes directly to stdout so it can be redirected to a file.
 
-**Flags:**
+**Options**
 
-| Flag | Description |
-|---|---|
-| `--include-archived` | Include archived activities in the export. |
-| `--version` | Show the version. |
+`[--from=<from>]`
+: Start date (YYYY-MM-DD, inclusive). Defaults to start of current month.
+
+`[--to=<to>]`
+: End date (YYYY-MM-DD, inclusive). Defaults to today.
+
+**Flags**
+
+`[--version]`
+: Show the version.
+
+**Examples**
+
+```bash
+# Export this month's sessions
+$ present-cli report export
+
+# Export a specific date range
+$ present-cli report export --from 2025-01-01 --to 2025-01-31
+
+# Save to a file
+$ present-cli report export --from 2025-01-01 > sessions.csv
+```
 
 #### `present-cli report month`
 
 Show this month's summary.
 
-**Options:**
+Shows total tracked time for the current month with a weekly breakdown and per-activity totals.
 
-| Option | Default | Description |
-|---|---|---|
-| `-f, --format` | `json` | Output format: json, text, csv. |
-| `--field` | — | Extract a single field value from the response. |
+**Flags**
 
-**Flags:**
+`[--version]`
+: Show the version.
 
-| Flag | Description |
-|---|---|
-| `--version` | Show the version. |
+**Examples**
+
+```bash
+# Show this month's summary
+$ present-cli report month
+
+# Show as text with weekly breakdown
+$ present-cli report month -f text
+
+# Get total seconds for scripting
+$ present-cli report month --field totalSeconds
+
+# Export weekly breakdown as CSV
+$ present-cli report month -f csv
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
 
 #### `present-cli report today`
 
 Show today's summary.
 
-**Options:**
+Shows total tracked time and session count for today, broken down by activity.
 
-| Option | Default | Description |
-|---|---|---|
-| `-f, --format` | `json` | Output format: json, text, csv. |
-| `--field` | — | Extract a single field value from the response. |
+**Flags**
 
-**Flags:**
+`[--version]`
+: Show the version.
 
-| Flag | Description |
-|---|---|
-| `--version` | Show the version. |
+**Examples**
+
+```bash
+# Show today's summary
+$ present-cli report today
+
+# Show as text
+$ present-cli report today -f text
+
+# Get just the total seconds for scripting
+$ present-cli report today --field totalSeconds
+
+# Export today's breakdown as CSV
+$ present-cli report today -f csv
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
 
 #### `present-cli report week`
 
 Show this week's summary.
 
-**Options:**
+Shows total tracked time for the current week with a daily breakdown and per-activity totals.
 
-| Option | Default | Description |
-|---|---|---|
-| `-f, --format` | `json` | Output format: json, text, csv. |
-| `--field` | — | Extract a single field value from the response. |
+**Flags**
 
-**Flags:**
+`[--version]`
+: Show the version.
 
-| Flag | Description |
-|---|---|
-| `--version` | Show the version. |
+**Examples**
+
+```bash
+# Show this week's summary
+$ present-cli report week
+
+# Show as text with daily breakdown
+$ present-cli report week -f text
+
+# Get total seconds for scripting
+$ present-cli report week --field totalSeconds
+
+# Export daily breakdown as CSV
+$ present-cli report week -f csv
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
 
 ### `present-cli session`
 
 Manage sessions.
 
-**Flags:**
+Sessions track time spent on activities. Each session has a type (work, rhythm, or timebound), a state (running, paused, or completed), and belongs to a single activity.
 
-| Flag | Description |
-|---|---|
-| `--version` | Show the version. |
+**Flags**
 
-**Subcommands:**
+`[--version]`
+: Show the version.
 
-| Command | Description |
-|---|---|
+**Subcommands**
+
 | [`cancel`](#present-cli-session-cancel) | Cancel the current session without logging it. |
 | [`get`](#present-cli-session-get-id) | Show session details. |
 | [`pause`](#present-cli-session-pause) | Pause the current session. |
@@ -524,172 +793,307 @@ Manage sessions.
 
 Cancel the current session without logging it.
 
-**Options:**
+Discards the current session entirely. Unlike `stop`, the session is not saved and no duration is recorded. Useful for sessions started by mistake.
 
-| Option | Default | Description |
-|---|---|---|
-| `-f, --format` | `json` | Output format: json, text, csv. |
-| `--field` | — | Extract a single field value from the response. |
+**Flags**
 
-**Flags:**
+`[--version]`
+: Show the version.
 
-| Flag | Description |
-|---|---|
-| `--version` | Show the version. |
+**Examples**
+
+```bash
+# Cancel the current session
+$ present-cli session cancel
+
+# Cancel and confirm via text output
+$ present-cli session cancel -f text
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
 
 #### `present-cli session get <id>`
 
 Show session details.
 
-**Arguments:**
+Retrieves full details for a specific session by its ID, including the associated activity, type, state, and duration.
 
-| Argument | Required | Description |
-|---|---|---|
-| `<id>` | Yes | Session ID. |
+**Arguments**
 
-**Options:**
+`<id>`
+: Session ID. *(required)*
 
-| Option | Default | Description |
-|---|---|---|
-| `-f, --format` | `json` | Output format: json, text, csv. |
-| `--field` | — | Extract a single field value from the response. |
+**Flags**
 
-**Flags:**
+`[--version]`
+: Show the version.
 
-| Flag | Description |
-|---|---|
-| `--version` | Show the version. |
+**Examples**
+
+```bash
+# Get session details
+$ present-cli session get 42
+
+# Get session activity name
+$ present-cli session get 42 --field activity
+
+# Show session in text format
+$ present-cli session get 42 -f text
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
 
 #### `present-cli session pause`
 
 Pause the current session.
 
-**Options:**
+Pauses the currently running session. Paused time is not counted toward the session duration. Use `session resume` to continue.
 
-| Option | Default | Description |
-|---|---|---|
-| `-f, --format` | `json` | Output format: json, text, csv. |
-| `--field` | — | Extract a single field value from the response. |
+**Flags**
 
-**Flags:**
+`[--version]`
+: Show the version.
 
-| Flag | Description |
-|---|---|
-| `--version` | Show the version. |
+**Examples**
+
+```bash
+# Pause the current session
+$ present-cli session pause
+
+# Pause and get the session state as text
+$ present-cli session pause -f text
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
 
 #### `present-cli session resume`
 
 Resume a paused session.
 
-**Options:**
+Resumes a previously paused session. The session timer continues from where it left off. Returns an error if no session is paused.
 
-| Option | Default | Description |
-|---|---|---|
-| `-f, --format` | `json` | Output format: json, text, csv. |
-| `--field` | — | Extract a single field value from the response. |
+**Flags**
 
-**Flags:**
+`[--version]`
+: Show the version.
 
-| Flag | Description |
-|---|---|
-| `--version` | Show the version. |
+**Examples**
+
+```bash
+# Resume the paused session
+$ present-cli session resume
+
+# Resume and display as text
+$ present-cli session resume -f text
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
 
 #### `present-cli session search`
 
 Search sessions with filters.
 
-**Options:**
+Search and filter sessions by date range, type, or activity name. Results are paginated (max 100 per page). All filters are optional and can be combined.
 
-| Option | Default | Description |
-|---|---|---|
-| `--after` | — | Show sessions after this date (YYYY-MM-DD, inclusive). |
-| `--before` | — | Show sessions before this date (YYYY-MM-DD, inclusive). |
-| `--type` | — | Filter by session type: work, rhythm, timebound. |
-| `--activity` | — | Filter by activity name (substring match). |
-| `--page` | `1` | Page number (1-indexed, max 100 results per page). |
-| `-f, --format` | `json` | Output format: json, text, csv. |
-| `--field` | — | Extract a single field value from the response. |
+Dates use YYYY-MM-DD format and are inclusive on both ends.
 
-**Flags:**
+**Options**
 
-| Flag | Description |
-|---|---|
-| `--version` | Show the version. |
+`[--after=<after>]`
+: Show sessions after this date (YYYY-MM-DD, inclusive).
+
+`[--before=<before>]`
+: Show sessions before this date (YYYY-MM-DD, inclusive).
+
+`[--type=<type>]`
+: Filter by session type: work, rhythm, timebound.
+
+`[--activity=<activity>]`
+: Filter by activity name (substring match).
+
+`[--page=<page>]`
+: Page number (1-indexed, max 100 results per page). Default: `1`.
+
+**Flags**
+
+`[--version]`
+: Show the version.
+
+**Examples**
+
+```bash
+# List all sessions from this week
+$ present-cli session search --after 2025-01-13 --before 2025-01-17
+
+# Find rhythm sessions for a specific activity
+$ present-cli session search --type rhythm --activity "Deep Work"
+
+# Export sessions as CSV
+$ present-cli session search --after 2025-01-01 -f csv
+
+# Get page 2 of results
+$ present-cli session search --page 2
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
 
 #### `present-cli session start <activity-name>`
 
 Start a session for an activity.
 
-**Arguments:**
+Creates a new session linked to an activity. If the activity doesn't exist yet, it will be created automatically. Only one session can be running at a time.
 
-| Argument | Required | Description |
-|---|---|---|
-| `<activity-name>` | Yes | Activity name (creates if it doesn't exist). |
+Rhythm sessions use configured duration options. Use --minutes to select a specific option, or omit it to use the first configured option.
 
-**Options:**
+**Arguments**
 
-| Option | Default | Description |
-|---|---|---|
-| `--type` | `work` | Session type: work, rhythm, timebound. |
-| `--minutes` | — | Timer duration in minutes (for rhythm/timebound). |
-| `--break-minutes` | — | Break duration in minutes (overrides rhythm option default). |
-| `-f, --format` | `json` | Output format: json, text, csv. |
-| `--field` | — | Extract a single field value from the response. |
+`<activity-name>`
+: Activity name (creates if it doesn't exist). *(required)*
 
-**Flags:**
+**Options**
 
-| Flag | Description |
-|---|---|
-| `--version` | Show the version. |
+`[--type=<type>]`
+: Session type: work, rhythm, timebound. Default: `work`.
+
+`[--minutes=<minutes>]`
+: Timer duration in minutes (for rhythm/timebound).
+
+`[--break-minutes=<break-minutes>]`
+: Break duration in minutes (overrides rhythm option default).
+
+**Flags**
+
+`[--version]`
+: Show the version.
+
+**Examples**
+
+```bash
+# Start a work session
+$ present-cli session start "My Project"
+
+# Start a 25-minute rhythm session
+$ present-cli session start "Deep Work" --type rhythm --minutes 25
+
+# Start a timebound session with custom break
+$ present-cli session start "Meeting" --type timebound --minutes 60
+
+# Get just the session ID after starting
+$ present-cli session start "My Project" --field id
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
 
 #### `present-cli session status`
 
 Show current session or today's summary.
 
-**Options:**
+If a session is running, shows its details including elapsed time and remaining time (for timed sessions). If no session is active, shows today's session count and total tracked time.
 
-| Option | Default | Description |
-|---|---|---|
-| `-f, --format` | `json` | Output format: json, text, csv. |
-| `--field` | — | Extract a single field value from the response. |
+**Flags**
 
-**Flags:**
+`[--version]`
+: Show the version.
 
-| Flag | Description |
-|---|---|
-| `--version` | Show the version. |
+**Examples**
+
+```bash
+# Check if a session is running
+$ present-cli session status
+
+# Get elapsed seconds for scripting
+$ present-cli session status --field elapsedSeconds
+
+# Check status in text format
+$ present-cli session status -f text
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
 
 #### `present-cli session stop`
 
 Stop the current session.
 
-**Options:**
+Ends the currently running session and records the duration. If no session is active, an error is returned.
 
-| Option | Default | Description |
-|---|---|---|
-| `-f, --format` | `json` | Output format: json, text, csv. |
-| `--field` | — | Extract a single field value from the response. |
+**Flags**
 
-**Flags:**
+`[--version]`
+: Show the version.
 
-| Flag | Description |
-|---|---|
-| `--version` | Show the version. |
+**Examples**
+
+```bash
+# Stop the current session
+$ present-cli session stop
+
+# Stop and show duration in text format
+$ present-cli session stop -f text
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
 
 ### `present-cli tag`
 
 Manage tags.
 
-**Flags:**
+Tags are labels you can attach to activities for grouping and filtering. Use `activity tag` and `activity untag` to associate tags with activities.
 
-| Flag | Description |
-|---|---|
-| `--version` | Show the version. |
+**Flags**
 
-**Subcommands:**
+`[--version]`
+: Show the version.
 
-| Command | Description |
-|---|---|
+**Subcommands**
+
 | [`add`](#present-cli-tag-add-name) | Add a new tag. |
 | [`delete`](#present-cli-tag-delete-id) | Delete a tag. |
 | [`get`](#present-cli-tag-get-id) | Show tag details. |
@@ -700,108 +1104,171 @@ Manage tags.
 
 Add a new tag.
 
-**Arguments:**
+Creates a new tag with the given name. Tags can then be attached to activities using `activity tag`.
 
-| Argument | Required | Description |
-|---|---|---|
-| `<name>` | Yes | Tag name. |
+**Arguments**
 
-**Options:**
+`<name>`
+: Tag name. *(required)*
 
-| Option | Default | Description |
-|---|---|---|
-| `-f, --format` | `json` | Output format: json, text, csv. |
-| `--field` | — | Extract a single field value from the response. |
+**Flags**
 
-**Flags:**
+`[--version]`
+: Show the version.
 
-| Flag | Description |
-|---|---|
-| `--version` | Show the version. |
+**Examples**
+
+```bash
+# Create a tag
+$ present-cli tag add "client-work"
+
+# Create a tag and get its ID
+$ present-cli tag add "urgent" --field id
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
 
 #### `present-cli tag delete <id>`
 
 Delete a tag.
 
-**Arguments:**
+Permanently deletes a tag and removes it from all activities. This action cannot be undone.
 
-| Argument | Required | Description |
-|---|---|---|
-| `<id>` | Yes | Tag ID to delete. |
+**Arguments**
 
-**Options:**
+`<id>`
+: Tag ID to delete. *(required)*
 
-| Option | Default | Description |
-|---|---|---|
-| `-f, --format` | `json` | Output format: json, text, csv. |
-| `--field` | — | Extract a single field value from the response. |
+**Flags**
 
-**Flags:**
+`[--version]`
+: Show the version.
 
-| Flag | Description |
-|---|---|
-| `--version` | Show the version. |
+**Examples**
+
+```bash
+# Delete a tag
+$ present-cli tag delete 3
+
+# Delete and confirm via text
+$ present-cli tag delete 3 -f text
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
 
 #### `present-cli tag get <id>`
 
 Show tag details.
 
-**Arguments:**
+Retrieves details for a specific tag by its ID.
 
-| Argument | Required | Description |
-|---|---|---|
-| `<id>` | Yes | Tag ID. |
+**Arguments**
 
-**Options:**
+`<id>`
+: Tag ID. *(required)*
 
-| Option | Default | Description |
-|---|---|---|
-| `-f, --format` | `json` | Output format: json, text, csv. |
-| `--field` | — | Extract a single field value from the response. |
+**Flags**
 
-**Flags:**
+`[--version]`
+: Show the version.
 
-| Flag | Description |
-|---|---|
-| `--version` | Show the version. |
+**Examples**
+
+```bash
+# Get tag details
+$ present-cli tag get 1
+
+# Get just the tag name
+$ present-cli tag get 1 --field name
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
 
 #### `present-cli tag list`
 
 List all tags.
 
-**Options:**
+Lists all tags in the system.
 
-| Option | Default | Description |
-|---|---|---|
-| `-f, --format` | `json` | Output format: json, text, csv. |
-| `--field` | — | Extract a single field value from the response. |
+**Flags**
 
-**Flags:**
+`[--version]`
+: Show the version.
 
-| Flag | Description |
-|---|---|
-| `--version` | Show the version. |
+**Examples**
+
+```bash
+# List all tags as JSON (default)
+$ present-cli tag list
+
+# List as text
+$ present-cli tag list -f text
+
+# Export as CSV
+$ present-cli tag list -f csv
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
 
 #### `present-cli tag update <id>`
 
 Rename a tag.
 
-**Arguments:**
+Renames an existing tag. All activity associations are preserved.
 
-| Argument | Required | Description |
-|---|---|---|
-| `<id>` | Yes | Tag ID. |
+**Arguments**
 
-**Options:**
+`<id>`
+: Tag ID. *(required)*
 
-| Option | Default | Description |
-|---|---|---|
-| `--name` | — | New tag name. |
-| `-f, --format` | `json` | Output format: json, text, csv. |
-| `--field` | — | Extract a single field value from the response. |
+**Options**
 
-**Flags:**
+`[--name=<name>]`
+: New tag name.
 
-| Flag | Description |
-|---|---|
-| `--version` | Show the version. |
+**Flags**
+
+`[--version]`
+: Show the version.
+
+**Examples**
+
+```bash
+# Rename a tag
+$ present-cli tag update 1 --name "new-name"
+
+# Rename and confirm
+$ present-cli tag update 1 --name "new-name" -f text
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.

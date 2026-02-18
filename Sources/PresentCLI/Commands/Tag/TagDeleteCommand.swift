@@ -5,7 +5,19 @@ import PresentCore
 struct TagDeleteCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "delete",
-        abstract: "Delete a tag."
+        abstract: "Delete a tag.",
+        discussion: """
+            Permanently deletes a tag and removes it from all activities. \
+            This action cannot be undone.
+
+            ## Examples
+
+            # Delete a tag
+            $ present-cli tag delete 3
+
+            # Delete and confirm via text
+            $ present-cli tag delete 3 -f text
+            """
     )
 
     @Argument(help: "Tag ID to delete.")

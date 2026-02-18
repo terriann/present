@@ -5,7 +5,19 @@ import PresentCore
 struct ConfigGetCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "get",
-        abstract: "Get a preference value."
+        abstract: "Get a preference value.",
+        discussion: """
+            Gets the current value of a specific preference key. Returns \
+            null if the preference has not been set.
+
+            ## Examples
+
+            # Get a preference value
+            $ present-cli config get weekStartDay
+
+            # Get just the value for scripting
+            $ present-cli config get weekStartDay --field value
+            """
     )
 
     @Argument(help: "Preference key.")

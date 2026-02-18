@@ -5,7 +5,30 @@ import PresentCore
 struct SessionStartCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "start",
-        abstract: "Start a session for an activity."
+        abstract: "Start a session for an activity.",
+        discussion: """
+            Creates a new session linked to an activity. If the activity \
+            doesn't exist yet, it will be created automatically. Only one \
+            session can be running at a time.
+
+            Rhythm sessions use configured duration options. Use --minutes \
+            to select a specific option, or omit it to use the first \
+            configured option.
+
+            ## Examples
+
+            # Start a work session
+            $ present-cli session start "My Project"
+
+            # Start a 25-minute rhythm session
+            $ present-cli session start "Deep Work" --type rhythm --minutes 25
+
+            # Start a timebound session with custom break
+            $ present-cli session start "Meeting" --type timebound --minutes 60
+
+            # Get just the session ID after starting
+            $ present-cli session start "My Project" --field id
+            """
     )
 
     @Argument(help: "Activity name (creates if it doesn't exist).")

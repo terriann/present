@@ -5,7 +5,24 @@ import PresentCore
 struct ReportExportCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "export",
-        abstract: "Export sessions as CSV."
+        abstract: "Export sessions as CSV.",
+        discussion: """
+            Exports raw session data as CSV. By default, exports the current \
+            month. Use --from and --to to specify a custom date range.
+
+            Output goes directly to stdout so it can be redirected to a file.
+
+            ## Examples
+
+            # Export this month's sessions
+            $ present-cli report export
+
+            # Export a specific date range
+            $ present-cli report export --from 2025-01-01 --to 2025-01-31
+
+            # Save to a file
+            $ present-cli report export --from 2025-01-01 > sessions.csv
+            """
     )
 
     @Option(name: .long, help: "Start date (YYYY-MM-DD, inclusive). Defaults to start of current month.")

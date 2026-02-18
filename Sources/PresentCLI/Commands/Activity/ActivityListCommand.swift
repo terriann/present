@@ -5,7 +5,22 @@ import PresentCore
 struct ActivityListCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "list",
-        abstract: "List activities."
+        abstract: "List activities.",
+        discussion: """
+            Lists all activities, including archived ones. Use the output \
+            format options to control how results are displayed.
+
+            ## Examples
+
+            # List all activities as JSON (default)
+            $ present-cli activity list
+
+            # List in text format
+            $ present-cli activity list -f text
+
+            # Export as CSV
+            $ present-cli activity list -f csv
+            """
     )
 
     @OptionGroup var outputOptions: OutputOptions

@@ -5,7 +5,25 @@ import PresentCore
 struct ReportWeekCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "week",
-        abstract: "Show this week's summary."
+        abstract: "Show this week's summary.",
+        discussion: """
+            Shows total tracked time for the current week with a daily \
+            breakdown and per-activity totals.
+
+            ## Examples
+
+            # Show this week's summary
+            $ present-cli report week
+
+            # Show as text with daily breakdown
+            $ present-cli report week -f text
+
+            # Get total seconds for scripting
+            $ present-cli report week --field totalSeconds
+
+            # Export daily breakdown as CSV
+            $ present-cli report week -f csv
+            """
     )
 
     @OptionGroup var outputOptions: OutputOptions

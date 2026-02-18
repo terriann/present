@@ -5,7 +5,19 @@ import PresentCore
 struct SessionPauseCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "pause",
-        abstract: "Pause the current session."
+        abstract: "Pause the current session.",
+        discussion: """
+            Pauses the currently running session. Paused time is not counted \
+            toward the session duration. Use `session resume` to continue.
+
+            ## Examples
+
+            # Pause the current session
+            $ present-cli session pause
+
+            # Pause and get the session state as text
+            $ present-cli session pause -f text
+            """
     )
 
     @OptionGroup var outputOptions: OutputOptions

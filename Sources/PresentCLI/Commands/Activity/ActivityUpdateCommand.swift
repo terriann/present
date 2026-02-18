@@ -5,7 +5,22 @@ import PresentCore
 struct ActivityUpdateCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "update",
-        abstract: "Update an activity."
+        abstract: "Update an activity.",
+        discussion: """
+            Updates one or more fields on an existing activity. At least one \
+            field (--title, --link, or --external-id) must be provided.
+
+            ## Examples
+
+            # Rename an activity
+            $ present-cli activity update 1 --title "New Name"
+
+            # Update the link
+            $ present-cli activity update 1 --link "https://example.com/new"
+
+            # Update multiple fields at once
+            $ present-cli activity update 1 --title "Renamed" --external-id "NEW-456"
+            """
     )
 
     @Argument(help: "Activity ID.")

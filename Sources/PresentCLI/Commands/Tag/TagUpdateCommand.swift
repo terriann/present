@@ -5,7 +5,18 @@ import PresentCore
 struct TagUpdateCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "update",
-        abstract: "Rename a tag."
+        abstract: "Rename a tag.",
+        discussion: """
+            Renames an existing tag. All activity associations are preserved.
+
+            ## Examples
+
+            # Rename a tag
+            $ present-cli tag update 1 --name "new-name"
+
+            # Rename and confirm
+            $ present-cli tag update 1 --name "new-name" -f text
+            """
     )
 
     @Argument(help: "Tag ID.")

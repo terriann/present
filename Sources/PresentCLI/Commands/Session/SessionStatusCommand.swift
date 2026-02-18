@@ -5,7 +5,23 @@ import PresentCore
 struct SessionStatusCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "status",
-        abstract: "Show current session or today's summary."
+        abstract: "Show current session or today's summary.",
+        discussion: """
+            If a session is running, shows its details including elapsed time \
+            and remaining time (for timed sessions). If no session is active, \
+            shows today's session count and total tracked time.
+
+            ## Examples
+
+            # Check if a session is running
+            $ present-cli session status
+
+            # Get elapsed seconds for scripting
+            $ present-cli session status --field elapsedSeconds
+
+            # Check status in text format
+            $ present-cli session status -f text
+            """
     )
 
     @OptionGroup var outputOptions: OutputOptions

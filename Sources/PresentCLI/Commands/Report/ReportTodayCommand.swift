@@ -5,7 +5,25 @@ import PresentCore
 struct ReportTodayCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "today",
-        abstract: "Show today's summary."
+        abstract: "Show today's summary.",
+        discussion: """
+            Shows total tracked time and session count for today, broken \
+            down by activity.
+
+            ## Examples
+
+            # Show today's summary
+            $ present-cli report today
+
+            # Show as text
+            $ present-cli report today -f text
+
+            # Get just the total seconds for scripting
+            $ present-cli report today --field totalSeconds
+
+            # Export today's breakdown as CSV
+            $ present-cli report today -f csv
+            """
     )
 
     @OptionGroup var outputOptions: OutputOptions
