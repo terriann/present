@@ -23,7 +23,8 @@ Determine which mode to enter based on the user's request:
 | `audit`, `triage`, or reviewing all issues | **Audit mode** — triage all open issues |
 | `milestone` or planning a release | **Milestone mode** — propose the next milestone |
 | A specific issue number | **Issue review mode** — review and label that issue |
-| A bug or feature description | **Issue creation mode** — use the `/issue` skill to research and file the issue |
+| A bug or feature description | **Issue creation mode** — use the `/issue` skill to gather requirements and file the issue |
+| User wants to discuss/collect requirements iteratively | **Requirements gathering mode** — conversational collection, then file issue(s) |
 
 ---
 
@@ -45,8 +46,6 @@ Run these in parallel:
 
 1. **Fetch open issues**: `gh issue list --state open --limit 50 --json number,title,labels,assignees,milestone`
 2. **Fetch existing labels**: `gh label list --json name,color --limit 100`
-3. **Read the V1 spec**: Read `plans/v1-spec.md` for the project vision and scope.
-
 ### Step 2: Ensure Labels Exist
 
 Check whether the following labels exist. Collect any that are missing.
@@ -132,8 +131,6 @@ Run these in parallel:
 
 1. **Fetch open issues**: `gh issue list --state open --limit 50 --json number,title,labels,body,milestone`
 2. **Fetch existing milestones**: `gh api repos/{owner}/{repo}/milestones --jq '.[].title'`
-3. **Read the V1 spec**: Read `plans/v1-spec.md` for the project vision and remaining work.
-
 ### Step 2: Analyze and Group
 
 Group open issues by theme or dependency cluster. Consider:
@@ -187,12 +184,31 @@ When the user references a specific issue number:
 
 ---
 
+## Requirements Gathering Mode
+
+When the user wants to iteratively discuss and collect requirements (e.g., "let's talk about what needs to change", "I have some ideas to discuss"):
+
+1. **Start the conversation** — ask the user what the first item is.
+2. **For each item**, capture the requirement and ask clarifying questions:
+   - What should the behavior be? Inputs, outputs, formats, examples?
+   - What are the constraints or rules?
+   - What's explicitly out of scope?
+   - Challenge vague requirements — ask for specifics.
+3. **After each item**, acknowledge what you captured and ask "What's next?"
+4. **Continue until the user signals they're done** (e.g., "that's it", "that's all").
+5. **Compile into issue(s)** — use the `/issue` skill or create directly via `gh issue create`. Focus on documenting **requirements and desired behavior**, not implementation details.
+
+**Key principle:** Requirements come from the conversation with the user, not from code exploration. Document what and why, not how.
+
+---
+
 ## Rules
 
 - NEVER write or modify any source code
 - NEVER create branches or make commits
-- Create GitHub issues using the `/issue` skill, which handles codebase research, drafting, and user approval
+- Create GitHub issues using the `/issue` skill, which gathers requirements and handles user approval
 - ALWAYS use `AskUserQuestion` before creating labels, milestones, or applying label changes
-- ALWAYS read `plans/v1-spec.md` for V1 context when auditing or proposing milestones
+- ALWAYS review open issues and milestones for context when auditing or proposing milestones
 - Be opinionated in recommendations but defer to the user's final decision
 - Keep milestone scope tight — challenge nice-to-haves and recommend issue breakdowns for XL items
+- Issues should document **requirements and behavior**, not implementation details or architecture

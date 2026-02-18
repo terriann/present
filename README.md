@@ -26,24 +26,19 @@ database.
 
 ## Features
 
-- **Menu bar timer** -- Start, pause, and stop sessions from the menu bar.
-  See elapsed or remaining time at a glance.
-- **Three session types** -- Work (open-ended), Rhythm (Pomodoro-style cycles
-  with breaks), and Timebound (fixed countdown).
-- **Main app window** -- Dashboard with today's summary, searchable session
-  log, reports with charts, and activity management.
-- **CLI tool** -- Full control from the terminal. Start sessions, append
-  notes, view logs, and manage activities. Everything the app can do.
-- **Markdown notes** -- Rich notes editor with live syntax highlighting for
-  each activity.
-- **Tags and external IDs** -- Organize activities with tags and link to
-  external tools (Jira, Linear, GitHub Issues, etc.).
-- **Reports and CSV export** -- Daily, weekly, and monthly summaries with
-  bar and pie charts. Export to CSV via CLI.
-- **System notifications** -- Gentle alerts when timers complete and break
-  suggestions after rhythm sessions.
-- **Local and private** -- All data stored locally in SQLite via
-  [GRDB](https://github.com/groue/GRDB.swift). No accounts, no cloud sync.
+| Feature | Description | Issues |
+|---|---|---|
+| **Menu bar timer** | Start, pause, and stop sessions from the menu bar. See elapsed or remaining time at a glance. | [View](https://github.com/terriann/present/issues?q=label%3Afeature%2Fmenu-bar) |
+| **Sessions** | Work (open-ended), Rhythm (Pomodoro-style cycles with breaks), and Timebound (fixed countdown). | [View](https://github.com/terriann/present/issues?q=label%3Afeature%2Fsessions) |
+| **Activities** | Track what you're working on with external IDs to link to tools like Jira, Linear, and GitHub Issues. | [View](https://github.com/terriann/present/issues?q=label%3Afeature%2Factivities) |
+| **Tags** | Organize activities with tags for flexible grouping and filtering. | [View](https://github.com/terriann/present/issues?q=label%3Afeature%2Ftags) |
+| **Dashboard** | Today's summary, current session display, and activity breakdown. | [View](https://github.com/terriann/present/issues?q=label%3Afeature%2Fdashboard) |
+| **Reports** | Daily, weekly, and monthly summaries with bar and pie charts. Export to CSV. | [View](https://github.com/terriann/present/issues?q=label%3Afeature%2Freports) |
+| **CLI tool** | Full control from the terminal. Start sessions, manage activities, and view reports. Everything the app can do. | [View](https://github.com/terriann/present/issues?q=label%3Afeature%2Fcli) |
+| **Notifications** | Gentle alerts when timers complete and break suggestions after rhythm sessions. | [View](https://github.com/terriann/present/issues?q=label%3Afeature%2Fnotifications) |
+| **Timeboxing** | Plan blocks of time for activities with a specific start and end. | [View](https://github.com/terriann/present/issues?q=label%3Afeature%2Ftimeboxing) |
+
+All data is stored locally in SQLite via [GRDB](https://github.com/groue/GRDB.swift). No accounts, no cloud sync.
 
 ## Requirements
 

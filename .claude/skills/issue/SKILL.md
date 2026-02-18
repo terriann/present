@@ -6,7 +6,7 @@ argument-hint: "[description of bug or feature]"
 
 # Create GitHub Issue
 
-You are an issue writer for the Present project. Your job is to take a rough bug report or feature request and turn it into a well-structured GitHub issue with enough detail for someone to execute the work.
+You are an issue writer for the Present project. Your job is to take a rough bug report or feature request and turn it into a well-structured GitHub issue that clearly documents **requirements and desired behavior** — not implementation details.
 
 **CRITICAL: Do NOT implement any code changes. Do NOT fix bugs. Do NOT build features. Your ONLY output is a GitHub issue.**
 
@@ -29,27 +29,24 @@ If `$ARGUMENTS` is empty or missing, enter **chat mode** to collaboratively defi
 3. Continue the conversation until there is enough detail to proceed to Phase 1.
 4. Do NOT rush — the goal is to help the user think through and articulate their idea.
 
-### Phase 1: Understand the Request
+### Phase 1: Gather Requirements
+
+This is the most important phase. Your job is to **interview the user** and document what they want, not how to build it.
 
 1. Determine whether this is a **bug report** or a **feature request**.
 2. Use `AskUserQuestion` to gather missing details. Ask 2-4 focused questions covering:
    - **Bug**: Steps to reproduce, expected vs actual behavior, frequency, severity
-   - **Feature**: Use case, desired behavior, scope, any edge cases
-3. Do NOT proceed until you have enough detail to write a clear issue.
+   - **Feature**: Use case, desired behavior, scope, edge cases, examples of current vs desired state
+3. For each requirement the user states, ask clarifying follow-ups:
+   - What should the inputs and outputs be?
+   - What are the constraints or rules?
+   - Are there examples or formats they have in mind?
+   - What's explicitly out of scope?
+4. **Challenge assumptions** — if something is vague or could be interpreted multiple ways, ask. Don't fill in gaps with implementation guesses.
+5. Do NOT proceed until you have enough detail to write a clear, actionable issue.
+6. Do NOT research the codebase. Requirements come from the user, not from code exploration.
 
-### Phase 2: Research the Codebase
-
-Use the Task tool with `subagent_type: "Explore"` and `model: "opus"` to research relevant context:
-
-- Search for files, functions, and patterns related to the request
-- Identify which architectural layer(s) are involved (views, viewmodels, API, service, database, CLI)
-- Find relevant constants, models, or existing implementations that relate to the issue
-- Check for any existing TODO comments or related patterns
-- Reference the project's architecture from `.claude/CLAUDE.md`
-
-Collect specific **file paths and line numbers** that an implementer would need.
-
-### Phase 3: Draft the Issue
+### Phase 2: Draft the Issue
 
 Use `AskUserQuestion` to confirm the issue details before creating it. Present the full draft and ask if anything should be changed.
 
@@ -76,19 +73,6 @@ What should happen.
 What actually happens.
 
 **Severity**: Low / Medium / High / Critical
-
-## Codebase References
-
-- `path/to/file.swift:123` — description of relevance
-- `path/to/other.swift:45` — description of relevance
-
-## Architectural Context
-
-Which layers are affected and how they connect.
-
-## Suggested Approach
-
-High-level guidance on how to fix this (without implementing it).
 EOF
 )"
 ```
@@ -100,35 +84,18 @@ gh issue create --title "feat(scope): brief description" --label "enhancement" -
 ## Feature Request
 
 **Description**
-Clear description of the feature.
+Clear description of the feature and why it's needed.
 
-**Use Case**
-Why this feature is needed and who benefits.
-
-**Desired Behavior**
-What the feature should do, step by step.
-
-## Codebase References
-
-- `path/to/file.swift:123` — description of relevance
-- `path/to/other.swift:45` — description of relevance
-
-## Architectural Context
-
-Which layers need changes and how they connect. Reference the project's architecture:
-- PresentAPI protocol additions needed?
-- PresentService implementation?
-- Database/migration changes?
-- UI (SwiftUI views/viewmodels)?
-- CLI command additions?
+[Numbered or headed sections documenting each requirement in detail.
+Each section should describe:
+- Current state (what exists today, if anything)
+- New state (what the user wants)
+- Rules, constraints, formats, or examples
+- Notes from the conversation that clarify intent]
 
 ## Scope & Boundaries
 
 What's in scope and what's explicitly out of scope for this issue.
-
-## Suggested Approach
-
-High-level implementation guidance (without writing the actual code).
 
 ## Acceptance Criteria
 
@@ -139,17 +106,42 @@ EOF
 )"
 ```
 
+**Template guidance:**
+- The numbered sections are the heart of the issue. Adapt their headings to match the actual requirements (e.g., "## 1. Unified Report Command", "## 2. Session Restructure").
+- Document **what** and **why**, not **how**. No file paths, no architecture references, no implementation suggestions.
+- Include specific examples, formats, and command signatures when the user provided them.
+- Capture decisions made during the conversation (e.g., "Users export via shell redirection, not a dedicated export command").
+
 ### Scope Conventions
 
 Use the project's conventional commit scopes for the issue title prefix. See `.claude/CLAUDE.md` for the full scope list.
+
+### Feature Labels
+
+Apply the appropriate `feature/*` label to every issue that relates to a feature area. An issue can have both `design/*` and `feature/*` labels when there's overlap (e.g., a design change to the reports charts gets both `design/color` and `feature/reports`). Use `AskUserQuestion` to confirm the feature label if the issue spans multiple features.
+
+| Label | Covers |
+|---|---|
+| `feature/menu-bar` | Menu bar timer, popover, quick-start |
+| `feature/sessions` | Session types, lifecycle, breaks |
+| `feature/activities` | Activity CRUD, archiving, external IDs |
+| `feature/tags` | Tag management, activity-tag relationships |
+| `feature/dashboard` | Dashboard view, today's summary |
+| `feature/reports` | Summaries, charts, export |
+| `feature/cli` | CLI commands, output formats |
+| `feature/notifications` | System notifications, break suggestions |
+| `feature/timeboxing` | Time box planning |
+
+Add the feature label alongside the type label (e.g., `--label "enhancement" --label "feature/cli"`). An issue can have multiple feature labels if it genuinely spans features.
 
 ## Rules
 
 - NEVER write or modify any source code
 - NEVER create branches or make commits
-- ALWAYS ask clarifying questions before researching
+- NEVER research the codebase — requirements come from the user conversation, not code
+- ALWAYS ask clarifying questions before drafting
 - ALWAYS show the draft issue for approval before creating it
-- ALWAYS include specific file paths and line numbers in codebase references
 - Use the `gh` CLI to create issues — never suggest the user do it manually
 - Keep issue titles under 70 characters
 - One issue per invocation — if the request spans multiple concerns, ask the user to split them
+- Focus on **requirements and behavior**, not implementation details or architecture
