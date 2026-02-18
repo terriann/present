@@ -324,8 +324,12 @@ struct GeneralSettingsTab: View {
 }
 
 struct CLISettingsTab: View {
+    @Environment(ThemeManager.self) private var theme
     @State private var cliInstallStatus: String?
     @State private var showCLIResult = false
+    @State private var installedVersion: String?
+    @State private var bundledVersion: String?
+    @State private var isDetecting = true
 
     var body: some View {
         Form {
@@ -342,6 +346,8 @@ struct CLISettingsTab: View {
                 Text("Copies the `present-cli` command-line tool so you can use it from Terminal.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+
+                cliVersionStatus
             }
 
             Section("What you can do") {
@@ -362,9 +368,39 @@ struct CLISettingsTab: View {
         }
         .formStyle(.grouped)
         .padding()
+        .task {
+            await detectCLIVersions()
+        }
     }
 
     // MARK: - Subviews
+
+    @ViewBuilder
+    private var cliVersionStatus: some View {
+        if isDetecting {
+            HStack(spacing: 4) {
+                ProgressView()
+                    .controlSize(.small)
+                Text("Checking CLI…")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        } else if let installed = installedVersion {
+            if installed == bundledVersion {
+                Text("Installed — v\(installed)")
+                    .font(.caption)
+                    .foregroundStyle(theme.success)
+            } else {
+                Text("Installed — v\(installed) (update available)")
+                    .font(.caption)
+                    .foregroundStyle(theme.warning)
+            }
+        } else {
+            Text("CLI is not installed")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
 
     private func cliFeatureRow(icon: String, text: String) -> some View {
         HStack(spacing: 8) {
@@ -377,6 +413,38 @@ struct CLISettingsTab: View {
     }
 
     // MARK: - Helpers
+
+    private func detectCLIVersions() async {
+        isDetecting = true
+        defer { isDetecting = false }
+
+        // Get bundled version
+        if let bundlePath = Bundle.main.path(forAuxiliaryExecutable: "present-cli") {
+            bundledVersion = runVersionCommand(at: bundlePath)
+        }
+
+        // Get installed version
+        installedVersion = runVersionCommand(at: "/usr/local/bin/present-cli")
+    }
+
+    private func runVersionCommand(at path: String) -> String? {
+        guard FileManager.default.fileExists(atPath: path) else { return nil }
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: path)
+        process.arguments = ["--version"]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = Pipe()
+        do {
+            try process.run()
+            process.waitUntilExit()
+            guard process.terminationStatus == 0 else { return nil }
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            return String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        } catch {
+            return nil
+        }
+    }
 
     private func installCLI() {
         guard let bundlePath = Bundle.main.path(forAuxiliaryExecutable: "present-cli") else {
@@ -399,6 +467,9 @@ struct CLISettingsTab: View {
                 cliInstallStatus = "Installation failed: \(message)"
             } else {
                 cliInstallStatus = "Installed! Run `present-cli --help` in Terminal to get started."
+                Task {
+                    await detectCLIVersions()
+                }
             }
         } else {
             cliInstallStatus = "Failed to create install script."
