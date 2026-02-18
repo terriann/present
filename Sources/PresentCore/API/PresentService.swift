@@ -796,10 +796,14 @@ public final class PresentService: PresentAPI, Sendable {
         return WeeklySummary(weekOf: startOfWeek, totalSeconds: totalSeconds, sessionCount: totalSessions, dailyBreakdown: dailyBreakdown, activities: activities)
     }
 
-    public func monthlySummary(monthOf: Date, includeArchived: Bool) async throws -> MonthlySummary {
-        let calendar = Calendar.current
-        let startOfMonth = calendar.dateInterval(of: .month, for: monthOf)!.start
-        let endOfMonth = calendar.dateInterval(of: .month, for: monthOf)!.end
+    public func monthlySummary(monthOf: Date, includeArchived: Bool, weekStartDay: Int = 1) async throws -> MonthlySummary {
+        var calendar = Calendar.current
+        calendar.firstWeekday = weekStartDay
+        guard let monthInterval = calendar.dateInterval(of: .month, for: monthOf) else {
+            return MonthlySummary(monthOf: monthOf, totalSeconds: 0, sessionCount: 0, weeklyBreakdown: [], dailyBreakdown: [], activities: [])
+        }
+        let startOfMonth = monthInterval.start
+        let endOfMonth = monthInterval.end
 
         // Get weekly summaries for all weeks that overlap this month
         var weeklyBreakdown: [WeeklySummary] = []
@@ -807,13 +811,15 @@ public final class PresentService: PresentAPI, Sendable {
         var seenWeeks: Set<Date> = []
 
         while current < endOfMonth {
-            let weekStart = calendar.dateInterval(of: .weekOfYear, for: current)!.start
+            guard let weekInterval = calendar.dateInterval(of: .weekOfYear, for: current) else { break }
+            let weekStart = weekInterval.start
             if !seenWeeks.contains(weekStart) {
                 seenWeeks.insert(weekStart)
-                let weekly = try await weeklySummary(weekOf: current, includeArchived: includeArchived)
+                let weekly = try await weeklySummary(weekOf: current, includeArchived: includeArchived, weekStartDay: weekStartDay)
                 weeklyBreakdown.append(weekly)
             }
-            current = calendar.date(byAdding: .day, value: 7, to: current)!
+            guard let nextWeek = calendar.date(byAdding: .day, value: 7, to: current) else { break }
+            current = nextWeek
         }
 
         // Aggregate

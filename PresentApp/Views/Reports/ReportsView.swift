@@ -81,7 +81,11 @@ struct ReportsView: View {
             await loadInitialState()
             await loadReport()
         }
-        .onChange(of: selectedPeriod) {
+        .onChange(of: selectedPeriod) { oldPeriod, newPeriod in
+            if let target = drillDownDate(from: oldPeriod, to: newPeriod), target != selectedDate {
+                selectedDate = target  // onChange(of: selectedDate) will trigger reload
+                return
+            }
             reloadReport()
         }
         .onChange(of: selectedDate) {
@@ -1019,6 +1023,23 @@ struct ReportsView: View {
         hoveredExternalSegment = nil
     }
 
+    /// When drilling down to a smaller period, return the earliest date with activity.
+    private func drillDownDate(from oldPeriod: ReportPeriod, to newPeriod: ReportPeriod) -> Date? {
+        switch (oldPeriod, newPeriod) {
+        case (.monthly, .weekly):
+            return monthlySummaryData?.weeklyBreakdown
+                .first(where: { $0.sessionCount > 0 })?.weekOf
+        case (.monthly, .daily):
+            return monthlySummaryData?.dailyBreakdown
+                .first(where: { $0.sessionCount > 0 })?.date
+        case (.weekly, .daily):
+            return weeklySummaryData?.dailyBreakdown
+                .first(where: { $0.sessionCount > 0 })?.date
+        default:
+            return nil
+        }
+    }
+
     private func reloadReport() {
         loadTask?.cancel()
         resetHoverState()
@@ -1076,7 +1097,7 @@ struct ReportsView: View {
                 tagActivitySummaries = tags
 
             case .monthly:
-                let summary = try await appState.service.monthlySummary(monthOf: selectedDate, includeArchived: !hideArchived)
+                let summary = try await appState.service.monthlySummary(monthOf: selectedDate, includeArchived: !hideArchived, weekStartDay: effectiveWeekStartDay)
                 guard let monthInterval = calendar.dateInterval(of: .month, for: selectedDate) else { return }
                 let tags = try await appState.service.tagActivitySummary(from: monthInterval.start, to: monthInterval.end, includeArchived: !hideArchived)
                 try Task.checkCancellation()
