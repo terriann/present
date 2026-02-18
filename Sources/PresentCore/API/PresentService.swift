@@ -755,17 +755,22 @@ public final class PresentService: PresentAPI, Sendable {
         }
     }
 
-    public func weeklySummary(weekOf: Date, includeArchived: Bool) async throws -> WeeklySummary {
-        let calendar = Calendar.current
-        let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: weekOf)!.start
-        let endOfWeek = calendar.date(byAdding: .day, value: 7, to: startOfWeek)!
+    public func weeklySummary(weekOf: Date, includeArchived: Bool, weekStartDay: Int = 1) async throws -> WeeklySummary {
+        var calendar = Calendar.current
+        calendar.firstWeekday = weekStartDay
+        guard let weekInterval = calendar.dateInterval(of: .weekOfYear, for: weekOf) else {
+            return WeeklySummary(weekOf: weekOf, totalSeconds: 0, sessionCount: 0, dailyBreakdown: [], activities: [])
+        }
+        let startOfWeek = weekInterval.start
+        let endOfWeek = calendar.date(byAdding: .day, value: 7, to: startOfWeek) ?? weekInterval.end
 
         var dailyBreakdown: [DailySummary] = []
         var current = startOfWeek
         while current < endOfWeek {
             let daily = try await dailySummary(date: current, includeArchived: includeArchived)
             dailyBreakdown.append(daily)
-            current = calendar.date(byAdding: .day, value: 1, to: current)!
+            guard let nextDay = calendar.date(byAdding: .day, value: 1, to: current) else { break }
+            current = nextDay
         }
 
         // Aggregate activity summaries across the week

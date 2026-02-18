@@ -13,7 +13,7 @@ struct ReportWeekCommand: AsyncParsableCommand {
     func run() async throws {
         try outputOptions.validateOptions()
         let service = try CLIServiceFactory.makeService()
-        let summary = try await service.weeklySummary(weekOf: Date(), includeArchived: true)
+        let summary = try await service.weeklySummary(weekOf: Date(), includeArchived: true, weekStartDay: Calendar.current.firstWeekday)
 
         switch outputOptions.format {
         case .json:

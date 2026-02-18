@@ -40,7 +40,7 @@ public protocol PresentAPI: Sendable {
 
     // Reports
     func dailySummary(date: Date, includeArchived: Bool) async throws -> DailySummary
-    func weeklySummary(weekOf: Date, includeArchived: Bool) async throws -> WeeklySummary
+    func weeklySummary(weekOf: Date, includeArchived: Bool, weekStartDay: Int) async throws -> WeeklySummary
     func monthlySummary(monthOf: Date, includeArchived: Bool) async throws -> MonthlySummary
     func tagSummary(from: Date, to: Date, includeArchived: Bool) async throws -> [TagSummary]
     func tagActivitySummary(from: Date, to: Date, includeArchived: Bool) async throws -> [TagActivitySummary]

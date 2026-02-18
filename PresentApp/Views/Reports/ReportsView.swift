@@ -1063,7 +1063,7 @@ struct ReportsView: View {
                 tagActivitySummaries = tags
 
             case .weekly:
-                let summary = try await appState.service.weeklySummary(weekOf: selectedDate, includeArchived: !hideArchived)
+                let summary = try await appState.service.weeklySummary(weekOf: selectedDate, includeArchived: !hideArchived, weekStartDay: effectiveWeekStartDay)
                 let wStart = weekStart(for: selectedDate)
                 let weekEnd = calendar.date(byAdding: .day, value: 7, to: wStart) ?? selectedDate
                 let tags = try await appState.service.tagActivitySummary(from: wStart, to: weekEnd, includeArchived: !hideArchived)
