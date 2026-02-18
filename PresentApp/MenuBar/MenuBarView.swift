@@ -281,28 +281,31 @@ struct MenuBarView: View {
 
     private var bottomBar: some View {
         HStack {
-            Button("Open Present") {
-                openMainWindow()
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(.tint)
-
             Spacer()
 
-            Button("Quit") {
-                NSApplication.shared.terminate(nil)
+            Button {
+                NSApplication.shared.setActivationPolicy(.regular)
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(
+                        name: StatusItemMenuManager.openMainWindowNotification,
+                        object: nil
+                    )
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    NotificationCenter.default.post(
+                        name: StatusItemMenuManager.openSettingsNotification,
+                        object: nil
+                    )
+                }
+            } label: {
+                Image(systemName: "gear")
+                    .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
+            .help("Settings")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-    }
-
-    private func openMainWindow() {
-        NSApp.keyWindow?.close()
-        openWindow(id: "main")
-        NSApplication.shared.activate(ignoringOtherApps: true)
     }
 
 }

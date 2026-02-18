@@ -82,7 +82,7 @@ final class StatusItemMenuManager: NSObject, @unchecked Sendable {
             }
         }
 
-        let openItem = NSMenuItem(title: "Open Present", action: #selector(openApp), keyEquivalent: "")
+        let openItem = NSMenuItem(title: "Launch Present", action: #selector(openApp), keyEquivalent: "")
         openItem.target = self
         menu.addItem(openItem)
 
