@@ -645,7 +645,7 @@ public final class PresentService: PresentAPI, Sendable {
     }
 
     public func untagActivity(activityId: Int64, tagId: Int64) async throws {
-        try await dbWriter.write { db in
+        _ = try await dbWriter.write { db in
             try ActivityTag
                 .filter(ActivityTag.Columns.activityId == activityId && ActivityTag.Columns.tagId == tagId)
                 .deleteAll(db)
