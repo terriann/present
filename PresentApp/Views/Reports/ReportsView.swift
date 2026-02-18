@@ -57,6 +57,19 @@ struct ReportsView: View {
                     if !externalIdGroups.isEmpty {
                         externalIdBreakdownCard
                     }
+                } else {
+                    let includesToday = periodStartDate(for: selectedDate) <= Date() && Date() < periodEndDate(for: selectedDate)
+                    GroupBox {
+                        ContentUnavailableView(
+                            "No Data",
+                            systemImage: "chart.pie",
+                            description: Text(includesToday
+                                ? "No sessions recorded for this period. Start tracking to see your reports."
+                                : "No sessions recorded for this period.")
+                        )
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 40)
+                    }
                 }
 
                 cliPromoCard
