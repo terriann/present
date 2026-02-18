@@ -299,7 +299,8 @@ final class AppState {
         // Send notification and play completion sound
         NotificationManager.shared.sendTimerCompleted(
             activityTitle: activity.title,
-            sessionType: session.sessionType
+            sessionType: session.sessionType,
+            playSound: SoundManager.shared.isEnabled
         )
         SoundManager.shared.play(.shimmer)
 
@@ -366,7 +367,7 @@ final class AppState {
         self.showBreakSuggestion = true
 
         SoundManager.shared.play(.approach)
-        NotificationManager.shared.sendBreakSuggestion(isLongBreak: isLong, breakMinutes: breakMinutes)
+        NotificationManager.shared.sendBreakSuggestion(isLongBreak: isLong, breakMinutes: breakMinutes, playSound: SoundManager.shared.isEnabled)
     }
 
     func dismissBreakSuggestion() {

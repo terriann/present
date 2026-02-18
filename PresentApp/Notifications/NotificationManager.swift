@@ -12,13 +12,13 @@ final class NotificationManager {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
     }
 
-    func sendTimerCompleted(activityTitle: String, sessionType: SessionType) {
+    func sendTimerCompleted(activityTitle: String, sessionType: SessionType, playSound: Bool = true) {
         let content = UNMutableNotificationContent()
         let config = SessionTypeConfig.config(for: sessionType)
 
         content.title = "Time's Up"
         content.body = "\(activityTitle) — \(config.displayName) session complete."
-        content.sound = .default
+        if playSound { content.sound = .default }
 
         let request = UNNotificationRequest(
             identifier: "timer-completed-\(UUID().uuidString)",
@@ -28,11 +28,11 @@ final class NotificationManager {
         UNUserNotificationCenter.current().add(request)
     }
 
-    func sendBreakSuggestion(isLongBreak: Bool, breakMinutes: Int) {
+    func sendBreakSuggestion(isLongBreak: Bool, breakMinutes: Int, playSound: Bool = true) {
         let content = UNMutableNotificationContent()
         content.title = isLongBreak ? "Time for a Long Break" : "Take a Short Break"
         content.body = "You've earned a \(breakMinutes)-minute break. Step away and recharge."
-        content.sound = .default
+        if playSound { content.sound = .default }
 
         let request = UNNotificationRequest(
             identifier: "break-suggestion-\(UUID().uuidString)",

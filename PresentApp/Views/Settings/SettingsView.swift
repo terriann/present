@@ -694,37 +694,23 @@ struct NotificationSettingsTab: View {
     @Environment(AppState.self) private var appState
     @Environment(ThemeManager.self) private var theme
     @State private var soundEnabled = true
-    @State private var soundEffectsEnabled = true
 
     var body: some View {
         Form {
-            Section("Notifications") {
-                Toggle("Play sound on timer completion", isOn: $soundEnabled)
+            Section("Sound") {
+                Toggle("Play sounds", isOn: $soundEnabled)
                     .toggleStyle(ThemedToggleStyle(tintColor: theme.accent))
                     .onChange(of: soundEnabled) {
+                        SoundManager.shared.isEnabled = soundEnabled
                         Task {
                             try? await appState.service.setPreference(
-                                key: PreferenceKey.notificationSound,
+                                key: PreferenceKey.soundEffectsEnabled,
                                 value: soundEnabled ? "1" : "0"
                             )
                         }
                     }
-            }
 
-            Section("Sound Effects") {
-                Toggle("Play UI sound effects", isOn: $soundEffectsEnabled)
-                    .toggleStyle(ThemedToggleStyle(tintColor: theme.accent))
-                    .onChange(of: soundEffectsEnabled) {
-                        SoundManager.shared.isEnabled = soundEffectsEnabled
-                        Task {
-                            try? await appState.service.setPreference(
-                                key: PreferenceKey.soundEffectsEnabled,
-                                value: soundEffectsEnabled ? "1" : "0"
-                            )
-                        }
-                    }
-
-                Text("Sounds for session completion, cancellation, and break suggestions.")
+                Text("In-app effects and notification sounds for session events, cancellation, and break suggestions.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -733,11 +719,8 @@ struct NotificationSettingsTab: View {
         .padding()
         .onAppear {
             Task {
-                if let val = try? await appState.service.getPreference(key: PreferenceKey.notificationSound) {
-                    soundEnabled = val == "1"
-                }
                 if let val = try? await appState.service.getPreference(key: PreferenceKey.soundEffectsEnabled) {
-                    soundEffectsEnabled = val == "1"
+                    soundEnabled = val == "1"
                 }
             }
         }
