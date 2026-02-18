@@ -65,7 +65,7 @@ struct MarkdownEditor: NSViewRepresentable {
             return handleListContinuation(in: textView)
         }
 
-        private func handleListContinuation(in textView: NSTextView) -> Bool {
+        @MainActor private func handleListContinuation(in textView: NSTextView) -> Bool {
             let content = textView.string as NSString
             let cursorLocation = textView.selectedRange().location
 
