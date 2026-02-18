@@ -2,12 +2,12 @@ import ArgumentParser
 import Foundation
 import PresentCore
 
-struct SessionSearchCommand: AsyncParsableCommand {
+struct SessionListCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
-        commandName: "search",
-        abstract: "Search sessions with filters.",
+        commandName: "list",
+        abstract: "List sessions with filters.",
         discussion: """
-            Search and filter sessions by date range, type, or activity name. \
+            List and filter sessions by date range, type, or activity name. \
             Results are paginated (max 100 per page). All filters are optional \
             and can be combined.
 
@@ -16,16 +16,16 @@ struct SessionSearchCommand: AsyncParsableCommand {
             ## Examples
 
             # List all sessions from this week
-            $ present-cli session search --after 2025-01-13 --before 2025-01-17
+            $ present-cli session list --after 2025-01-13 --before 2025-01-17
 
             # Find rhythm sessions for a specific activity
-            $ present-cli session search --type rhythm --activity "Deep Work"
+            $ present-cli session list --type rhythm --activity "Deep Work"
 
             # Export sessions as CSV
-            $ present-cli session search --after 2025-01-01 -f csv
+            $ present-cli session list --after 2025-01-01 -f csv
 
             # Get page 2 of results
-            $ present-cli session search --page 2
+            $ present-cli session list --page 2
             """
     )
 

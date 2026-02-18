@@ -38,17 +38,18 @@ struct CLICommandTests {
     @Test func sessionGroupConfiguration() {
         #expect(SessionCommand.configuration.commandName == "session")
         let subcommands = SessionCommand.configuration.subcommands
-        #expect(subcommands.count == 8)
+        #expect(subcommands.count == 9)
 
         let names = subcommands.map { $0.configuration.commandName ?? "" }
         #expect(names.contains("status"))
         #expect(names.contains("get"))
         #expect(names.contains("start"))
+        #expect(names.contains("add"))
+        #expect(names.contains("list"))
         #expect(names.contains("stop"))
         #expect(names.contains("pause"))
         #expect(names.contains("resume"))
         #expect(names.contains("cancel"))
-        #expect(names.contains("search"))
     }
 
     @Test func sessionRequiresSubcommand() throws {
@@ -179,16 +180,16 @@ struct CLICommandTests {
         #expect(SessionCancelCommand.configuration.abstract == "Cancel the current session without logging it.")
     }
 
-    // MARK: - Session Search
+    // MARK: - Session List
 
-    @Test func sessionSearchParses() throws {
-        let command = try PresentCLI.parseAsRoot(["session", "search"])
-        #expect(command is SessionSearchCommand)
+    @Test func sessionListParses() throws {
+        let command = try PresentCLI.parseAsRoot(["session", "list"])
+        #expect(command is SessionListCommand)
     }
 
-    @Test func sessionSearchParsesAllOptions() throws {
+    @Test func sessionListParsesAllOptions() throws {
         let command = try PresentCLI.parseAsRoot([
-            "session", "search",
+            "session", "list",
             "--after", "2024-01-01",
             "--before", "2024-01-31",
             "--type", "work",
@@ -196,19 +197,66 @@ struct CLICommandTests {
             "--page", "2",
             "-f", "text"
         ])
-        let search = try #require(command as? SessionSearchCommand)
-        #expect(search.after == "2024-01-01")
-        #expect(search.before == "2024-01-31")
-        #expect(search.type == "work")
-        #expect(search.activity == "Deep Work")
-        #expect(search.page == 2)
-        #expect(search.outputOptions.format == .text)
+        let list = try #require(command as? SessionListCommand)
+        #expect(list.after == "2024-01-01")
+        #expect(list.before == "2024-01-31")
+        #expect(list.type == "work")
+        #expect(list.activity == "Deep Work")
+        #expect(list.page == 2)
+        #expect(list.outputOptions.format == .text)
     }
 
-    @Test func sessionSearchDefaultPage() throws {
-        let command = try PresentCLI.parseAsRoot(["session", "search"])
-        let search = try #require(command as? SessionSearchCommand)
-        #expect(search.page == 1)
+    @Test func sessionListDefaultPage() throws {
+        let command = try PresentCLI.parseAsRoot(["session", "list"])
+        let list = try #require(command as? SessionListCommand)
+        #expect(list.page == 1)
+    }
+
+    // MARK: - Session Add
+
+    @Test func sessionAddParsesRequiredArgs() throws {
+        let command = try PresentCLI.parseAsRoot([
+            "session", "add", "1",
+            "--started-at", "2026-01-15T09:00:00",
+            "--ended-at", "2026-01-15T10:00:00"
+        ])
+        let add = try #require(command as? SessionAddCommand)
+        #expect(add.activityId == 1)
+        #expect(add.startedAt == "2026-01-15T09:00:00")
+        #expect(add.endedAt == "2026-01-15T10:00:00")
+        #expect(add.type == "work")
+        #expect(add.minutes == nil)
+        #expect(add.breakMinutes == nil)
+    }
+
+    @Test func sessionAddParsesAllOptions() throws {
+        let command = try PresentCLI.parseAsRoot([
+            "session", "add", "5",
+            "--started-at", "2026-01-15T09:00:00",
+            "--ended-at", "2026-01-15T09:25:00",
+            "--type", "rhythm",
+            "--minutes", "25",
+            "--break-minutes", "5",
+            "-f", "text"
+        ])
+        let add = try #require(command as? SessionAddCommand)
+        #expect(add.activityId == 5)
+        #expect(add.type == "rhythm")
+        #expect(add.minutes == 25)
+        #expect(add.breakMinutes == 5)
+        #expect(add.outputOptions.format == .text)
+    }
+
+    @Test func sessionAddRequiresActivityId() {
+        #expect(throws: (any Error).self) {
+            try PresentCLI.parseAsRoot(["session", "add"])
+        }
+    }
+
+    @Test func sessionAddRequiresTimestamps() {
+        #expect(throws: (any Error).self) {
+            try PresentCLI.parseAsRoot(["session", "add", "1"])
+        }
     }
 
     // MARK: - Activity Group

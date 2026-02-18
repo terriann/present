@@ -13,11 +13,12 @@ struct SessionCommand: AsyncParsableCommand {
             SessionStatusCommand.self,
             SessionGetCommand.self,
             SessionStartCommand.self,
+            SessionAddCommand.self,
+            SessionListCommand.self,
             SessionStopCommand.self,
             SessionPauseCommand.self,
             SessionResumeCommand.self,
             SessionCancelCommand.self,
-            SessionSearchCommand.self,
         ],
     )
 }
