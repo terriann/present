@@ -81,7 +81,7 @@ struct SettingsView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(minWidth: 500, minHeight: 520)
+        .frame(minWidth: 500, maxWidth: 500, minHeight: 520)
         .onReceive(NotificationCenter.default.publisher(for: Self.openCLITabNotification)) { _ in
             selectedTab = .cli
         }
