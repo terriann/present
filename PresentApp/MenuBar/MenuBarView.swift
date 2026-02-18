@@ -5,6 +5,7 @@ struct MenuBarView: View {
     @Environment(AppState.self) private var appState
     @Environment(ThemeManager.self) private var theme
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.dismiss) private var dismiss
     @State private var searchText = ""
     @State private var selectedSessionType: SessionType = .work
     @State private var selectedRhythmOption: RhythmOption?
@@ -284,6 +285,7 @@ struct MenuBarView: View {
             Spacer()
 
             Button {
+                dismiss()
                 NSApplication.shared.setActivationPolicy(.regular)
                 DispatchQueue.main.async {
                     NotificationCenter.default.post(
