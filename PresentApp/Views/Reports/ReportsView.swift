@@ -68,8 +68,7 @@ struct ReportsView: View {
                                 ? "No sessions recorded for this period. Start tracking to see your reports."
                                 : "No sessions recorded for this period.")
                         )
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 40)
+                        .emptyStateStyle()
                     }
                 }
 
@@ -860,10 +859,12 @@ struct ReportsView: View {
                 .padding(.bottom, 12)
 
             if sessionEntries.isEmpty {
-                Text("No sessions for this period.")
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 20)
+                ContentUnavailableView(
+                    "No Sessions",
+                    systemImage: "list.bullet",
+                    description: Text("No sessions recorded for this period.")
+                )
+                .emptyStateStyle()
             } else {
                 VStack(spacing: 0) {
                     ForEach(Array(sessionEntries.enumerated()), id: \.element.0.id) { index, entry in

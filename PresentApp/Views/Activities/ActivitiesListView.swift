@@ -53,7 +53,8 @@ struct ActivitiesListView: View {
                         systemImage: "tray",
                         description: Text("Create an activity to start tracking time.")
                     )
-                    .frame(minWidth: 250, idealWidth: 300, maxHeight: .infinity)
+                    .frame(minWidth: 250, idealWidth: 300)
+                    .emptyStateStyle()
                 } else {
                     List {
                         ForEach(displayedActivities) { activity in
@@ -87,7 +88,7 @@ struct ActivitiesListView: View {
                         systemImage: "tray",
                         description: Text("Choose an activity from the list to view its details.")
                     )
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .emptyStateStyle()
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
