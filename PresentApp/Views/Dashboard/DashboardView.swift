@@ -133,13 +133,27 @@ struct DashboardView: View {
         let rounded = max(1, ceil(peak / 1) * 1)
         let yDomain = 0...min(rounded + 1, 25)
 
-        return Chart(entries, id: \.id) { entry in
-            BarMark(
-                x: .value("Day", entry.label),
-                y: .value("Hours", entry.value)
-            )
-            .foregroundStyle(by: .value("Activity", entry.activity))
-            .opacity(hoveredBarLabel == nil || hoveredBarLabel == entry.label ? 1.0 : 0.4)
+        let weekendDays = weekendLabels(
+            period: .weekly,
+            weekStartDay: appState.weekStartDay,
+            selectedDate: Date()
+        )
+
+        return Chart {
+            ForEach(Array(weekendDays), id: \.self) { label in
+                RectangleMark(x: .value("Day", label))
+                    .foregroundStyle(Color.gray.opacity(0.08))
+                    .zIndex(-1)
+            }
+
+            ForEach(entries, id: \.id) { entry in
+                BarMark(
+                    x: .value("Day", entry.label),
+                    y: .value("Hours", entry.value)
+                )
+                .foregroundStyle(by: .value("Activity", entry.activity))
+                .opacity(hoveredBarLabel == nil || hoveredBarLabel == entry.label ? 1.0 : 0.4)
+            }
         }
         .chartForegroundStyleScale(domain: colorDomain, range: colorRange)
         .chartXScale(domain: domain)

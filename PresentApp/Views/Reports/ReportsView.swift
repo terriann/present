@@ -379,14 +379,35 @@ struct ReportsView: View {
         }
     }
 
+    private var weekendDayLabels: Set<String> {
+        switch selectedPeriod {
+        case .daily:
+            return []
+        case .weekly:
+            return weekendLabels(period: .weekly, weekStartDay: weekStartDay, selectedDate: selectedDate)
+        case .monthly:
+            return weekendLabels(period: .monthly, weekStartDay: weekStartDay, selectedDate: selectedDate)
+        }
+    }
+
     private func stackedBarChart(entries: [BarEntry], domain: [String]) -> some View {
-        Chart(entries, id: \.id) { entry in
-            BarMark(
-                x: .value(selectedPeriod.timeLabel, entry.label),
-                y: .value(yAxisLabel, entry.value)
-            )
-            .foregroundStyle(by: .value("Activity", entry.activity))
-            .opacity(hoveredBarLabel == nil || hoveredBarLabel == entry.label ? 1.0 : 0.4)
+        let weekends = weekendDayLabels
+
+        return Chart {
+            ForEach(Array(weekends), id: \.self) { label in
+                RectangleMark(x: .value(selectedPeriod.timeLabel, label))
+                    .foregroundStyle(Color.gray.opacity(0.08))
+                    .zIndex(-1)
+            }
+
+            ForEach(entries, id: \.id) { entry in
+                BarMark(
+                    x: .value(selectedPeriod.timeLabel, entry.label),
+                    y: .value(yAxisLabel, entry.value)
+                )
+                .foregroundStyle(by: .value("Activity", entry.activity))
+                .opacity(hoveredBarLabel == nil || hoveredBarLabel == entry.label ? 1.0 : 0.4)
+            }
         }
         .chartForegroundStyleScale(domain: chartColorDomain, range: chartColorRange)
         .chartXScale(domain: domain)
@@ -725,17 +746,14 @@ struct ReportsView: View {
                 (label: summary.activity.title, color: palette[index % palette.count])
             },
             hoveredLabel: $hoveredActivityName,
+            onHoverStart: { label in
+                legendHoveredActivity = label
+            },
             onHoverEnd: {
                 legendHoveredActivity = nil
                 hoveredActivityName = findActivity(for: activityAngleSelection)
             }
         )
-        .onChange(of: hoveredActivityName) {
-            // Sync legendHoveredActivity when legend sets hoveredActivityName
-            if hoveredActivityName != nil {
-                legendHoveredActivity = hoveredActivityName
-            }
-        }
         .padding(.horizontal, 12)
         .padding(.bottom, 12)
     }
