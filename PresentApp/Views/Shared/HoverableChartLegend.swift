@@ -3,6 +3,7 @@ import SwiftUI
 struct HoverableChartLegend: View {
     let items: [(label: String, color: Color)]
     @Binding var hoveredLabel: String?
+    var onHoverStart: ((String) -> Void)?
     var onHoverEnd: (() -> Void)?
 
     var body: some View {
@@ -25,6 +26,7 @@ struct HoverableChartLegend: View {
                 .onHover { hovering in
                     if hovering {
                         hoveredLabel = item.label
+                        onHoverStart?(item.label)
                     } else {
                         hoveredLabel = nil
                         onHoverEnd?()
