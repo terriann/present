@@ -16,9 +16,7 @@ struct DashboardView: View {
                 todaySummaryCard
 
                 // Activity breakdown
-                if !appState.todayActivities.isEmpty {
-                    activityBreakdownCard
-                }
+                activityBreakdownCard
             }
             .padding(20)
         }
@@ -35,8 +33,15 @@ struct DashboardView: View {
 
     private var currentSessionCard: some View {
         GroupBox {
-            VStack(spacing: 12) {
-                if let activity = appState.currentActivity, let session = appState.currentSession {
+            Text("Current Session")
+                .font(.largeTitle.bold())
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 12)
+                .padding(.top, 12)
+                .padding(.bottom, 12)
+
+            if let activity = appState.currentActivity, let session = appState.currentSession {
+                VStack(spacing: 12) {
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(activity.title)
@@ -56,31 +61,34 @@ struct DashboardView: View {
 
                     SessionControls()
                 }
+                .padding(.horizontal, 12)
+                .padding(.bottom, 12)
             }
-            .padding(4)
-        } label: {
-            Label("Current Session", systemImage: "play.circle")
         }
     }
 
     // MARK: - Today's Summary
 
     private var todaySummaryCard: some View {
-        GroupBox {
+        VStack(spacing: 12) {
+            Text(Date.now.formatted(date: .complete, time: .omitted))
+                .font(.largeTitle.bold())
+                .frame(maxWidth: .infinity, alignment: .leading)
+
             HStack(spacing: 40) {
-                statItem(
+                StatItem(
                     title: "Total Time",
                     value: TimeFormatting.formatDuration(seconds: appState.todayTotalSeconds),
                     icon: "clock"
                 )
 
-                statItem(
+                StatItem(
                     title: "Sessions",
                     value: "\(appState.todaySessionCount)",
                     icon: "number"
                 )
 
-                statItem(
+                StatItem(
                     title: "Activities",
                     value: "\(appState.todayActivities.count)",
                     icon: "tray"
@@ -88,25 +96,6 @@ struct DashboardView: View {
 
                 Spacer()
             }
-            .padding(4)
-        } label: {
-            Label("Today", systemImage: "calendar")
-        }
-    }
-
-    private func statItem(title: String, value: String, icon: String) -> some View {
-        VStack(spacing: 4) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundStyle(.secondary)
-                .accessibilityHidden(true)
-
-            Text(value)
-                .font(.title2.bold())
-
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
         }
     }
 
@@ -114,32 +103,47 @@ struct DashboardView: View {
 
     private var activityBreakdownCard: some View {
         GroupBox {
-            VStack(spacing: 0) {
-                ForEach(appState.todayActivities, id: \.activity.id) { summary in
-                    HStack {
-                        Text(summary.activity.title)
-                            .lineLimit(1)
+            Text("Activity Breakdown")
+                .font(.largeTitle.bold())
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 12)
+                .padding(.top, 12)
+                .padding(.bottom, 12)
 
-                        Spacer()
+            if appState.todayActivities.isEmpty {
+                ContentUnavailableView(
+                    "No Activity Yet",
+                    systemImage: "chart.bar",
+                    description: Text("Start a session to see your activity breakdown.")
+                )
+                .emptyStateStyle()
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(appState.todayActivities, id: \.activity.id) { summary in
+                        HStack {
+                            Text(summary.activity.title)
+                                .lineLimit(1)
 
-                        Text("\(summary.sessionCount) sessions")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            Spacer()
 
-                        Text(TimeFormatting.formatDuration(seconds: summary.totalSeconds))
-                            .font(.body.monospacedDigit())
-                            .frame(width: 80, alignment: .trailing)
-                    }
-                    .padding(.vertical, 6)
+                            Text("\(summary.sessionCount) sessions")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
 
-                    if summary.activity.id != appState.todayActivities.last?.activity.id {
-                        Divider()
+                            Text(TimeFormatting.formatDuration(seconds: summary.totalSeconds))
+                                .font(.body.monospacedDigit())
+                                .frame(width: 80, alignment: .trailing)
+                        }
+                        .padding(.vertical, 6)
+
+                        if summary.activity.id != appState.todayActivities.last?.activity.id {
+                            Divider()
+                        }
                     }
                 }
+                .padding(.horizontal, 12)
+                .padding(.bottom, 12)
             }
-            .padding(4)
-        } label: {
-            Label("Activity Breakdown", systemImage: "chart.bar")
         }
     }
 }

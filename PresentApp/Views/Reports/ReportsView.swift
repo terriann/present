@@ -235,29 +235,20 @@ struct ReportsView: View {
 
     private var summaryBar: some View {
         HStack(spacing: 40) {
-            VStack {
-                Text(TimeFormatting.formatDuration(seconds: totalSeconds))
-                    .font(.title.bold())
-                Text("Total Time")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+            StatItem(
+                title: "Total Time",
+                value: TimeFormatting.formatDuration(seconds: totalSeconds)
+            )
 
-            VStack {
-                Text("\(sessionCount)")
-                    .font(.title.bold())
-                Text("Sessions")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+            StatItem(
+                title: "Sessions",
+                value: "\(sessionCount)"
+            )
 
-            VStack {
-                Text("\(activities.count)")
-                    .font(.title.bold())
-                Text("Activities")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+            StatItem(
+                title: "Activities",
+                value: "\(activities.count)"
+            )
 
             Spacer()
         }
