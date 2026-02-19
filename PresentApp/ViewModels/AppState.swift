@@ -18,6 +18,8 @@ final class AppState {
     var todayTotalSeconds: Int = 0
     var todaySessionCount: Int = 0
     var todayActivities: [ActivitySummary] = []
+    var weeklySummary: WeeklySummary?
+    var weekStartDay: Int = 1
     var recentActivities: [Activity] = []
     var allActivities: [Activity] = []
     var allTags: [Tag] = []
@@ -149,6 +151,12 @@ final class AppState {
             todayTotalSeconds = summary.totalSeconds
             todaySessionCount = summary.sessionCount
             todayActivities = summary.activities
+
+            if let weekStartPref = try? await service.getPreference(key: PreferenceKey.weekStartDay) {
+                weekStartDay = PreferenceKey.parseWeekStartDay(weekStartPref)
+            }
+            let weekly = try await service.weeklySummary(weekOf: Date(), includeArchived: false, weekStartDay: weekStartDay)
+            weeklySummary = weekly
 
             if currentSession == nil {
                 let since = Date().addingTimeInterval(-3 * 60 * 60)
