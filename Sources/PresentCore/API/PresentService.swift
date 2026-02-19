@@ -554,11 +554,11 @@ public final class PresentService: PresentAPI, Sendable {
     public func listActivities(includeArchived: Bool) async throws -> [Activity] {
         try await dbWriter.read { db in
             if includeArchived {
-                return try Activity.order(Activity.Columns.updatedAt.desc).fetchAll(db)
+                return try Activity.order(Activity.Columns.title.asc).fetchAll(db)
             } else {
                 return try Activity
                     .filter(Activity.Columns.isArchived == false)
-                    .order(Activity.Columns.updatedAt.desc)
+                    .order(Activity.Columns.title.asc)
                     .fetchAll(db)
             }
         }
