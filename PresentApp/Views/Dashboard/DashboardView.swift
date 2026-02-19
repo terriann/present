@@ -102,14 +102,7 @@ struct DashboardView: View {
     // MARK: - Activity Breakdown
 
     private var activityBreakdownCard: some View {
-        GroupBox {
-            Text("Activity Breakdown")
-                .font(.largeTitle.bold())
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 12)
-                .padding(.top, 12)
-                .padding(.bottom, 12)
-
+        ChartCard(title: "Activity Breakdown") {
             if appState.todayActivities.isEmpty {
                 ContentUnavailableView(
                     "No Activity Yet",

@@ -1,0 +1,36 @@
+import SwiftUI
+
+struct HoverableChartLegend: View {
+    let items: [(label: String, color: Color)]
+    @Binding var hoveredLabel: String?
+    var onHoverEnd: (() -> Void)?
+
+    var body: some View {
+        FlowLayout(spacing: 8) {
+            ForEach(items, id: \.label) { item in
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(item.color)
+                        .frame(width: 8, height: 8)
+                    Text(item.label)
+                        .font(.caption)
+                        .lineLimit(1)
+                }
+                .padding(.vertical, 2)
+                .padding(.horizontal, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(hoveredLabel == item.label ? Color.primary.opacity(0.08) : Color.clear)
+                )
+                .onHover { hovering in
+                    if hovering {
+                        hoveredLabel = item.label
+                    } else {
+                        hoveredLabel = nil
+                        onHoverEnd?()
+                    }
+                }
+            }
+        }
+    }
+}

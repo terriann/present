@@ -33,7 +33,7 @@ struct ReportsView: View {
     @State private var activityAngleSelection: Int?
     @State private var hoveredActivityName: String?
     @State private var legendHoveredActivity: String?
-    @State private var hoveredTagLabel: String?
+    @State private var hoveredTagName: String?
     @State private var tagHoverLocation: CGPoint = .zero
     @State private var externalIdAngleSelection: Int?
     @State private var hoveredExternalSegment: String?
@@ -140,6 +140,15 @@ struct ReportsView: View {
             .disabled(!canNavigateForward)
             .buttonStyle(.borderless)
 
+            Button {
+                selectedDate = Date()
+            } label: {
+                Image(systemName: "calendar")
+            }
+            .buttonStyle(.borderless)
+            .disabled(isShowingToday)
+            .foregroundStyle(isShowingToday ? .secondary : theme.accent)
+
             Spacer()
         }
     }
@@ -175,6 +184,13 @@ struct ReportsView: View {
         guard let earliest = earliestDate else { return false }
         let periodStart = periodStartDate(for: selectedDate)
         return periodStart > Calendar.current.startOfDay(for: earliest)
+    }
+
+    private var isShowingToday: Bool {
+        let today = Date()
+        let currentPeriodStart = periodStartDate(for: selectedDate)
+        let currentPeriodEnd = periodEndDate(for: selectedDate)
+        return today >= currentPeriodStart && today < currentPeriodEnd
     }
 
     private var canNavigateForward: Bool {
@@ -358,83 +374,80 @@ struct ReportsView: View {
         let entries = barEntries
         let domain = xAxisDomain
 
-        return GroupBox {
-            Text("Time by \(selectedPeriod.timeLabel)")
-                .font(.largeTitle.bold())
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 12)
-                .padding(.top, 12)
-                .padding(.bottom, 12)
+        return ChartCard(title: "Time by \(selectedPeriod.timeLabel)") {
+            stackedBarChart(entries: entries, domain: domain)
+        }
+    }
 
-            Chart(entries, id: \.id) { entry in
-                BarMark(
-                    x: .value(selectedPeriod.timeLabel, entry.label),
-                    y: .value(yAxisLabel, entry.value)
-                )
-                .foregroundStyle(by: .value("Activity", entry.activity))
-                .opacity(hoveredBarLabel == nil || hoveredBarLabel == entry.label ? 1.0 : 0.4)
+    private func stackedBarChart(entries: [BarEntry], domain: [String]) -> some View {
+        Chart(entries, id: \.id) { entry in
+            BarMark(
+                x: .value(selectedPeriod.timeLabel, entry.label),
+                y: .value(yAxisLabel, entry.value)
+            )
+            .foregroundStyle(by: .value("Activity", entry.activity))
+            .opacity(hoveredBarLabel == nil || hoveredBarLabel == entry.label ? 1.0 : 0.4)
+        }
+        .chartForegroundStyleScale(domain: chartColorDomain, range: chartColorRange)
+        .chartXScale(domain: domain)
+        .chartXAxis {
+            AxisMarks { value in
+                AxisGridLine()
+                AxisTick()
+                if let label = value.as(String.self), shouldShowXAxisLabel(label) {
+                    AxisValueLabel()
+                }
             }
-            .chartForegroundStyleScale(domain: chartColorDomain, range: chartColorRange)
-            .chartXScale(domain: domain)
-            .chartXAxis {
-                AxisMarks { value in
-                    AxisGridLine()
-                    AxisTick()
-                    if let label = value.as(String.self), shouldShowXAxisLabel(label) {
-                        AxisValueLabel()
+        }
+        .chartYScale(domain: yAxisDomain)
+        .chartYAxis {
+            AxisMarks { value in
+                AxisGridLine()
+                AxisTick()
+                AxisValueLabel {
+                    if let v = value.as(Double.self) {
+                        Text(selectedPeriod == .daily ? "\(Int(v))m" : "\(Int(v))h")
                     }
                 }
             }
-            .chartYScale(domain: yAxisDomain)
-            .chartYAxis {
-                AxisMarks { value in
-                    AxisGridLine()
-                    AxisTick()
-                    AxisValueLabel {
-                        if let v = value.as(Double.self) {
-                            Text(selectedPeriod == .daily ? "\(Int(v))m" : "\(Int(v))h")
-                        }
-                    }
-                }
-            }
-            .chartOverlay { proxy in
-                GeometryReader { geometry in
-                    if let plotFrame = proxy.plotFrame {
-                        let frame = geometry[plotFrame]
+        }
+        .chartOverlay { proxy in
+            GeometryReader { geometry in
+                if let plotFrame = proxy.plotFrame {
+                    let frame = geometry[plotFrame]
 
-                        Rectangle()
-                            .fill(.clear)
-                            .contentShape(Rectangle())
-                            .onContinuousHover { phase in
-                                switch phase {
-                                case .active(let location):
-                                    let relativeX = location.x - frame.origin.x
-                                    if let label: String = proxy.value(atX: relativeX),
-                                       entries.contains(where: { $0.label == label }) {
-                                        hoveredBarLabel = label
-                                        barHoverLocation = location
-                                    } else {
-                                        hoveredBarLabel = nil
-                                    }
-                                case .ended:
+                    Rectangle()
+                        .fill(.clear)
+                        .contentShape(Rectangle())
+                        .onContinuousHover { phase in
+                            switch phase {
+                            case .active(let location):
+                                let relativeX = location.x - frame.origin.x
+                                if let label: String = proxy.value(atX: relativeX),
+                                   entries.contains(where: { $0.label == label }) {
+                                    hoveredBarLabel = label
+                                    barHoverLocation = location
+                                } else {
                                     hoveredBarLabel = nil
                                 }
+                            case .ended:
+                                hoveredBarLabel = nil
                             }
-
-                        if let label = hoveredBarLabel {
-                            let pos = tooltipPosition(cursor: barHoverLocation, containerSize: geometry.size)
-                            barTooltip(for: label, entries: entries)
-                                .fixedSize()
-                                .frame(maxWidth: 180, alignment: .leading)
-                                .position(x: pos.x, y: pos.y)
                         }
+
+                    if let label = hoveredBarLabel {
+                        let pos = tooltipPosition(cursor: barHoverLocation, containerSize: geometry.size)
+                        barTooltip(for: label, entries: entries)
+                            .fixedSize()
+                            .frame(maxWidth: 180, alignment: .leading)
+                            .position(x: pos.x, y: pos.y)
                     }
                 }
             }
-            .chartLegend(position: .bottom, spacing: 12)
-            .frame(height: 250)
-            .padding(12)
         }
+        .chartLegend(position: .bottom, spacing: 12)
+        .frame(height: 250)
+        .padding(12)
     }
 
     private func barTooltip(for label: String, entries: [BarEntry]) -> some View {
@@ -475,12 +488,8 @@ struct ReportsView: View {
         }
     }
 
-    private func tagTooltip(for label: String, summaries: [TagActivitySummary]) -> some View {
-        // Find the matching TagActivitySummary — label format is "TagName (N) · duration"
-        let matching = summaries.first { tag in
-            let duration = TimeFormatting.formatDuration(seconds: tag.totalSeconds)
-            return "\(tag.tagName) · \(duration) (\(tag.activityCount))" == label
-        }
+    private func tagTooltip(forTag tagName: String?, summaries: [TagActivitySummary]) -> some View {
+        let matching = summaries.first { $0.tagName == tagName }
         let palette = ThemeManager.chartColors(for: theme.activePalette)
 
         return ChartTooltip {
@@ -552,92 +561,87 @@ struct ReportsView: View {
         let combinedTotal = groups.reduce(0) { $0 + $1.totalSeconds }
         let palette = ThemeManager.chartColors(for: theme.activePalette)
 
-        return GroupBox {
-            Text("External ID Breakdown")
-                .font(.largeTitle.bold())
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 12)
-                .padding(.top, 12)
-                .padding(.bottom, 12)
+        return ChartCard(title: "External ID Breakdown") {
+            externalIdDonutChart(groups: groups, combinedTotal: combinedTotal, palette: palette)
+            externalIdLegend(groups: groups, palette: palette)
+        }
+    }
 
-            Chart(groups, id: \.externalId) { group in
-                SectorMark(
-                    angle: .value("Time", group.totalSeconds),
-                    innerRadius: .ratio(0.5),
-                    angularInset: 1
-                )
-                .foregroundStyle(by: .value("External ID", group.externalId))
-                .opacity(hoveredExternalSegment == nil || hoveredExternalSegment == group.externalId ? 1.0 : 0.4)
-            }
-            .chartForegroundStyleScale(
-                domain: groups.map(\.externalId),
-                range: groups.indices.map { palette[$0 % palette.count] }
+    private func externalIdDonutChart(
+        groups: [(externalId: String, activities: [ActivitySummary], totalSeconds: Int)],
+        combinedTotal: Int,
+        palette: [Color]
+    ) -> some View {
+        Chart(groups, id: \.externalId) { group in
+            SectorMark(
+                angle: .value("Time", group.totalSeconds),
+                innerRadius: .ratio(0.5),
+                angularInset: 1
             )
-            .chartAngleSelection(value: $externalIdAngleSelection)
-            .onChange(of: externalIdAngleSelection) {
-                hoveredExternalSegment = findExternalSegment(for: externalIdAngleSelection)
-            }
-            .chartLegend(.hidden)
-            .chartOverlay { proxy in
-                GeometryReader { geometry in
-                    if let plotFrame = proxy.plotFrame {
-                        let frame = geometry[plotFrame]
-                        if let segmentId = hoveredExternalSegment,
-                           let group = groups.first(where: { $0.externalId == segmentId }) {
-                            donutCenterTooltip {
-                                Text(group.externalId)
-                                    .font(.caption.bold())
-                                    .lineLimit(2)
-                                    .multilineTextAlignment(.center)
-                                Text(TimeFormatting.formatDuration(seconds: group.totalSeconds))
-                                    .font(.caption.monospacedDigit())
-                                let pct = combinedTotal > 0 ? Double(group.totalSeconds) / Double(combinedTotal) * 100 : 0
-                                Text(String(format: "%.1f%%", pct))
+            .foregroundStyle(by: .value("External ID", group.externalId))
+            .opacity(hoveredExternalSegment == nil || hoveredExternalSegment == group.externalId ? 1.0 : 0.4)
+        }
+        .chartForegroundStyleScale(
+            domain: groups.map(\.externalId),
+            range: groups.indices.map { palette[$0 % palette.count] }
+        )
+        .chartAngleSelection(value: $externalIdAngleSelection)
+        .onChange(of: externalIdAngleSelection) {
+            hoveredExternalSegment = findExternalSegment(for: externalIdAngleSelection)
+        }
+        .chartLegend(.hidden)
+        .chartOverlay { proxy in
+            GeometryReader { geometry in
+                if let plotFrame = proxy.plotFrame {
+                    let frame = geometry[plotFrame]
+                    if let segmentId = hoveredExternalSegment,
+                       let group = groups.first(where: { $0.externalId == segmentId }) {
+                        DonutCenterTooltip {
+                            Text(group.externalId)
+                                .font(.caption.bold())
+                                .lineLimit(2)
+                                .multilineTextAlignment(.center)
+                            Text(TimeFormatting.formatDuration(seconds: group.totalSeconds))
+                                .font(.caption.monospacedDigit())
+                            let pct = combinedTotal > 0 ? Double(group.totalSeconds) / Double(combinedTotal) * 100 : 0
+                            Text(String(format: "%.1f%%", pct))
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                            ForEach(group.activities, id: \.activity.id) { summary in
+                                Text(summary.activity.title)
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
-                                ForEach(group.activities, id: \.activity.id) { summary in
-                                    Text(summary.activity.title)
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                        .lineLimit(1)
-                                }
+                                    .lineLimit(1)
                             }
-                            .position(
-                                x: frame.midX,
-                                y: frame.midY
-                            )
                         }
-                    }
-                }
-                .allowsHitTesting(false)
-            }
-            .frame(height: 250)
-            .padding(12)
-
-            FlowLayout(spacing: 8) {
-                ForEach(Array(groups.enumerated()), id: \.element.externalId) { index, group in
-                    HStack(spacing: 4) {
-                        Circle()
-                            .fill(palette[index % palette.count])
-                            .frame(width: 8, height: 8)
-                        Text(group.externalId)
-                            .font(.caption)
-                            .lineLimit(1)
-                    }
-                    .padding(.vertical, 2)
-                    .padding(.horizontal, 6)
-                    .background(
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(hoveredExternalSegment == group.externalId ? Color.primary.opacity(0.08) : Color.clear)
-                    )
-                    .onHover { hovering in
-                        hoveredExternalSegment = hovering ? group.externalId : findExternalSegment(for: externalIdAngleSelection)
+                        .position(
+                            x: frame.midX,
+                            y: frame.midY
+                        )
                     }
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.bottom, 12)
+            .allowsHitTesting(false)
         }
+        .frame(height: 250)
+        .padding(12)
+    }
+
+    private func externalIdLegend(
+        groups: [(externalId: String, activities: [ActivitySummary], totalSeconds: Int)],
+        palette: [Color]
+    ) -> some View {
+        HoverableChartLegend(
+            items: groups.enumerated().map { index, group in
+                (label: group.externalId, color: palette[index % palette.count])
+            },
+            hoveredLabel: $hoveredExternalSegment,
+            onHoverEnd: {
+                hoveredExternalSegment = findExternalSegment(for: externalIdAngleSelection)
+            }
+        )
+        .padding(.horizontal, 12)
+        .padding(.bottom, 12)
     }
 
     // MARK: - Activity Pie Chart
@@ -655,99 +659,85 @@ struct ReportsView: View {
     }
 
     private var activityPieChartCard: some View {
-        GroupBox {
-            Text("Activity Distribution")
-                .font(.largeTitle.bold())
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 12)
-                .padding(.top, 12)
-                .padding(.bottom, 12)
+        let palette = ThemeManager.chartColors(for: theme.activePalette)
 
-            Chart(activities, id: \.activity.id) { summary in
-                SectorMark(
-                    angle: .value("Time", summary.totalSeconds),
-                    innerRadius: .ratio(0.5),
-                    angularInset: 1
-                )
-                .foregroundStyle(by: .value("Activity", summary.activity.title))
-                .opacity(hoveredActivityName == nil || hoveredActivityName == summary.activity.title ? 1.0 : 0.4)
-            }
-            .chartForegroundStyleScale(domain: chartColorDomain, range: chartColorRange)
-            .chartAngleSelection(value: $activityAngleSelection)
-            .onChange(of: activityAngleSelection) {
-                if legendHoveredActivity == nil {
-                    hoveredActivityName = findActivity(for: activityAngleSelection)
-                }
-            }
-            .chartLegend(.hidden)
-            .chartOverlay { proxy in
-                GeometryReader { geometry in
-                    if let plotFrame = proxy.plotFrame {
-                        let frame = geometry[plotFrame]
-                        if let name = hoveredActivityName,
-                           let summary = activities.first(where: { $0.activity.title == name }) {
-                            donutCenterTooltip {
-                                Text(summary.activity.title)
-                                    .font(.caption.bold())
-                                    .lineLimit(2)
-                                    .multilineTextAlignment(.center)
-                                Text(TimeFormatting.formatDuration(seconds: summary.totalSeconds))
-                                    .font(.caption.monospacedDigit())
-                                let pct = totalSeconds > 0 ? Double(summary.totalSeconds) / Double(totalSeconds) * 100 : 0
-                                Text(String(format: "%.1f%%", pct))
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                                Text("\(summary.sessionCount) sessions")
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                            }
-                            .position(
-                                x: frame.midX,
-                                y: frame.midY
-                            )
-                        }
-                    }
-                }
-                .allowsHitTesting(false)
-            }
-            .frame(height: 250)
-            .padding(12)
-
-            donutLegend
-                .padding(.horizontal, 12)
-                .padding(.bottom, 12)
+        return ChartCard(title: "Activity Distribution") {
+            activityDonutChart
+            activityDonutLegend(palette: palette)
         }
     }
 
-    private var donutLegend: some View {
-        let palette = ThemeManager.chartColors(for: theme.activePalette)
-        return FlowLayout(spacing: 8) {
-            ForEach(Array(activities.enumerated()), id: \.element.activity.id) { index, summary in
-                HStack(spacing: 4) {
-                    Circle()
-                        .fill(palette[index % palette.count])
-                        .frame(width: 8, height: 8)
-                    Text(summary.activity.title)
-                        .font(.caption)
-                        .lineLimit(1)
-                }
-                .padding(.vertical, 2)
-                .padding(.horizontal, 6)
-                .background(
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(hoveredActivityName == summary.activity.title ? Color.primary.opacity(0.08) : Color.clear)
-                )
-                .onHover { hovering in
-                    if hovering {
-                        legendHoveredActivity = summary.activity.title
-                        hoveredActivityName = summary.activity.title
-                    } else {
-                        legendHoveredActivity = nil
-                        hoveredActivityName = findActivity(for: activityAngleSelection)
+    private var activityDonutChart: some View {
+        Chart(activities, id: \.activity.id) { summary in
+            SectorMark(
+                angle: .value("Time", summary.totalSeconds),
+                innerRadius: .ratio(0.5),
+                angularInset: 1
+            )
+            .foregroundStyle(by: .value("Activity", summary.activity.title))
+            .opacity(hoveredActivityName == nil || hoveredActivityName == summary.activity.title ? 1.0 : 0.4)
+        }
+        .chartForegroundStyleScale(domain: chartColorDomain, range: chartColorRange)
+        .chartAngleSelection(value: $activityAngleSelection)
+        .onChange(of: activityAngleSelection) {
+            if legendHoveredActivity == nil {
+                hoveredActivityName = findActivity(for: activityAngleSelection)
+            }
+        }
+        .chartLegend(.hidden)
+        .chartOverlay { proxy in
+            GeometryReader { geometry in
+                if let plotFrame = proxy.plotFrame {
+                    let frame = geometry[plotFrame]
+                    if let name = hoveredActivityName,
+                       let summary = activities.first(where: { $0.activity.title == name }) {
+                        DonutCenterTooltip {
+                            Text(summary.activity.title)
+                                .font(.caption.bold())
+                                .lineLimit(2)
+                                .multilineTextAlignment(.center)
+                            Text(TimeFormatting.formatDuration(seconds: summary.totalSeconds))
+                                .font(.caption.monospacedDigit())
+                            let pct = totalSeconds > 0 ? Double(summary.totalSeconds) / Double(totalSeconds) * 100 : 0
+                            Text(String(format: "%.1f%%", pct))
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                            Text("\(summary.sessionCount) sessions")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        .position(
+                            x: frame.midX,
+                            y: frame.midY
+                        )
                     }
                 }
             }
+            .allowsHitTesting(false)
         }
+        .frame(height: 250)
+        .padding(12)
+    }
+
+    private func activityDonutLegend(palette: [Color]) -> some View {
+        HoverableChartLegend(
+            items: activities.enumerated().map { index, summary in
+                (label: summary.activity.title, color: palette[index % palette.count])
+            },
+            hoveredLabel: $hoveredActivityName,
+            onHoverEnd: {
+                legendHoveredActivity = nil
+                hoveredActivityName = findActivity(for: activityAngleSelection)
+            }
+        )
+        .onChange(of: hoveredActivityName) {
+            // Sync legendHoveredActivity when legend sets hoveredActivityName
+            if hoveredActivityName != nil {
+                legendHoveredActivity = hoveredActivityName
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.bottom, 12)
     }
 
     // MARK: - Tag Bar Chart
@@ -762,93 +752,84 @@ struct ReportsView: View {
             let yLabel = "\(tag.tagName) · \(duration) (\(tag.activityCount))"
             return tag.activities.map { summary in
                 TagBarEntry(
+                    tagName: tag.tagName,
                     tagLabel: yLabel,
                     activityTitle: summary.activity.title,
                     hours: Double(summary.totalSeconds) / 3600.0,
-                    totalSeconds: tag.totalSeconds,
-                    isLastInTag: false
+                    totalSeconds: tag.totalSeconds
                 )
             }
         }
 
-        return GroupBox {
-            Text("Tag Distribution")
-                .font(.largeTitle.bold())
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 12)
-                .padding(.top, 12)
-                .padding(.bottom, 12)
+        return ChartCard(title: "Tag Distribution") {
+            tagBarChart(entries: entries, sorted: sorted, barHeight: barHeight)
+        }
+    }
 
-            Chart(entries, id: \.id) { entry in
-                BarMark(
-                    x: .value("Hours", entry.hours),
-                    y: .value("Tag", entry.tagLabel)
-                )
-                .foregroundStyle(by: .value("Activity", entry.activityTitle))
-                .opacity(hoveredTagLabel == nil || hoveredTagLabel == entry.tagLabel ? 1.0 : 0.4)
-            }
-            .chartForegroundStyleScale(domain: chartColorDomain, range: chartColorRange)
-            .chartLegend(.hidden)
-            .chartXAxis {
-                AxisMarks { value in
-                    AxisGridLine()
-                    AxisTick()
-                    AxisValueLabel {
-                        if let v = value.as(Double.self) {
-                            Text("\(Int(v))h")
-                        }
+    private func tagBarChart(entries: [TagBarEntry], sorted: [TagActivitySummary], barHeight: CGFloat) -> some View {
+        Chart(entries, id: \.id) { entry in
+            BarMark(
+                x: .value("Hours", entry.hours),
+                y: .value("Tag", entry.tagLabel)
+            )
+            .foregroundStyle(by: .value("Activity", entry.activityTitle))
+            .opacity(hoveredTagName == nil || hoveredTagName == entry.tagName ? 1.0 : 0.4)
+        }
+        .chartForegroundStyleScale(domain: chartColorDomain, range: chartColorRange)
+        .chartLegend(.hidden)
+        .chartXAxis {
+            AxisMarks { value in
+                AxisGridLine()
+                AxisTick()
+                AxisValueLabel {
+                    if let v = value.as(Double.self) {
+                        Text("\(Int(v))h")
                     }
                 }
             }
-            .chartOverlay { proxy in
-                GeometryReader { geometry in
-                    if let plotFrame = proxy.plotFrame {
-                        let frame = geometry[plotFrame]
+        }
+        .chartOverlay { proxy in
+            GeometryReader { geometry in
+                if let plotFrame = proxy.plotFrame {
+                    let frame = geometry[plotFrame]
 
-                        Rectangle()
-                            .fill(.clear)
-                            .contentShape(Rectangle())
-                            .onContinuousHover { phase in
-                                switch phase {
-                                case .active(let location):
-                                    let relativeY = location.y - frame.origin.y
-                                    if let label: String = proxy.value(atY: relativeY) {
-                                        hoveredTagLabel = label
-                                        tagHoverLocation = location
-                                    } else {
-                                        hoveredTagLabel = nil
-                                    }
-                                case .ended:
-                                    hoveredTagLabel = nil
+                    Rectangle()
+                        .fill(.clear)
+                        .contentShape(Rectangle())
+                        .onContinuousHover { phase in
+                            switch phase {
+                            case .active(let location):
+                                let relativeY = location.y - frame.origin.y
+                                if let label: String = proxy.value(atY: relativeY),
+                                   let entry = entries.first(where: { $0.tagLabel == label }) {
+                                    hoveredTagName = entry.tagName
+                                    tagHoverLocation = location
+                                } else {
+                                    hoveredTagName = nil
                                 }
+                            case .ended:
+                                hoveredTagName = nil
                             }
-
-                        if let label = hoveredTagLabel {
-                            let pos = tooltipPosition(cursor: tagHoverLocation, containerSize: geometry.size)
-                            tagTooltip(for: label, summaries: sorted)
-                                .fixedSize()
-                                .frame(maxWidth: 200, alignment: .leading)
-                                .position(x: pos.x, y: pos.y)
                         }
+
+                    if let tagName = hoveredTagName {
+                        let pos = tooltipPosition(cursor: tagHoverLocation, containerSize: geometry.size)
+                        tagTooltip(forTag: tagName, summaries: sorted)
+                            .fixedSize()
+                            .frame(maxWidth: 200, alignment: .leading)
+                            .position(x: pos.x, y: pos.y)
                     }
                 }
             }
-            .frame(height: barHeight)
-            .padding(12)
         }
+        .frame(height: barHeight)
+        .padding(12)
     }
 
     // MARK: - Session Log Card
 
     private var sessionLogCard: some View {
-        GroupBox {
-            Text("Session Log")
-                .font(.largeTitle.bold())
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 12)
-                .padding(.top, 12)
-                .padding(.bottom, 12)
-
+        ChartCard(title: "Session Log") {
             if sessionEntries.isEmpty {
                 ContentUnavailableView(
                     "No Sessions",
@@ -944,42 +925,6 @@ struct ReportsView: View {
 
     // MARK: - Helpers
 
-    /// Calculates tooltip center position near the cursor, flipping sides and clamping to stay
-    /// at least 1em (16pt) from each edge of the container.
-    private func tooltipPosition(cursor: CGPoint, containerSize: CGSize) -> CGPoint {
-        let tooltipWidth: CGFloat = 180
-        let tooltipHeight: CGFloat = 100
-        let edgePadding: CGFloat = 6
-        let cursorOffset: CGFloat = 6
-
-        // Horizontal: prefer right of cursor, flip left if overflow
-        let xRight = cursor.x + cursorOffset
-        let xLeft = cursor.x - cursorOffset - tooltipWidth
-        let originX: CGFloat
-        if xRight + tooltipWidth + edgePadding <= containerSize.width {
-            originX = xRight
-        } else if xLeft >= edgePadding {
-            originX = xLeft
-        } else {
-            originX = min(max(edgePadding, xRight), containerSize.width - tooltipWidth - edgePadding)
-        }
-
-        // Vertical: prefer above cursor, flip below if overflow
-        let yAbove = cursor.y - cursorOffset - tooltipHeight
-        let yBelow = cursor.y + cursorOffset
-        let originY: CGFloat
-        if yAbove >= edgePadding {
-            originY = yAbove
-        } else if yBelow + tooltipHeight + edgePadding <= containerSize.height {
-            originY = yBelow
-        } else {
-            originY = max(edgePadding, yAbove)
-        }
-
-        // .position() expects center, not origin
-        return CGPoint(x: originX + tooltipWidth / 2, y: originY + tooltipHeight / 2)
-    }
-
     private func hourLabel(_ hour: Int) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "ha"
@@ -1051,7 +996,7 @@ struct ReportsView: View {
         activityAngleSelection = nil
         hoveredActivityName = nil
         legendHoveredActivity = nil
-        hoveredTagLabel = nil
+        hoveredTagName = nil
         externalIdAngleSelection = nil
         hoveredExternalSegment = nil
     }
@@ -1192,40 +1137,9 @@ private struct BarEntry: Identifiable {
 
 private struct TagBarEntry: Identifiable {
     let id = UUID()
+    let tagName: String
     let tagLabel: String
     let activityTitle: String
     let hours: Double
     let totalSeconds: Int
-    let isLastInTag: Bool
-}
-
-// MARK: - Tooltip Views
-
-/// Floating tooltip card for bar chart hover.
-private struct ChartTooltip<Content: View>: View {
-    @ViewBuilder let content: Content
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            content
-        }
-        .padding(8)
-        .frame(maxWidth: 180)
-        .background(.ultraThickMaterial, in: RoundedRectangle(cornerRadius: 8))
-        .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
-        .allowsHitTesting(false)
-    }
-}
-
-/// Centered tooltip displayed in the donut hole on hover.
-private struct donutCenterTooltip<Content: View>: View {
-    @ViewBuilder let content: Content
-
-    var body: some View {
-        VStack(spacing: 2) {
-            content
-        }
-        .frame(maxWidth: 100)
-        .allowsHitTesting(false)
-    }
 }
