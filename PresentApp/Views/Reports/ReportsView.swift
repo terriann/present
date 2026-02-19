@@ -370,12 +370,18 @@ struct ReportsView: View {
         }
     }
 
+    private var weeklyTooltipLabelMap: [String: String] {
+        guard selectedPeriod == .weekly else { return [:] }
+        return weeklyTooltipLabels(weekStartDay: weekStartDay, referenceDate: selectedDate)
+    }
+
     private var stackedBarChartCard: some View {
         let entries = barEntries
         let domain = xAxisDomain
+        let tooltipLabels = weeklyTooltipLabelMap
 
         return ChartCard(title: "Time by \(selectedPeriod.timeLabel)") {
-            stackedBarChart(entries: entries, domain: domain)
+            stackedBarChart(entries: entries, domain: domain, tooltipLabels: tooltipLabels)
         }
     }
 
@@ -390,7 +396,7 @@ struct ReportsView: View {
         }
     }
 
-    private func stackedBarChart(entries: [BarEntry], domain: [String]) -> some View {
+    private func stackedBarChart(entries: [BarEntry], domain: [String], tooltipLabels: [String: String] = [:]) -> some View {
         let weekends = weekendDayLabels
 
         return Chart {
@@ -458,7 +464,7 @@ struct ReportsView: View {
 
                     if let label = hoveredBarLabel {
                         let pos = tooltipPosition(cursor: barHoverLocation, containerSize: geometry.size)
-                        barTooltip(for: label, entries: entries)
+                        barTooltip(for: label, entries: entries, tooltipLabels: tooltipLabels)
                             .fixedSize()
                             .frame(maxWidth: 180, alignment: .leading)
                             .position(x: pos.x, y: pos.y)
@@ -471,13 +477,13 @@ struct ReportsView: View {
         .padding(12)
     }
 
-    private func barTooltip(for label: String, entries: [BarEntry]) -> some View {
+    private func barTooltip(for label: String, entries: [BarEntry], tooltipLabels: [String: String] = [:]) -> some View {
         let matching = entries.filter { $0.label == label }
         let bucketTotal = matching.reduce(0.0) { $0 + $1.value }
         let palette = ThemeManager.chartColors(for: theme.activePalette)
 
         return ChartTooltip {
-            Text(label)
+            Text(tooltipLabels[label] ?? label)
                 .font(.caption.bold())
 
             ForEach(matching, id: \.id) { entry in

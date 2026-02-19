@@ -54,6 +54,26 @@ enum WeekendPeriod {
     case monthly
 }
 
+/// Builds a mapping from short weekday labels ("EEE") to full date strings ("EEEE, MMMM d")
+/// for each day in the week containing `referenceDate`.
+func weeklyTooltipLabels(weekStartDay: Int, referenceDate: Date) -> [String: String] {
+    var calendar = Calendar.current
+    calendar.firstWeekday = weekStartDay
+    guard let start = calendar.dateInterval(of: .weekOfYear, for: referenceDate)?.start else { return [:] }
+
+    let shortFormatter = DateFormatter()
+    shortFormatter.dateFormat = "EEE"
+    let fullFormatter = DateFormatter()
+    fullFormatter.dateFormat = "EEEE, MMMM d"
+
+    var mapping: [String: String] = [:]
+    for offset in 0..<7 {
+        guard let date = calendar.date(byAdding: .day, value: offset, to: start) else { continue }
+        mapping[shortFormatter.string(from: date)] = fullFormatter.string(from: date)
+    }
+    return mapping
+}
+
 /// Calculates tooltip center position near the cursor, flipping sides and clamping to stay
 /// at least 6pt from each edge of the container.
 func tooltipPosition(cursor: CGPoint, containerSize: CGSize) -> CGPoint {

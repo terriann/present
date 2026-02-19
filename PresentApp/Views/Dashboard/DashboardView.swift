@@ -113,13 +113,14 @@ struct DashboardView: View {
     private func weeklyChartCard(_ weekly: WeeklySummary) -> some View {
         let entries = weeklyBarEntries(weekly)
         let domain = weekdayLabels(weekly)
+        let tooltipLabels = weeklyTooltipLabels(weekStartDay: appState.weekStartDay, referenceDate: Date())
 
         return ChartCard(title: "This Week") {
-            weeklyBarChart(entries: entries, domain: domain, activities: weekly.activities)
+            weeklyBarChart(entries: entries, domain: domain, activities: weekly.activities, tooltipLabels: tooltipLabels)
         }
     }
 
-    private func weeklyBarChart(entries: [DashboardBarEntry], domain: [String], activities: [ActivitySummary]) -> some View {
+    private func weeklyBarChart(entries: [DashboardBarEntry], domain: [String], activities: [ActivitySummary], tooltipLabels: [String: String]) -> some View {
         let colorDomain = activities.map(\.activity.title)
         let palette = ThemeManager.chartColors(for: theme.activePalette)
         let colorRange = activities.indices.map { palette[$0 % palette.count] }
@@ -195,7 +196,7 @@ struct DashboardView: View {
 
                     if let label = hoveredBarLabel {
                         let pos = tooltipPosition(cursor: barHoverLocation, containerSize: geometry.size)
-                        weeklyBarTooltip(for: label, entries: entries, activities: activities)
+                        weeklyBarTooltip(for: label, entries: entries, activities: activities, tooltipLabels: tooltipLabels)
                             .fixedSize()
                             .frame(maxWidth: 180, alignment: .leading)
                             .position(x: pos.x, y: pos.y)
@@ -208,13 +209,13 @@ struct DashboardView: View {
         .padding(12)
     }
 
-    private func weeklyBarTooltip(for label: String, entries: [DashboardBarEntry], activities: [ActivitySummary]) -> some View {
+    private func weeklyBarTooltip(for label: String, entries: [DashboardBarEntry], activities: [ActivitySummary], tooltipLabels: [String: String]) -> some View {
         let matching = entries.filter { $0.label == label }
         let bucketTotal = matching.reduce(0.0) { $0 + $1.value }
         let palette = ThemeManager.chartColors(for: theme.activePalette)
 
         return ChartTooltip {
-            Text(label)
+            Text(tooltipLabels[label] ?? label)
                 .font(.caption.bold())
 
             ForEach(matching, id: \.id) { entry in
