@@ -866,10 +866,8 @@ struct ReportsView: View {
                     ForEach(Array(sessionEntries.enumerated()), id: \.element.0.id) { index, entry in
                         SessionRow(session: entry.0, activityTitle: entry.1.title)
                             .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                        if index < sessionEntries.count - 1 {
-                            Divider()
-                        }
+                            .padding(.vertical, 8)
+                            .background(index.isMultiple(of: 2) ? Color.clear : Color.gray.opacity(0.08))
                     }
                 }
             }

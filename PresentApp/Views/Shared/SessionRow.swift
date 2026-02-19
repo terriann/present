@@ -15,11 +15,11 @@ struct SessionRow: View {
 
                 HStack(spacing: 8) {
                     Text(SessionTypeConfig.config(for: session.sessionType).displayName)
-                        .font(.caption)
+                        .font(.subheadline)
                         .foregroundStyle(.secondary)
 
                     Text(TimeFormatting.formatTime(session.startedAt))
-                        .font(.caption)
+                        .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
             }

@@ -289,6 +289,18 @@ struct DashboardView: View {
     // MARK: - Activity Breakdown
 
     private var activityBreakdownCard: some View {
+        ActivityBreakdownCard()
+    }
+}
+
+// MARK: - Activity Breakdown Card
+
+private struct ActivityBreakdownCard: View {
+    @Environment(AppState.self) private var appState
+    @State private var expandedActivities: Set<Int64> = []
+    @State private var todaySessions: [Int64: [Session]] = [:]
+
+    var body: some View {
         ChartCard(title: "Activity Breakdown") {
             if appState.todayActivities.isEmpty {
                 ContentUnavailableView(
@@ -299,30 +311,100 @@ struct DashboardView: View {
                 .emptyStateStyle()
             } else {
                 VStack(spacing: 0) {
-                    ForEach(appState.todayActivities, id: \.activity.id) { summary in
-                        HStack {
-                            Text(summary.activity.title)
-                                .lineLimit(1)
+                    ForEach(Array(appState.todayActivities.enumerated()), id: \.element.activity.id) { index, summary in
+                        let activityId = summary.activity.id ?? -1
+                        let isExpanded = expandedActivities.contains(activityId)
 
-                            Spacer()
+                        VStack(spacing: 0) {
+                            HStack {
+                                if summary.sessionCount > 1 {
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                                }
 
-                            Text("\(summary.sessionCount) sessions")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(summary.activity.title)
+                                        .font(.body)
+                                        .lineLimit(1)
 
-                            Text(TimeFormatting.formatDuration(seconds: summary.totalSeconds))
-                                .font(.body.monospacedDigit())
-                                .frame(width: 80, alignment: .trailing)
-                        }
-                        .padding(.vertical, 6)
+                                    Text("\(summary.sessionCount) \(summary.sessionCount == 1 ? "session" : "sessions")")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
 
-                        if summary.activity.id != appState.todayActivities.last?.activity.id {
-                            Divider()
+                                Spacer()
+
+                                Text(TimeFormatting.formatDuration(seconds: summary.totalSeconds))
+                                    .font(.body.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.vertical, 8)
+                            .padding(.horizontal, 12)
+                            .background(index.isMultiple(of: 2) ? Color.clear : Color.gray.opacity(0.08))
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                guard summary.sessionCount > 1 else { return }
+                                withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
+                                    if isExpanded {
+                                        expandedActivities.remove(activityId)
+                                    } else {
+                                        expandedActivities.insert(activityId)
+                                        loadSessionsForActivity(activityId)
+                                    }
+                                }
+                            }
+
+                            if isExpanded, let sessions = todaySessions[activityId] {
+                                ForEach(sessions) { session in
+                                    HStack {
+                                        Text(SessionTypeConfig.config(for: session.sessionType).displayName)
+                                            .font(.subheadline)
+                                            .foregroundStyle(.secondary)
+
+                                        Text(TimeFormatting.formatTime(session.startedAt))
+                                            .font(.subheadline)
+                                            .foregroundStyle(.secondary)
+
+                                        Spacer()
+
+                                        if let duration = session.durationSeconds {
+                                            Text(TimeFormatting.formatDuration(seconds: duration))
+                                                .font(.subheadline.monospacedDigit())
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    }
+                                    .padding(.vertical, 6)
+                                    .padding(.horizontal, 12)
+                                    .padding(.leading, 20)
+                                    .background(Color.gray.opacity(0.04))
+                                }
+                            }
                         }
                     }
                 }
-                .padding(.horizontal, 12)
                 .padding(.bottom, 12)
+            }
+        }
+    }
+
+    private func loadSessionsForActivity(_ activityId: Int64) {
+        guard todaySessions[activityId] == nil else { return }
+        Task {
+            let calendar = Calendar.current
+            let startOfDay = calendar.startOfDay(for: Date())
+            guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else { return }
+            do {
+                let sessions = try await appState.service.listSessions(
+                    from: startOfDay, to: endOfDay,
+                    type: nil, activityId: activityId, includeArchived: false
+                )
+                todaySessions[activityId] = sessions.map(\.0).sorted {
+                    ($0.endedAt ?? .distantFuture) > ($1.endedAt ?? .distantFuture)
+                }
+            } catch {
+                // Fail silently — the row just won't expand
             }
         }
     }
@@ -331,7 +413,7 @@ struct DashboardView: View {
 // MARK: - Supporting Types
 
 private struct DashboardBarEntry: Identifiable {
-    let id = UUID()
+    var id: String { "\(label)-\(activity)" }
     let label: String
     let activity: String
     let value: Double
