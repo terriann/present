@@ -87,7 +87,7 @@ struct ActivitiesListView: View {
                         systemImage: "tray",
                         description: Text("Choose an activity from the list to view its details.")
                     )
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
