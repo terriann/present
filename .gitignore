@@ -26,3 +26,6 @@ Package.resolved
 
 # AI
 .claude/settings.local.json
+
+# Local data
+.data/

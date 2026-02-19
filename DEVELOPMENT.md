@@ -21,6 +21,9 @@ contributing.
 - [Colors](#colors)
 - [Distribution](#distribution)
 - [Versioning](#versioning)
+- [Data Utilities](#data-utilities)
+  - [Generate Sample Data](#generate-sample-data)
+  - [Delete Data](#delete-data)
 - [Common Tasks](#common-tasks)
   - [Adding a New CLI Command](#adding-a-new-cli-command)
   - [Adding a New API Method](#adding-a-new-api-method)
@@ -167,8 +170,9 @@ a Python script to produce `docs/cli-reference.md`. Requires Python 3
   - `Notifications/` -- `NotificationManager` for system notifications.
 - **`Tests/`** -- Swift Testing test suites (see [Testing](#testing)).
 - **`Scripts/`** -- Shell scripts for building, notarizing, installing,
-  and doc generation (`build-dmg.sh`, `notarize.sh`, `install-cli.sh`,
-  `generate-cli-docs.sh`).
+  doc generation, and data management (`build-dmg.sh`, `notarize.sh`,
+  `install-cli.sh`, `generate-cli-docs.sh`, `generate-sample-data.sh`,
+  `delete-data.sh`).
 
 ## Database
 
@@ -310,6 +314,91 @@ Present tracks two version identifiers in `PresentApp/Info.plist`:
 > [!NOTE]
 > A version bump script (`Scripts/bump-version.sh`) is planned to automate
 > updates to both values. See [GitHub issue #3](https://github.com/terriann/present/issues/3).
+
+## Data Utilities
+
+Two scripts in `Scripts/` help manage test data via the CLI.
+
+### Generate Sample Data
+
+`Scripts/generate-sample-data.sh` creates realistic time-tracking data for
+testing. Generates 12 activities across 6 tags with work-day session patterns
+averaging ~4.5 hours per weekday. Cycles through 5 day shapes (deep focus,
+standup/sprint, rhythm-heavy, meeting-heavy, light day) with time jitter
+for realism.
+
+```bash
+# Generate for current week (Mon-Fri, default)
+./Scripts/generate-sample-data.sh
+
+# Generate for a specific date range
+./Scripts/generate-sample-data.sh --from 2025-01-06 --to 2025-01-10
+
+# Wipe ALL data and regenerate fresh
+./Scripts/generate-sample-data.sh --reset
+
+# Clean existing sessions in range, then regenerate
+./Scripts/generate-sample-data.sh --from 2025-01-06 --to 2025-01-10 --clean
+
+# Include weekends
+./Scripts/generate-sample-data.sh --weekends
+
+# Preview without making changes
+./Scripts/generate-sample-data.sh --dry-run
+```
+
+| Flag | Description |
+|------|-------------|
+| `--from DATE` | Start date, YYYY-MM-DD (default: current Monday) |
+| `--to DATE` | End date, YYYY-MM-DD (default: current Friday) |
+| `--clean` | Remove existing sessions in the date range before generating |
+| `--reset` | Wipe ALL activities, sessions, and tags, then recreate |
+| `--weekends` | Include Saturday and Sunday |
+| `--dry-run` | Preview without making changes |
+
+### Delete Data
+
+`Scripts/delete-data.sh` deletes session data with automatic backups. Before
+every destructive operation, snapshots all affected tables (`session`,
+`activity`, `activity_tag`, `tag`) so the last 30 operations can be rolled
+back. Backups are stored in `<repo>/.data/backups/` (gitignored).
+
+```bash
+# Delete all sessions from today (default)
+./Scripts/delete-data.sh
+
+# Delete sessions on a specific date
+./Scripts/delete-data.sh --date 2025-01-15
+
+# Delete a date range
+./Scripts/delete-data.sh --from 2025-01-06 --to 2025-01-10
+
+# Delete ALL session data
+./Scripts/delete-data.sh --all
+
+# Preview what would be deleted
+./Scripts/delete-data.sh --dry-run
+
+# List available backup snapshots
+./Scripts/delete-data.sh --list-backups
+
+# Undo the last delete
+./Scripts/delete-data.sh --undo
+
+# Undo a specific backup (e.g., backup #3)
+./Scripts/delete-data.sh --undo 3
+```
+
+| Flag | Description |
+|------|-------------|
+| `--date DATE` | Delete sessions on a single date (YYYY-MM-DD) |
+| `--from DATE` | Start of date range to delete |
+| `--to DATE` | End of date range to delete |
+| `--all` | Delete ALL session data |
+| `--undo [N]` | Restore from backup N (default: 1 = most recent) |
+| `--list-backups` | Show available backup snapshots |
+| `--dry-run` | Preview what would be deleted |
+| `--no-backup` | Skip backup (not recommended) |
 
 ## Common Tasks
 
