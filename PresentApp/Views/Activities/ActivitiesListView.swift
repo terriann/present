@@ -45,53 +45,57 @@ struct ActivitiesListView: View {
 
             Divider()
 
-            HSplitView {
-                // Activity list
-                if displayedActivities.isEmpty {
-                    ContentUnavailableView(
-                        "No Activities",
-                        systemImage: "tray",
-                        description: Text("Create an activity to start tracking time.")
-                    )
-                    .frame(minWidth: 250, idealWidth: 300)
-                    .emptyStateStyle()
-                } else {
-                    List {
-                        ForEach(displayedActivities) { activity in
-                            Button {
-                                selectedActivity = activity
-                            } label: {
-                                ActivityRow(activity: activity)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            .listRowBackground(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .fill(selectedActivity == activity ? theme.accent.opacity(0.15) : Color.clear)
+            GeometryReader { geometry in
+                HStack(spacing: 0) {
+                    // Activity list
+                    Group {
+                        if displayedActivities.isEmpty {
+                            ContentUnavailableView(
+                                "No Activities",
+                                systemImage: "tray",
+                                description: Text("Create an activity to start tracking time.")
                             )
+                            .emptyStateStyle()
+                        } else {
+                            List {
+                                ForEach(displayedActivities) { activity in
+                                    Button {
+                                        selectedActivity = activity
+                                    } label: {
+                                        ActivityRow(activity: activity)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            .contentShape(Rectangle())
+                                    }
+                                    .buttonStyle(.plain)
+                                    .listRowBackground(
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .fill(selectedActivity == activity ? theme.accent.opacity(0.15) : Color.clear)
+                                    )
+                                }
+                            }
+                            .listStyle(.inset)
                         }
                     }
-                    .listStyle(.inset)
-                    .frame(minWidth: 250, idealWidth: 300, maxHeight: .infinity)
-                }
+                    .frame(width: geometry.size.width * 0.35)
 
-                // Detail view
-                if let activity = selectedActivity {
-                    ActivityDetailView(activity: activity)
-                        .id(activity.id)
-                        .environment(appState)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    ContentUnavailableView(
-                        "Select an Activity",
-                        systemImage: "tray",
-                        description: Text("Choose an activity from the list to view its details.")
-                    )
-                    .emptyStateStyle()
+                    Divider()
+
+                    // Detail view
+                    if let activity = selectedActivity {
+                        ActivityDetailView(activity: activity)
+                            .id(activity.id)
+                            .environment(appState)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        ContentUnavailableView(
+                            "Select an Activity",
+                            systemImage: "tray",
+                            description: Text("Choose an activity from the list to view its details.")
+                        )
+                        .emptyStateStyle()
+                    }
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .navigationTitle("Activities")
