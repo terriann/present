@@ -1,4 +1,5 @@
 import SwiftUI
+import PresentCore
 
 struct ChartCard<Content: View>: View {
     let title: String
@@ -9,9 +10,9 @@ struct ChartCard<Content: View>: View {
             Text(title)
                 .font(.largeTitle.bold())
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 12)
-                .padding(.top, 12)
-                .padding(.bottom, 12)
+                .padding(.horizontal, Constants.spacingCard)
+                .padding(.top, Constants.spacingCard)
+                .padding(.bottom, Constants.spacingCard)
             content
         }
     }

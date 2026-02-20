@@ -80,7 +80,7 @@ struct SessionTypePickerSheet: View {
                 .buttonStyle(.borderedProminent)
             }
         }
-        .padding(20)
+        .padding(Constants.spacingPage)
         .frame(width: 300)
         .onAppear {
             if selectedRhythmOption == nil || !appState.rhythmDurationOptions.contains(where: { $0 == selectedRhythmOption }) {

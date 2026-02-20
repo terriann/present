@@ -41,7 +41,7 @@ struct QuickStartRow: View {
                 isEditHovered = hovering
             }
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, Constants.spacingCard)
         .padding(.vertical, 6)
         .background(Color.primary.opacity(isRowHovered ? 0.05 : 0))
         .clipShape(RoundedRectangle(cornerRadius: 4))

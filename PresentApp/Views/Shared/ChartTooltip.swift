@@ -1,4 +1,5 @@
 import SwiftUI
+import PresentCore
 
 /// Floating tooltip card for bar chart hover.
 struct ChartTooltip<Content: View>: View {
@@ -8,7 +9,7 @@ struct ChartTooltip<Content: View>: View {
         VStack(alignment: .leading, spacing: 3) {
             content
         }
-        .padding(8)
+        .padding(Constants.spacingCompact)
         .frame(maxWidth: 180)
         .background(.ultraThickMaterial, in: RoundedRectangle(cornerRadius: 8))
         .shadow(color: .black.opacity(0.15), radius: 4, y: 2)

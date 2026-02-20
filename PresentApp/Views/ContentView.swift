@@ -35,8 +35,8 @@ struct ContentView: View {
                 } label: {
                     Label("Settings", systemImage: "gear")
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, Constants.spacingToolbar)
+                        .padding(.vertical, Constants.spacingCompact)
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)

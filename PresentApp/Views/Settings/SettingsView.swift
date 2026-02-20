@@ -47,7 +47,7 @@ struct SettingsView: View {
                                 .font(.caption)
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
+                        .padding(.vertical, Constants.spacingCompact)
                         .background(
                             RoundedRectangle(cornerRadius: 8)
                                 .fill(selectedTab == tab ? theme.primary.opacity(0.15) : Color.clear)
@@ -58,9 +58,9 @@ struct SettingsView: View {
                     .buttonStyle(.plain)
                 }
             }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, Constants.spacingCard)
             .padding(.top, 10)
-            .padding(.bottom, 4)
+            .padding(.bottom, Constants.spacingTight)
 
             Divider()
 
@@ -898,8 +898,8 @@ private struct PaletteRow: View {
 
                 Spacer()
             }
-            .padding(.vertical, 4)
-            .padding(.horizontal, 8)
+            .padding(.vertical, Constants.spacingTight)
+            .padding(.horizontal, Constants.spacingCompact)
             .background(
                 RoundedRectangle(cornerRadius: 6)
                     .fill(isHovered ? Color.secondary.opacity(0.05) : Color.clear)

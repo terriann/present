@@ -93,7 +93,7 @@ struct MenuBarView: View {
                         )
                     }
                 }
-                .padding(.top, 4)
+                .padding(.top, Constants.spacingTight)
             }
         }
         .padding()
@@ -124,7 +124,7 @@ struct MenuBarView: View {
                         .buttonStyle(.plain)
                     }
                 }
-                .padding(.bottom, 8)
+                .padding(.bottom, Constants.spacingCompact)
 
                 // Duration controls for rhythm/timebound
                 if selectedSessionType == .rhythm {
@@ -136,7 +136,7 @@ struct MenuBarView: View {
                             } label: {
                                 Text("\(option.focusMinutes) m / \(option.breakMinutes) m")
                                     .font(.caption2.weight(isSelected ? .semibold : .regular))
-                                    .padding(.horizontal, 8)
+                                    .padding(.horizontal, Constants.spacingCompact)
                                     .padding(.vertical, 3)
                                     .background(isSelected ? theme.accent.opacity(0.12) : Color.secondary.opacity(0.08), in: Capsule())
                                     .foregroundStyle(isSelected ? theme.accent : .secondary)
@@ -162,8 +162,8 @@ struct MenuBarView: View {
                 }
             }
             .frame(maxWidth: .infinity)
-            .padding(.horizontal, 12)
-            .padding(.top, 8)
+            .padding(.horizontal, Constants.spacingCard)
+            .padding(.top, Constants.spacingCompact)
 
             // Search
             HStack {
@@ -177,15 +177,15 @@ struct MenuBarView: View {
                     }
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.horizontal, Constants.spacingCard)
+            .padding(.vertical, Constants.spacingCompact)
 
             // Activity list heading
             Text(searchText.isEmpty ? "Recent Activities" : "Search Results")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-                .padding(.horizontal, 12)
-                .padding(.top, 4)
+                .padding(.horizontal, Constants.spacingCard)
+                .padding(.top, Constants.spacingTight)
 
             // Activity list
             let activities = filteredActivities
@@ -193,8 +193,8 @@ struct MenuBarView: View {
                 Text("No matching activities")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, Constants.spacingCard)
+                    .padding(.vertical, Constants.spacingTight)
             } else {
                 ForEach(activities) { activity in
                     QuickStartRow(activity: activity, onTap: {
@@ -225,8 +225,8 @@ struct MenuBarView: View {
                         }
                     }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.horizontal, Constants.spacingCard)
+            .padding(.vertical, Constants.spacingCompact)
         }
         .onAppear {
             if selectedRhythmOption == nil || !appState.rhythmDurationOptions.contains(where: { $0 == selectedRhythmOption }) {
@@ -306,8 +306,8 @@ struct MenuBarView: View {
             .buttonStyle(.plain)
             .help("Settings")
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.horizontal, Constants.spacingCard)
+        .padding(.vertical, Constants.spacingCompact)
     }
 
 }

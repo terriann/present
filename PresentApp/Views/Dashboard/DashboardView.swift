@@ -27,7 +27,7 @@ struct DashboardView: View {
                 // Activity breakdown
                 activityBreakdownCard
             }
-            .padding(20)
+            .padding(Constants.spacingPage)
         }
         .navigationTitle("Dashboard")
         .alert(appState.isLongBreak ? "Time for a Long Break!" : "Take a Short Break",
@@ -45,9 +45,9 @@ struct DashboardView: View {
             Text("Current Session")
                 .font(.largeTitle.bold())
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 12)
-                .padding(.top, 12)
-                .padding(.bottom, 12)
+                .padding(.horizontal, Constants.spacingCard)
+                .padding(.top, Constants.spacingCard)
+                .padding(.bottom, Constants.spacingCard)
 
             if let activity = appState.currentActivity, let session = appState.currentSession {
                 VStack(spacing: 12) {
@@ -70,8 +70,8 @@ struct DashboardView: View {
 
                     SessionControls()
                 }
-                .padding(.horizontal, 12)
-                .padding(.bottom, 12)
+                .padding(.horizontal, Constants.spacingCard)
+                .padding(.bottom, Constants.spacingCard)
             }
         }
     }
@@ -206,7 +206,7 @@ struct DashboardView: View {
         }
         .chartLegend(position: .bottom, spacing: 12)
         .frame(height: 250)
-        .padding(12)
+        .padding(Constants.spacingCard)
     }
 
     private func weeklyBarTooltip(for label: String, entries: [DashboardBarEntry], activities: [ActivitySummary], tooltipLabels: [String: String]) -> some View {
@@ -340,8 +340,8 @@ private struct ActivityBreakdownCard: View {
                                     .font(.body.monospacedDigit())
                                     .foregroundStyle(.secondary)
                             }
-                            .padding(.vertical, 8)
-                            .padding(.horizontal, 12)
+                            .padding(.vertical, Constants.spacingCompact)
+                            .padding(.horizontal, Constants.spacingCard)
                             .background(index.isMultiple(of: 2) ? Color.clear : Color.gray.opacity(0.08))
                             .contentShape(Rectangle())
                             .onTapGesture {
@@ -376,7 +376,7 @@ private struct ActivityBreakdownCard: View {
                                         }
                                     }
                                     .padding(.vertical, 6)
-                                    .padding(.horizontal, 12)
+                                    .padding(.horizontal, Constants.spacingCard)
                                     .padding(.leading, 20)
                                     .background(Color.gray.opacity(0.04))
                                 }
@@ -384,7 +384,7 @@ private struct ActivityBreakdownCard: View {
                         }
                     }
                 }
-                .padding(.bottom, 12)
+                .padding(.bottom, Constants.spacingCard)
             }
         }
     }

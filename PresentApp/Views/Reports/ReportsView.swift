@@ -75,7 +75,7 @@ struct ReportsView: View {
                 sessionLogCard
                 cliPromoCard
             }
-            .padding(20)
+            .padding(Constants.spacingPage)
         }
         .navigationTitle("Reports")
         .task {
@@ -474,7 +474,7 @@ struct ReportsView: View {
         }
         .chartLegend(position: .bottom, spacing: 12)
         .frame(height: 250)
-        .padding(12)
+        .padding(Constants.spacingCard)
     }
 
     private func barTooltip(for label: String, entries: [BarEntry], tooltipLabels: [String: String] = [:]) -> some View {
@@ -651,7 +651,7 @@ struct ReportsView: View {
             .allowsHitTesting(false)
         }
         .frame(height: 250)
-        .padding(12)
+        .padding(Constants.spacingCard)
     }
 
     private func externalIdLegend(
@@ -667,8 +667,8 @@ struct ReportsView: View {
                 hoveredExternalSegment = findExternalSegment(for: externalIdAngleSelection)
             }
         )
-        .padding(.horizontal, 12)
-        .padding(.bottom, 12)
+        .padding(.horizontal, Constants.spacingCard)
+        .padding(.bottom, Constants.spacingCard)
     }
 
     // MARK: - Activity Pie Chart
@@ -743,7 +743,7 @@ struct ReportsView: View {
             .allowsHitTesting(false)
         }
         .frame(height: 250)
-        .padding(12)
+        .padding(Constants.spacingCard)
     }
 
     private func activityDonutLegend(palette: [Color]) -> some View {
@@ -760,8 +760,8 @@ struct ReportsView: View {
                 hoveredActivityName = findActivity(for: activityAngleSelection)
             }
         )
-        .padding(.horizontal, 12)
-        .padding(.bottom, 12)
+        .padding(.horizontal, Constants.spacingCard)
+        .padding(.bottom, Constants.spacingCard)
     }
 
     // MARK: - Tag Bar Chart
@@ -847,7 +847,7 @@ struct ReportsView: View {
             }
         }
         .frame(height: barHeight)
-        .padding(12)
+        .padding(Constants.spacingCard)
     }
 
     // MARK: - Session Log Card
@@ -865,8 +865,8 @@ struct ReportsView: View {
                 VStack(spacing: 0) {
                     ForEach(Array(sessionEntries.enumerated()), id: \.element.0.id) { index, entry in
                         SessionRow(session: entry.0, activityTitle: entry.1.title)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
+                            .padding(.horizontal, Constants.spacingCard)
+                            .padding(.vertical, Constants.spacingCompact)
                             .background(index.isMultiple(of: 2) ? Color.clear : Color.gray.opacity(0.08))
                     }
                 }
@@ -917,7 +917,7 @@ struct ReportsView: View {
                     .id(currentCommandIndex)
                     .contentTransition(.opacity)
                     .adaptiveAnimation(.easeInOut(duration: 0.4), reduced: .linear(duration: 0.25), value: currentCommandIndex)
-                    .padding(12)
+                    .padding(Constants.spacingCard)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(
                         RoundedRectangle(cornerRadius: 8)
@@ -937,7 +937,7 @@ struct ReportsView: View {
                     .tint(theme.accent)
                 }
             }
-            .padding(4)
+            .padding(Constants.spacingTight)
         }
         .onReceive(Timer.publish(every: 3, on: .main, in: .common).autoconnect()) { _ in
             guard !reduceMotion else { return }

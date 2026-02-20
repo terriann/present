@@ -34,7 +34,7 @@ struct ActivityDetailView: View {
                 tagsSection
                 activityFooter
             }
-            .padding(20)
+            .padding(Constants.spacingPage)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .alert("Archive Activity?", isPresented: $showingArchiveConfirm) {
@@ -113,7 +113,7 @@ struct ActivityDetailView: View {
                     if activity.isArchived {
                         Text("Archived")
                             .font(.caption)
-                            .padding(.horizontal, 8)
+                            .padding(.horizontal, Constants.spacingCompact)
                             .padding(.vertical, 3)
                             .background(.secondary.opacity(0.2), in: Capsule())
                     }
@@ -153,7 +153,7 @@ struct ActivityDetailView: View {
                                 } label: {
                                     Text("\(option.focusMinutes) min (\(option.breakMinutes)m)")
                                         .font(.caption.weight(isSelected ? .semibold : .regular))
-                                        .padding(.horizontal, 8)
+                                        .padding(.horizontal, Constants.spacingCompact)
                                         .padding(.vertical, 3)
                                         .background(isSelected ? theme.accent.opacity(0.12) : Color.secondary.opacity(0.08), in: Capsule())
                                         .foregroundStyle(isSelected ? theme.accent : .secondary)
@@ -317,7 +317,7 @@ struct ActivityDetailView: View {
                             }
                         }
                     }
-                    .padding(4)
+                    .padding(Constants.spacingTight)
                 } label: {
                     Label("Links", systemImage: "link")
                 }
@@ -364,7 +364,7 @@ struct ActivityDetailView: View {
                     }
                 }
             }
-            .padding(4)
+            .padding(Constants.spacingTight)
         } label: {
             HStack {
                 Label("Notes", systemImage: "doc.text")
@@ -402,8 +402,8 @@ struct ActivityDetailView: View {
                                     .buttonStyle(.plain)
                                 }
                             }
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
+                            .padding(.horizontal, Constants.spacingCompact)
+                            .padding(.vertical, Constants.spacingTight)
                             .background(.secondary.opacity(0.15), in: Capsule())
                         }
                     }
@@ -417,7 +417,7 @@ struct ActivityDetailView: View {
                     )
                 }
             }
-            .padding(4)
+            .padding(Constants.spacingTight)
         } label: {
             Label("Tags", systemImage: "tag")
         }
@@ -467,7 +467,7 @@ struct ActivityDetailView: View {
                 }
             }
         }
-        .padding(.top, 12)
+        .padding(.top, Constants.spacingCard)
     }
 
     // MARK: - Actions

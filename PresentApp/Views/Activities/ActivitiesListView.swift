@@ -40,8 +40,8 @@ struct ActivitiesListView: View {
                 }
                 .keyboardShortcut("n", modifiers: .command)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
+            .padding(.horizontal, Constants.spacingToolbar)
+            .padding(.vertical, Constants.spacingCompact)
 
             Divider()
 

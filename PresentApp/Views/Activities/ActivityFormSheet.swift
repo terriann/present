@@ -54,7 +54,7 @@ struct ActivityFormSheet: View {
                 .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
             }
         }
-        .padding(20)
+        .padding(Constants.spacingPage)
         .frame(width: 400)
         .onAppear {
             if case .edit(let activity) = mode {
