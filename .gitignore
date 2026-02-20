@@ -29,3 +29,6 @@ Package.resolved
 
 # Local data
 .data/
+
+# Local assets (logos, icons, inspiration — not tracked)
+local-assets/
