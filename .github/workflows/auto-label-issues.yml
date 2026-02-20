@@ -18,25 +18,25 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          allowed_tools: "Bash(gh issue edit *),Bash(gh issue comment *),Bash(gh issue view *),Read,Grep,Glob"
+          allowed_tools: "Bash,Read,Grep,Glob"
           prompt: |
             You are acting as the PM agent for the Present project. Issue #${{ github.event.issue.number }} was just opened and needs to be triaged and labeled immediately.
 
             **Issue #${{ github.event.issue.number }}**
-            <issue-title>${{ github.event.issue.title }}</issue-title>
+            Title: ${{ github.event.issue.title }}
 
-            <issue-body>
+            Body:
             ${{ github.event.issue.body }}
-            </issue-body>
 
             Labels already applied at creation: ${{ github.event.issue.labels[0] && join(github.event.issue.labels.*.name, ', ') || 'none' }}
 
             ## Your Task
 
-            1. Read `.claude/skills/issue/SKILL.md` for `feature/*` label definitions.
-            2. Classify this issue and apply ALL relevant labels from the categories below — but **skip any label already listed above**.
-            3. Use `gh issue edit` to add labels (never remove existing ones).
-            4. Post one comment on the issue explaining your label choices concisely.
+            1. Read `.claude/agents/pm.md` for label definitions and sizing/priority conventions.
+            2. Read `.claude/skills/issue/SKILL.md` for `feature/*` and `design/*` label definitions.
+            3. Classify this issue and apply ALL relevant labels from the categories below — but **skip any label already listed above**.
+            4. Use `gh issue edit` to add labels (never remove existing ones).
+            5. Post one comment on the issue explaining your label choices concisely.
 
             ## Label Categories
 
@@ -71,13 +71,8 @@ jobs:
 
             **Design** (apply all that fit):
             - `design/layout` — Spacing, alignment, structure
-            - `design/typography` — Font styles, text hierarchy
             - `design/color` — Color tokens, theming, palette
-            - `design/interaction` — Touch targets, gestures, controls
-            - `design/accessibility` — VoiceOver, contrast, assistive tech
-            - `design/feedback` — Loading states, errors, empty states
-            - `design/macos` — macOS conventions, platform patterns
-            - `design/sound` — Sound design, audio cues
+            - `design/typography` — Font styles, text hierarchy
 
             ## Commands to Use
 
