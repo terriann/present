@@ -79,6 +79,31 @@ All label colors use the project's **Blue-Green base with Orange accent** palett
 | `invalid` | `#EAF7F6` | Not applicable |
 | `wontfix` | `#EAF7F6` | Will not be addressed |
 
+**Feature labels** (teal — mid-range):
+| Label | Color | Description |
+|---|---|---|
+| `feature/menu-bar` | `#5DBFC4` | Menu bar timer, popover, quick-start |
+| `feature/sessions` | `#5DBFC4` | Session types, lifecycle, breaks |
+| `feature/activities` | `#5DBFC4` | Activity CRUD, archiving, external IDs |
+| `feature/tags` | `#5DBFC4` | Tag management, activity-tag relationships |
+| `feature/dashboard` | `#5DBFC4` | Dashboard view, today's summary |
+| `feature/reports` | `#5DBFC4` | Summaries, charts, export |
+| `feature/cli` | `#5DBFC4` | CLI commands, output formats |
+| `feature/notifications` | `#5DBFC4` | System notifications, break suggestions |
+| `feature/timeboxing` | `#5DBFC4` | Time box planning |
+
+**Design labels** (seafoam — aligned with design-reviewer.md categories):
+| Label | Color | Description |
+|---|---|---|
+| `design/layout` | `#A7DCCF` | Spacing, alignment, structure |
+| `design/typography` | `#A7DCCF` | Font styles, text hierarchy |
+| `design/color` | `#A7DCCF` | Color tokens, theming, palette |
+| `design/interaction` | `#A7DCCF` | Touch targets, gestures, controls |
+| `design/accessibility` | `#A7DCCF` | VoiceOver, contrast, assistive tech |
+| `design/feedback` | `#A7DCCF` | Loading states, errors, empty states |
+| `design/macos` | `#A7DCCF` | macOS conventions, platform patterns |
+| `design/sound` | `#A7DCCF` | Sound design, audio cues |
+
 **Delete these default labels if they exist:** `good first issue`, `help wanted`, `question`.
 
 ```bash
