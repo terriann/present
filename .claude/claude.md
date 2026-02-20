@@ -42,6 +42,15 @@ CLI Commands ──────────────────────�
 - Standard section order: properties, body, MARK subviews, MARK helpers.
 - All tabs and panes align content to the top — use `.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)`. Empty states (`ContentUnavailableView`) must also be top-aligned, never vertically centered.
 
+### Spacing & Layout
+- **Page** (`Constants.spacingPage`, 20pt): Main content areas — ScrollView roots in Dashboard, ActivityDetail, Reports, and sheets.
+- **Toolbar** (`Constants.spacingToolbar`, 16pt): Toolbars and navigation bars.
+- **Card** (`Constants.spacingCard`, 12pt): Card/GroupBox internals, menu bar sections, chart cards.
+- **Compact** (`Constants.spacingCompact`, 8pt): Dense UI — menu bar items, pills, badges, inline spacing.
+- **Tight** (`Constants.spacingTight`, 4pt): Inner wrappers inside GroupBox content.
+- **System default** (`.padding()`): Forms and system controls (e.g., SettingsView tabs).
+- New code should use `Constants.spacing*` values. Existing code migrates incrementally.
+
 ### CLI Commands
 - **Noun-verb pattern**: All commands follow `present-cli <noun> <verb>` (e.g., `present-cli session start`, not `present-cli start`).
 - **Standard CRUD verbs**: `add` (create), `get` (read one), `list` (read many), `update` (modify), `delete` (remove). Domain-specific verbs for specialized actions: `start`, `search`, `archive`, `unarchive`, `note`.
