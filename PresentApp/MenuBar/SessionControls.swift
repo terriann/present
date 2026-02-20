@@ -4,7 +4,10 @@ import PresentCore
 struct SessionControls: View {
     @Environment(AppState.self) private var appState
     @Environment(ThemeManager.self) private var theme
-    @State private var showCancelButton = true
+
+    private var showCancelButton: Bool {
+        appState.timerElapsedSeconds <= Constants.cancelWindowSeconds
+    }
 
     var body: some View {
         HStack(spacing: 16) {
@@ -58,21 +61,10 @@ struct SessionControls: View {
                     .buttonStyle(.plain)
                     .accessibilityLabel("Discard session")
                     .help("Discard session")
-                    .allowsHitTesting(appState.timerElapsedSeconds <= 10)
                     .transition(.opacity)
                 }
             }
         }
         .adaptiveAnimation(.easeOut(duration: 2), reduced: .linear(duration: 0.6), value: showCancelButton)
-        .onChange(of: appState.timerElapsedSeconds) { _, newValue in
-            if newValue > 10 && showCancelButton {
-                withAdaptiveAnimation(.easeOut(duration: 2), reduced: .linear(duration: 0.6)) {
-                    showCancelButton = false
-                }
-            }
-        }
-        .onChange(of: appState.currentSession?.id) { _, _ in
-            showCancelButton = true
-        }
     }
 }

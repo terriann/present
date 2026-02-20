@@ -32,6 +32,10 @@ public enum Constants {
     public static let minSearchQueryLength = 1
     public static let sessionMinutesRange = 1...480
 
+    // MARK: - Session Cancel Window
+
+    public static let cancelWindowSeconds = 10
+
     // MARK: - Menu Bar Timer Linger
 
     public static let completedTimerLingerSeconds = 120
