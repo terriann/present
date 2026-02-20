@@ -1,0 +1,89 @@
+name: Auto-label Issues
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Label issue with Claude Code
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          allowed_tools: "Bash,Read,Grep,Glob"
+          prompt: |
+            You are acting as the PM agent for the Present project. Issue #${{ github.event.issue.number }} was just opened and needs to be triaged and labeled immediately.
+
+            **Issue #${{ github.event.issue.number }}**
+            Title: ${{ github.event.issue.title }}
+
+            Body:
+            ${{ github.event.issue.body }}
+
+            Labels already applied at creation: ${{ github.event.issue.labels[0] && join(github.event.issue.labels.*.name, ', ') || 'none' }}
+
+            ## Your Task
+
+            1. Read `.claude/agents/pm.md` for label definitions and sizing/priority conventions.
+            2. Read `.claude/skills/issue/SKILL.md` for `feature/*` and `design/*` label definitions.
+            3. Classify this issue and apply ALL relevant labels from the categories below — but **skip any label already listed above**.
+            4. Use `gh issue edit` to add labels (never remove existing ones).
+            5. Post one comment on the issue explaining your label choices concisely.
+
+            ## Label Categories
+
+            **Type** (pick the most applicable):
+            - `bug` — Something isn't working
+            - `enhancement` — New feature or request
+            - `documentation` — Documentation only
+
+            **Size** (pick one):
+            - `size/XS` — Trivial change, < 30 min
+            - `size/S` — Small change, < 2 hours
+            - `size/M` — Medium change, half day
+            - `size/L` — Large change, 1–2 days
+            - `size/XL` — Very large, 3+ days or needs breakdown
+
+            **Priority** (pick one):
+            - `P0-critical` — Blocking — drop everything
+            - `P1-high` — Important — next up
+            - `P2-medium` — Normal priority
+            - `P3-low` — Nice to have, backlog
+
+            **Feature** (apply all that fit):
+            - `feature/menu-bar` — Menu bar timer, popover, quick-start
+            - `feature/sessions` — Session types, lifecycle, breaks
+            - `feature/activities` — Activity CRUD, archiving, external IDs
+            - `feature/tags` — Tag management, activity-tag relationships
+            - `feature/dashboard` — Dashboard view, today's summary
+            - `feature/reports` — Summaries, charts, export
+            - `feature/cli` — CLI commands, output formats
+            - `feature/notifications` — System notifications, break suggestions
+            - `feature/timeboxing` — Time box planning
+
+            **Design** (apply all that fit):
+            - `design/layout` — Spacing, alignment, structure
+            - `design/color` — Color tokens, theming, palette
+            - `design/typography` — Font styles, text hierarchy
+
+            ## Commands to Use
+
+            Apply labels (use `--add-label` for each label, do not use `--remove-label`):
+            ```
+            gh issue edit ${{ github.event.issue.number }} --add-label "label-name"
+            ```
+
+            Post the explanation comment:
+            ```
+            gh issue comment ${{ github.event.issue.number }} --body "..."
+            ```
+
+            Keep the comment brief: one sentence per label explaining why it was chosen.
