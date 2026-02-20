@@ -41,6 +41,19 @@ public enum Constants {
     public static let completedTimerLingerSeconds = 120
     public static let completedTimerFadeSeconds = 10
 
+    // MARK: - Spacing
+
+    /// Main content areas (ScrollView roots: Dashboard, ActivityDetail, Reports, sheets)
+    public static let spacingPage: CGFloat = 20
+    /// Toolbars and navigation bars
+    public static let spacingToolbar: CGFloat = 16
+    /// Card/GroupBox internals, menu bar sections, chart cards
+    public static let spacingCard: CGFloat = 12
+    /// Compact/dense UI (menu bar items, pills, badges, inline spacing)
+    public static let spacingCompact: CGFloat = 8
+    /// Tight inner padding (GroupBox content wrappers)
+    public static let spacingTight: CGFloat = 4
+
     // MARK: - CLI
 
     public static let cliVersion = "0.2.0 (0)"
