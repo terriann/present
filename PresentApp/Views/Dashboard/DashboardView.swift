@@ -386,6 +386,7 @@ struct DashboardView: View {
 
 private struct ActivityBreakdownCard: View {
     @Environment(AppState.self) private var appState
+    @Environment(ThemeManager.self) private var theme
     @State private var expandedActivities: Set<Int64> = []
     @State private var todaySessions: [Int64: [Session]] = [:]
 
@@ -393,9 +394,9 @@ private struct ActivityBreakdownCard: View {
         ChartCard(title: "Activity Breakdown") {
             if appState.todayActivities.isEmpty {
                 ContentUnavailableView(
-                    "No Activity Yet",
-                    systemImage: "chart.bar",
-                    description: Text("Start a session to see your activity breakdown.")
+                    "No Activities",
+                    systemImage: "list.bullet",
+                    description: Text("No activities recorded for this period.")
                 )
                 .emptyStateStyle()
             } else {
@@ -403,6 +404,7 @@ private struct ActivityBreakdownCard: View {
                     ForEach(Array(appState.todayActivities.enumerated()), id: \.element.activity.id) { index, summary in
                         let activityId = summary.activity.id ?? -1
                         let isExpanded = expandedActivities.contains(activityId)
+                        let sessions = todaySessions[activityId]
 
                         VStack(spacing: 0) {
                             HStack {
@@ -422,9 +424,15 @@ private struct ActivityBreakdownCard: View {
                                         .font(.body)
                                         .lineLimit(1)
 
-                                    Text("\(summary.sessionCount) \(summary.sessionCount == 1 ? "session" : "sessions")")
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
+                                    HStack(spacing: 4) {
+                                        Text("\(summary.sessionCount) \(summary.sessionCount == 1 ? "session" : "sessions")")
+                                        if let range = activityTimeRange(sessions) {
+                                            Text("·")
+                                            Text(range)
+                                        }
+                                    }
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
                                 }
 
                                 Spacer()
@@ -444,29 +452,38 @@ private struct ActivityBreakdownCard: View {
                                         expandedActivities.remove(activityId)
                                     } else {
                                         expandedActivities.insert(activityId)
-                                        loadSessionsForActivity(activityId)
                                     }
                                 }
                             }
 
-                            if isExpanded, let sessions = todaySessions[activityId] {
+                            if isExpanded, let sessions {
                                 ForEach(sessions) { session in
-                                    HStack {
-                                        Text(SessionTypeConfig.config(for: session.sessionType).displayName)
-                                            .font(.subheadline)
-                                            .foregroundStyle(.secondary)
+                                    HStack(spacing: Constants.spacingCompact) {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(SessionTypeConfig.config(for: session.sessionType).displayName)
+                                                .font(.subheadline)
+                                                .foregroundStyle(.secondary)
 
-                                        Text(TimeFormatting.formatTime(session.startedAt))
-                                            .font(.subheadline)
-                                            .foregroundStyle(.secondary)
+                                            Text(sessionTimeRange(session))
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
 
                                         Spacer()
+
+                                        if session.totalPausedSeconds > 0 {
+                                            Text("\(TimeFormatting.formatDuration(seconds: session.totalPausedSeconds)) paused")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
 
                                         if let duration = session.durationSeconds {
                                             Text(TimeFormatting.formatDuration(seconds: duration))
                                                 .font(.subheadline.monospacedDigit())
                                                 .foregroundStyle(.secondary)
                                         }
+
+                                        stateIcon(for: session)
                                     }
                                     .padding(.vertical, 6)
                                     .padding(.horizontal, Constants.spacingCard)
@@ -479,6 +496,45 @@ private struct ActivityBreakdownCard: View {
                 }
                 .padding(.bottom, Constants.spacingCard)
             }
+        }
+        .task(id: appState.todayActivities.map { $0.activity.id }) {
+            for summary in appState.todayActivities {
+                if let id = summary.activity.id {
+                    loadSessionsForActivity(id)
+                }
+            }
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func activityTimeRange(_ sessions: [Session]?) -> String? {
+        guard let sessions, !sessions.isEmpty else { return nil }
+        let starts = sessions.map(\.startedAt)
+        let ends = sessions.compactMap(\.endedAt)
+        guard let first = starts.min(), let last = ends.max() else { return nil }
+        return "\(TimeFormatting.formatTime(first)) – \(TimeFormatting.formatTime(last))"
+    }
+
+    private func sessionTimeRange(_ session: Session) -> String {
+        let start = TimeFormatting.formatTime(session.startedAt)
+        guard let end = session.endedAt else { return start }
+        return "\(start) – \(TimeFormatting.formatTime(end))"
+    }
+
+    @ViewBuilder
+    private func stateIcon(for session: Session) -> some View {
+        switch session.state {
+        case .completed:
+            Image(systemName: "checkmark.circle.fill")
+                .font(.subheadline)
+                .foregroundStyle(theme.success)
+        case .cancelled:
+            Image(systemName: "xmark.circle")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        default:
+            EmptyView()
         }
     }
 
@@ -497,7 +553,7 @@ private struct ActivityBreakdownCard: View {
                     ($0.endedAt ?? .distantFuture) > ($1.endedAt ?? .distantFuture)
                 }
             } catch {
-                // Fail silently — the row just won't expand
+                // Fail silently
             }
         }
     }
