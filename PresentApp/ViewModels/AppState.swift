@@ -156,7 +156,7 @@ final class AppState {
                 weekStartDay = PreferenceKey.parseWeekStartDay(weekStartPref)
             }
             let weekly = try await service.weeklySummary(weekOf: Date(), includeArchived: false, weekStartDay: weekStartDay)
-            weeklySummary = weekly
+            if weekly != weeklySummary { weeklySummary = weekly }
 
             if currentSession == nil {
                 let since = Date().addingTimeInterval(-3 * 60 * 60)

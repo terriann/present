@@ -997,7 +997,10 @@ public final class PresentService: PresentAPI, Sendable {
             }
         }
 
-        let activities = activityMap.values.sorted { $0.totalSeconds > $1.totalSeconds }
+        let activities = activityMap.values.sorted {
+            if $0.totalSeconds != $1.totalSeconds { return $0.totalSeconds > $1.totalSeconds }
+            return $0.activity.title < $1.activity.title
+        }
         return WeeklySummary(weekOf: startOfWeek, totalSeconds: totalSeconds, sessionCount: totalSessions, dailyBreakdown: dailyBreakdown, activities: activities)
     }
 
@@ -1059,7 +1062,10 @@ public final class PresentService: PresentAPI, Sendable {
         }
         dailyBreakdown.sort { $0.date < $1.date }
 
-        let activities = activityMap.values.sorted { $0.totalSeconds > $1.totalSeconds }
+        let activities = activityMap.values.sorted {
+            if $0.totalSeconds != $1.totalSeconds { return $0.totalSeconds > $1.totalSeconds }
+            return $0.activity.title < $1.activity.title
+        }
         return MonthlySummary(monthOf: startOfMonth, totalSeconds: totalSeconds, sessionCount: totalSessions, weeklyBreakdown: weeklyBreakdown, dailyBreakdown: dailyBreakdown, activities: activities)
     }
 

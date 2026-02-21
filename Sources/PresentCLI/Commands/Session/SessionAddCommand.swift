@@ -12,7 +12,7 @@ struct SessionAddCommand: AsyncParsableCommand {
             as completed with the duration calculated from the timestamps.
 
             Timestamps use ISO8601 format (e.g., 2026-01-15T09:30:00). \
-            Start time must be in the past, and end time must be after start.
+            Both start and end times must not be in the future; end time must be after start.
 
             ## Examples
 
@@ -77,6 +77,16 @@ struct SessionAddCommand: AsyncParsableCommand {
 
         guard let endDate = isoFormatter.date(from: endedAt) ?? localFormatter.date(from: endedAt) ?? parseLocalISO(endedAt) else {
             print("Invalid end time: \(endedAt). Use ISO8601 format (e.g., 2026-01-15T10:30:00).")
+            throw ExitCode.failure
+        }
+
+        let now = Date()
+        if startDate > now {
+            print("Start time cannot be in the future.")
+            throw ExitCode.failure
+        }
+        if endDate > now {
+            print("End time cannot be in the future.")
             throw ExitCode.failure
         }
 
