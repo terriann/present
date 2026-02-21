@@ -140,6 +140,33 @@ public final class DatabaseManager: Sendable {
                 """)
         }
 
+        migrator.registerMigration("v6-add-session-segment") { db in
+            try db.create(table: "session_segment") { t in
+                t.autoIncrementedPrimaryKey("id")
+                t.column("sessionId", .integer).notNull()
+                    .references("session", onDelete: .cascade)
+                t.column("startedAt", .datetime).notNull()
+                t.column("endedAt", .datetime)
+            }
+
+            // Backfill completed sessions:
+            // - No pauses: exact segment from startedAt to endedAt
+            // - Has pauses: best approximation — active time anchored at startedAt
+            try db.execute(sql: """
+                INSERT INTO session_segment (sessionId, startedAt, endedAt)
+                SELECT id,
+                       startedAt,
+                       CASE
+                           WHEN totalPausedSeconds = 0 THEN endedAt
+                           ELSE datetime(startedAt, '+' || durationSeconds || ' seconds')
+                       END
+                FROM session
+                WHERE state = 'completed'
+                  AND endedAt IS NOT NULL
+                  AND durationSeconds IS NOT NULL
+                """)
+        }
+
         try migrator.migrate(writer)
     }
 }

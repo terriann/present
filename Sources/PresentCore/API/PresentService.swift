@@ -93,6 +93,11 @@ public final class PresentService: PresentAPI, Sendable {
 
             try session.insert(db)
             session.id = db.lastInsertedRowID
+
+            // Open the first segment
+            let segment = SessionSegment(sessionId: session.id!, startedAt: now)
+            try segment.insert(db)
+
             return session
         }
     }
@@ -168,6 +173,11 @@ public final class PresentService: PresentAPI, Sendable {
 
             try session.insert(db)
             session.id = db.lastInsertedRowID
+
+            // Insert single closed segment representing the full active duration
+            let segment = SessionSegment(sessionId: session.id!, startedAt: input.startedAt, endedAt: input.endedAt)
+            try segment.insert(db)
+
             return session
         }
     }
@@ -180,9 +190,20 @@ public final class PresentService: PresentAPI, Sendable {
                 throw PresentError.noActiveSession
             }
 
+            let now = Date()
             session.state = .paused
-            session.lastPausedAt = Date()
+            session.lastPausedAt = now
             try session.update(db)
+
+            // Close the open segment
+            if var openSegment = try SessionSegment
+                .filter(SessionSegment.Columns.sessionId == session.id!)
+                .filter(SessionSegment.Columns.endedAt == nil)
+                .fetchOne(db) {
+                openSegment.endedAt = now
+                try openSegment.update(db)
+            }
+
             return session
         }
     }
@@ -203,6 +224,11 @@ public final class PresentService: PresentAPI, Sendable {
             session.state = .running
             session.lastPausedAt = nil
             try session.update(db)
+
+            // Open a new segment
+            let segment = SessionSegment(sessionId: session.id!, startedAt: now)
+            try segment.insert(db)
+
             return session
         }
     }
@@ -223,12 +249,30 @@ public final class PresentService: PresentAPI, Sendable {
                 session.totalPausedSeconds += pauseDuration
             }
 
+            // If running, close the open segment
+            if session.state == .running,
+               var openSegment = try SessionSegment
+                .filter(SessionSegment.Columns.sessionId == session.id!)
+                .filter(SessionSegment.Columns.endedAt == nil)
+                .fetchOne(db) {
+                openSegment.endedAt = now
+                try openSegment.update(db)
+            }
+
             session.state = .completed
             session.endedAt = now
             session.lastPausedAt = nil
 
-            let totalElapsed = Int(now.timeIntervalSince(session.startedAt))
-            session.durationSeconds = max(0, totalElapsed - session.totalPausedSeconds)
+            // Compute duration from sum of all closed segments
+            let segments = try SessionSegment
+                .filter(SessionSegment.Columns.sessionId == session.id!)
+                .filter(SessionSegment.Columns.endedAt != nil)
+                .fetchAll(db)
+            let activeDuration = segments.reduce(0) { sum, seg in
+                guard let end = seg.endedAt else { return sum }
+                return sum + Int(end.timeIntervalSince(seg.startedAt))
+            }
+            session.durationSeconds = max(0, activeDuration)
 
             try session.update(db)
             return session
@@ -859,30 +903,57 @@ public final class PresentService: PresentAPI, Sendable {
                 totalSessions += count
             }
 
-            // Hourly breakdown
-            let hourlySql = """
-                SELECT CAST(strftime('%H', s.startedAt, 'localtime') AS INTEGER) as hour,
-                       a.*, COALESCE(SUM(s.durationSeconds), 0) as totalSecs
-                FROM session s
+            // Hourly breakdown — computed in Swift by splitting segments at hour boundaries
+            let segmentSql = """
+                SELECT ss.startedAt AS seg_startedAt, ss.endedAt AS seg_endedAt, a.*
+                FROM session_segment ss
+                INNER JOIN session s ON s.id = ss.sessionId
                 INNER JOIN activity a ON a.id = s.activityId
                 WHERE s.state = ?
                   AND s.startedAt >= ? AND s.startedAt < ?
+                  AND ss.endedAt IS NOT NULL
                   \(archiveFilter)
-                GROUP BY hour, a.id
-                ORDER BY hour, totalSecs DESC
+                ORDER BY ss.startedAt
                 """
 
-            let hourlyRows = try Row.fetchAll(db, sql: hourlySql, arguments: [
+            let segmentRows = try Row.fetchAll(db, sql: segmentSql, arguments: [
                 SessionState.completed.rawValue,
                 startOfDay, endOfDay
             ])
 
-            var hourlyBreakdown: [HourlyBucket] = []
-            for row in hourlyRows {
-                let hour: Int = row["hour"]
+            var hourActivitySeconds: [Int: [Int64: Int]] = [:]
+            var activityById: [Int64: Activity] = [:]
+
+            for row in segmentRows {
+                let segStart: Date = row["seg_startedAt"]
+                let segEnd: Date = row["seg_endedAt"]
                 let activity = try Activity(row: row)
-                let secs: Int = row["totalSecs"]
-                hourlyBreakdown.append(HourlyBucket(hour: hour, activity: activity, totalSeconds: secs))
+                guard let activityId = activity.id else { continue }
+                activityById[activityId] = activity
+
+                // Walk through the segment hour by hour, splitting at boundaries
+                var cursor = segStart
+                while cursor < segEnd {
+                    let hourComponents = calendar.dateComponents([.year, .month, .day, .hour], from: cursor)
+                    let hourStart = calendar.date(from: hourComponents)!
+                    let nextHour = calendar.date(byAdding: .hour, value: 1, to: hourStart)!
+                    let sliceEnd = min(segEnd, nextHour)
+                    let sliceSeconds = Int(sliceEnd.timeIntervalSince(cursor))
+                    let hour = calendar.component(.hour, from: cursor)
+
+                    hourActivitySeconds[hour, default: [:]][activityId, default: 0] += sliceSeconds
+                    cursor = sliceEnd
+                }
+            }
+
+            var hourlyBreakdown: [HourlyBucket] = []
+            for hour in hourActivitySeconds.keys.sorted() {
+                let actSecs = hourActivitySeconds[hour]!
+                for (actId, secs) in actSecs.sorted(by: { $0.value > $1.value }) {
+                    if let activity = activityById[actId] {
+                        hourlyBreakdown.append(HourlyBucket(hour: hour, activity: activity, totalSeconds: secs))
+                    }
+                }
             }
 
             return DailySummary(date: startOfDay, totalSeconds: totalSeconds, sessionCount: totalSessions, activities: activities, hourlyBreakdown: hourlyBreakdown)
