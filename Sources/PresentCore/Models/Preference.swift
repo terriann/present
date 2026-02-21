@@ -32,6 +32,7 @@ public enum PreferenceKey {
     public static let defaultTimeboundMinutes = "defaultTimeboundMinutes"
     public static let colorPalette = "colorPalette"
     public static let weekStartDay = "weekStartDay"
+    public static let zoomLevel = "zoomLevel"
 
     public static let defaults: [(String, String)] = [
         (externalIdBaseUrl, ""),
@@ -45,6 +46,7 @@ public enum PreferenceKey {
         (defaultTimeboundMinutes, "25"),
         (colorPalette, "basic"),
         (weekStartDay, "sunday"),
+        (zoomLevel, "3"),
     ]
 
     /// Parse weekStartDay preference to Calendar.firstWeekday value.

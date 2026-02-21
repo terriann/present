@@ -180,7 +180,7 @@ struct DashboardView: View {
                 }
 
                 Text(appState.formattedTimerValue)
-                    .font(.system(size: 36, weight: .light, design: .monospaced))
+                    .font(.largeTitle.weight(.light).monospacedDigit())
                     .contentTransition(.numericText())
 
                 SessionControls()

@@ -36,6 +36,20 @@ struct PresentApp: App {
                 .onDisappear { appState.showDockIcon(false) }
         }
         .defaultSize(width: 900, height: 600)
+        .commands {
+            CommandGroup(before: .toolbar) {
+                Button("Zoom In") { appState.zoomIn() }
+                    .keyboardShortcut("+", modifiers: .command)
+                    .disabled(!appState.canZoomIn)
+                Button("Zoom Out") { appState.zoomOut() }
+                    .keyboardShortcut("-", modifiers: .command)
+                    .disabled(!appState.canZoomOut)
+                Button("Actual Size") { appState.resetZoom() }
+                    .keyboardShortcut("0", modifiers: .command)
+                    .disabled(appState.isDefaultZoom)
+                Divider()
+            }
+        }
 
         Settings {
             SettingsView()

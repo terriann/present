@@ -42,13 +42,15 @@ struct ContentView: View {
                 .foregroundStyle(.secondary)
             }
         } detail: {
-            switch appState.selectedSidebarItem {
-            case .dashboard:
-                DashboardView()
-            case .reports:
-                ReportsView()
-            case .activities:
-                ActivitiesListView()
+            ZoomContainer(scale: appState.zoomScale) {
+                switch appState.selectedSidebarItem {
+                case .dashboard:
+                    DashboardView()
+                case .reports:
+                    ReportsView()
+                case .activities:
+                    ActivitiesListView()
+                }
             }
         }
     }

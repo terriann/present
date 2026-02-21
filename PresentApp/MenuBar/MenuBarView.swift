@@ -51,7 +51,7 @@ struct MenuBarView: View {
                 }
 
                 Text(appState.formattedTimerValue)
-                    .font(.system(size: 36, weight: .light, design: .monospaced))
+                    .font(.title.weight(.light).monospacedDigit())
                     .contentTransition(.numericText())
 
                 SessionControls()
@@ -65,7 +65,7 @@ struct MenuBarView: View {
     private var idleSection: some View {
         VStack(spacing: 8) {
             Image(systemName: "clock")
-                .font(.system(size: 28))
+                .font(.largeTitle)
                 .foregroundStyle(.secondary)
 
             Text("No active session")
