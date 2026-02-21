@@ -4,7 +4,7 @@
 
 > Present — time tracking from the command line.
 
-*Auto-generated on 2026-02-18 04:35 UTC from `present-cli --experimental-dump-help`.*
+*Auto-generated on 2026-02-21 19:14 UTC from `present-cli --experimental-dump-help`.*
 
 ## Commands
 
@@ -36,6 +36,7 @@
     - [`session current resume`](#present-cli-session-current-resume)
     - [`session current status`](#present-cli-session-current-status) *(default)*
     - [`session current stop`](#present-cli-session-current-stop)
+  - [`session delete`](#present-cli-session-delete-ids)
   - [`session get`](#present-cli-session-get-id)
   - [`session list`](#present-cli-session-list)
   - [`session start`](#present-cli-session-start-activity-name)
@@ -767,6 +768,7 @@ Use `session start` to begin a new session, `session current` to interact with t
 
 | [`add`](#present-cli-session-add-activity-id) | Add a completed session with specific start and end times. |
 | [`current`](#present-cli-session-current) | Manage the current session. |
+| [`delete`](#present-cli-session-delete-ids) | Delete one or more completed sessions by ID. |
 | [`get`](#present-cli-session-get-id) | Show session details. |
 | [`list`](#present-cli-session-list) | List sessions with filters. |
 | [`start`](#present-cli-session-start-activity-name) | Start a session for an activity. |
@@ -777,7 +779,7 @@ Add a completed session with specific start and end times.
 
 Creates a backdated completed session. Useful for logging time that was tracked elsewhere or forgotten. The session is inserted as completed with the duration calculated from the timestamps.
 
-Timestamps use ISO8601 format (e.g., 2026-01-15T09:30:00). Start time must be in the past, and end time must be after start.
+Timestamps use ISO8601 format (e.g., 2026-01-15T09:30:00). Both start and end times must not be in the future; end time must be after start.
 
 **Arguments**
 
@@ -995,6 +997,45 @@ $ present-cli session stop
 
 # Stop and show duration in text format
 $ present-cli session stop -f text
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
+
+#### `present-cli session delete <ids>`
+
+Delete one or more completed sessions by ID.
+
+Permanently removes completed or cancelled sessions. Active (running or paused) sessions cannot be deleted — stop them first with `session current stop` or cancel with `session current cancel`.
+
+IDs that are not found are reported in the output but do not cause a failure exit code.
+
+**Arguments**
+
+`<ids>`
+: Session ID(s) to delete. *(required)*
+
+**Flags**
+
+`[--version]`
+: Show the version.
+
+**Examples**
+
+```bash
+# Delete a single session
+$ present-cli session delete 123
+
+# Delete multiple sessions at once
+$ present-cli session delete 123 456 789
+
+# Delete and get plain text output
+$ present-cli session delete 123 -f text
 ```
 
 **Global Options**
