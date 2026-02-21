@@ -56,5 +56,5 @@ public enum Constants {
 
     // MARK: - CLI
 
-    public static let cliVersion = "0.2.0 (0)"
+    public static let cliVersion = "0.2.1 (1)"
 }
