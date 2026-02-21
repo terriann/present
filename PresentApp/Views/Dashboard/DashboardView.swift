@@ -424,6 +424,10 @@ private struct ActivityBreakdownCard: View {
                                         .font(.caption2)
                                         .foregroundStyle(.secondary)
                                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                                } else {
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption2)
+                                        .hidden()
                                 }
 
                                 VStack(alignment: .leading, spacing: 2) {
