@@ -108,26 +108,29 @@ struct DashboardView: View {
                     .padding(.top, Constants.spacingCard)
                     .padding(.bottom, Constants.spacingCard)
 
-                HStack(spacing: 40) {
-                    StatItem(
-                        title: "Total Time",
-                        value: TimeFormatting.formatDuration(seconds: appState.todayTotalSeconds),
-                        icon: "clock"
-                    )
+                HStack(alignment: .center, spacing: Constants.spacingPage * 2) {
+                    HStack(spacing: 40) {
+                        StatItem(
+                            title: "Total Time",
+                            value: TimeFormatting.formatDuration(seconds: appState.todayTotalSeconds),
+                            icon: "clock"
+                        )
 
-                    StatItem(
-                        title: "Sessions",
-                        value: "\(appState.todaySessionCount)",
-                        icon: "number"
-                    )
+                        StatItem(
+                            title: "Sessions",
+                            value: "\(appState.todaySessionCount)",
+                            icon: "number"
+                        )
 
-                    StatItem(
-                        title: "Activities",
-                        value: "\(appState.todayActivities.count)",
-                        icon: "tray"
-                    )
+                        StatItem(
+                            title: "Activities",
+                            value: "\(appState.todayActivities.count)",
+                            icon: "tray"
+                        )
+                    }
 
-                    Spacer()
+                    DayTimelineView()
+                        .frame(maxWidth: .infinity)
                 }
                 .padding(Constants.spacingCard)
             }
@@ -379,6 +382,159 @@ struct DashboardView: View {
 
     private var activityBreakdownCard: some View {
         ActivityBreakdownCard()
+    }
+}
+
+// MARK: - Day Timeline View
+
+private struct DayTimelineView: View {
+    @Environment(AppState.self) private var appState
+    @Environment(ThemeManager.self) private var theme
+    @State private var completedSessions: [(Session, Activity)] = []
+    @State private var hoveredActivityTitle: String? = nil
+
+    private let barHeight: CGFloat = 48
+    private let axisHours = stride(from: 0, through: 21, by: 3).map { $0 }
+    private var startOfDay: Date { Calendar.current.startOfDay(for: Date()) }
+    private let secondsInDay: Double = 24 * 60 * 60
+
+    private var allSessions: [(Session, Activity)] {
+        var result = completedSessions
+        if let current = appState.currentSession,
+           let activity = appState.currentActivity,
+           Calendar.current.isDateInToday(current.startedAt),
+           !result.contains(where: { $0.0.id == current.id }) {
+            result.insert((current, activity), at: 0)
+        }
+        return result
+    }
+
+    private var legendItems: [(label: String, color: Color)] {
+        var seen = Set<Int64>()
+        var items: [(label: String, color: Color)] = []
+        for (_, activity) in allSessions {
+            guard let id = activity.id, seen.insert(id).inserted else { continue }
+            items.append((label: activity.title, color: activityColor(activity)))
+        }
+        return items
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Constants.spacingCompact) {
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    // Track background
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.gray.opacity(0.12))
+                        .frame(height: barHeight)
+
+                    // Session blocks
+                    ForEach(allSessions, id: \.0.id) { session, activity in
+                        let x = xPos(session, geo.size.width)
+                        let w = blockWidth(session, geo.size.width)
+                        let color = activityColor(activity)
+                        let isActive = session.id == appState.currentSession?.id
+                        let dimmed = hoveredActivityTitle != nil && hoveredActivityTitle != activity.title
+
+                        RoundedRectangle(cornerRadius: 5)
+                            .fill(color.opacity(isActive ? 1.0 : 0.75))
+                            .frame(width: w, height: barHeight)
+                            .offset(x: x)
+                            .opacity(dimmed ? 0.2 : 1.0)
+                            .help(tooltip(session, activity))
+                            .onHover { hovering in
+                                hoveredActivityTitle = hovering ? activity.title : nil
+                            }
+                    }
+
+                    // Current time indicator
+                    Rectangle()
+                        .fill(Color.white.opacity(0.4))
+                        .frame(width: 2, height: barHeight + 6)
+                        .offset(x: nowPos(geo.size.width))
+
+                    // X-axis tick marks
+                    ForEach(axisHours, id: \.self) { hour in
+                        Rectangle()
+                            .fill(Color.white.opacity(0.15))
+                            .frame(width: 1, height: barHeight)
+                            .offset(x: CGFloat(hour) / 24.0 * geo.size.width)
+                    }
+                }
+                .frame(height: barHeight)
+
+                // X-axis labels
+                ZStack(alignment: .topLeading) {
+                    ForEach(axisHours, id: \.self) { hour in
+                        Text(axisLabel(hour))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .offset(x: max(0, CGFloat(hour) / 24.0 * geo.size.width - 10))
+                    }
+                }
+                .frame(height: 14)
+                .offset(y: barHeight + 2)
+            }
+            .frame(height: barHeight + 16)
+
+            // Legend
+            if !legendItems.isEmpty {
+                HoverableChartLegend(items: legendItems, hoveredLabel: $hoveredActivityTitle)
+            }
+        }
+        .task(id: appState.todayActivities.map(\.activity.id)) {
+            await loadSessions()
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func xPos(_ session: Session, _ width: CGFloat) -> CGFloat {
+        let offset = session.startedAt.timeIntervalSince(startOfDay)
+        return CGFloat(offset / secondsInDay) * width
+    }
+
+    private func blockWidth(_ session: Session, _ width: CGFloat) -> CGFloat {
+        let end: Date = session.endedAt ?? session.startedAt.addingTimeInterval(
+            Double(appState.timerElapsedSeconds)
+        )
+        let duration = max(1, end.timeIntervalSince(session.startedAt))
+        return max(6, CGFloat(duration / secondsInDay) * width)
+    }
+
+    private func nowPos(_ width: CGFloat) -> CGFloat {
+        CGFloat(Date().timeIntervalSince(startOfDay) / secondsInDay) * width
+    }
+
+    private func activityColor(_ activity: Activity) -> Color {
+        let palette = ThemeManager.chartColors(for: theme.activePalette)
+        let index = appState.todayActivities.firstIndex(where: { $0.activity.id == activity.id }) ?? 0
+        return palette[index % palette.count]
+    }
+
+    private func axisLabel(_ hour: Int) -> String {
+        switch hour {
+        case 0: return "12am"
+        case 12: return "12pm"
+        default: return hour < 12 ? "\(hour)am" : "\(hour - 12)pm"
+        }
+    }
+
+    private func tooltip(_ session: Session, _ activity: Activity) -> String {
+        let type = SessionTypeConfig.config(for: session.sessionType).displayName
+        let start = TimeFormatting.formatTime(session.startedAt)
+        if let end = session.endedAt, let dur = session.durationSeconds {
+            return "\(activity.title) · \(type) · \(start) – \(TimeFormatting.formatTime(end)) (\(TimeFormatting.formatDuration(seconds: dur)))"
+        }
+        return "\(activity.title) · \(type) · \(start) – now"
+    }
+
+    private func loadSessions() async {
+        guard let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: startOfDay) else { return }
+        guard let result = try? await appState.service.listSessions(
+            from: startOfDay, to: endOfDay, type: nil, activityId: nil, includeArchived: false
+        ) else { return }
+        completedSessions = result
     }
 }
 
