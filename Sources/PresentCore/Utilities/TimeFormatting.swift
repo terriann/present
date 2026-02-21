@@ -49,6 +49,21 @@ public enum TimeFormatting {
         return formatter.string(from: date)
     }
 
+    /// Format a week date range (e.g., "February 17 – February 23, 2026" or "December 30, 2025 – January 5, 2026")
+    public static func formatWeekRange(start: Date, end: Date) -> String {
+        let calendar = Calendar.current
+        let startFormatter = DateFormatter()
+        let endFormatter = DateFormatter()
+        if calendar.component(.year, from: start) == calendar.component(.year, from: end) {
+            startFormatter.dateFormat = "MMMM d"
+            endFormatter.dateFormat = "MMMM d, yyyy"
+        } else {
+            startFormatter.dateFormat = "MMMM d, yyyy"
+            endFormatter.dateFormat = "MMMM d, yyyy"
+        }
+        return "\(startFormatter.string(from: start)) – \(endFormatter.string(from: end))"
+    }
+
     /// Format a date as relative time + full timestamp (e.g., "2 days ago (2026-02-14 15:30:45)")
     public static func formatRelativeWithTimestamp(_ date: Date) -> String {
         let relative = RelativeDateTimeFormatter()

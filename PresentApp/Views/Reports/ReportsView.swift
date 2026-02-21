@@ -163,16 +163,7 @@ struct ReportsView: View {
         case .weekly:
             let weekStart = weekStart(for: selectedDate)
             let weekEnd = calendar.date(byAdding: .day, value: 6, to: weekStart) ?? weekStart
-            let startFormatter = DateFormatter()
-            let endFormatter = DateFormatter()
-            if calendar.component(.year, from: weekStart) == calendar.component(.year, from: weekEnd) {
-                startFormatter.dateFormat = "MMMM d"
-                endFormatter.dateFormat = "MMMM d, yyyy"
-            } else {
-                startFormatter.dateFormat = "MMMM d, yyyy"
-                endFormatter.dateFormat = "MMMM d, yyyy"
-            }
-            return "\(startFormatter.string(from: weekStart)) – \(endFormatter.string(from: weekEnd))"
+            return TimeFormatting.formatWeekRange(start: weekStart, end: weekEnd)
         case .monthly:
             let formatter = DateFormatter()
             formatter.dateFormat = "MMMM yyyy"

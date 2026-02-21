@@ -203,12 +203,21 @@ struct DashboardView: View {
 
     // MARK: - Weekly Chart
 
+    private var weekRangeTitle: String {
+        var calendar = Calendar.current
+        calendar.firstWeekday = appState.weekStartDay
+        guard let interval = calendar.dateInterval(of: .weekOfYear, for: Date()) else { return "This Week" }
+        let start = interval.start
+        let end = calendar.date(byAdding: .day, value: 6, to: start) ?? start
+        return TimeFormatting.formatWeekRange(start: start, end: end)
+    }
+
     private func weeklyChartCard(_ weekly: WeeklySummary) -> some View {
         let entries = weeklyBarEntries(weekly)
         let domain = weekdayLabels(weekly)
         let tooltipLabels = weeklyTooltipLabels(weekStartDay: appState.weekStartDay, referenceDate: Date())
 
-        return ChartCard(title: "This Week") {
+        return ChartCard(title: "This Week", subtitle: weekRangeTitle) {
             weeklyBarChart(entries: entries, domain: domain, activities: weekly.activities, tooltipLabels: tooltipLabels)
         }
     }
