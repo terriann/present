@@ -266,9 +266,10 @@ struct CLISettingsTab: View {
                     Spacer()
                 }
 
-                Text("Copies the `present-cli` (\(Constants.cliVersion)) command-line tool so you can use it from Terminal.")
-                    .font(.caption)
+                Text("Run `present-cli --help` for a full list of commands.\nRun `present-cli --experimental-dump-help` for JSON docs to use in agentic AI experiences.")
+                    .font(.footnote)
                     .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
             }
 
             Section("What you can do") {
@@ -278,19 +279,6 @@ struct CLISettingsTab: View {
                     cliFeatureRow(icon: "chart.bar.fill", text: "Export reports as CSV or JSON")
                     cliFeatureRow(icon: "magnifyingglass", text: "Search and filter session history")
                     cliFeatureRow(icon: "gearshape.fill", text: "Automate workflows with scripts")
-                }
-            }
-
-            Section {
-                VStack(alignment: .leading, spacing: Constants.spacingTight) {
-                    Text("Run `present-cli --help` for a full list of commands.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .textSelection(.enabled)
-                    Text("Run `present-cli --experimental-dump-help` for JSON docs to use in agentic AI experiences.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .textSelection(.enabled)
                 }
             }
         }
