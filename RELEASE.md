@@ -1,0 +1,137 @@
+# Releasing
+
+Guide for versioning, building, and publishing Present releases.
+
+## Table of Contents
+
+- [Versioning](#versioning)
+  - [When to Increment](#when-to-increment)
+  - [Guidelines](#guidelines)
+- [Bump Script](#bump-script)
+  - [What It Does](#what-it-does)
+- [Release Process](#release-process)
+  - [1. Bump Version](#1-bump-version)
+  - [2. Beta Release](#2-beta-release)
+  - [3. Stable Release](#3-stable-release)
+- [Distribution Scripts](#distribution-scripts)
+
+## Versioning
+
+Present tracks two version identifiers in `PresentApp/Info.plist`:
+
+- **`CFBundleShortVersionString`** (currently `1.0`) -- The user-facing
+  marketing version, following
+  [Semantic Versioning](https://semver.org/) (MAJOR.MINOR.PATCH).
+- **`CFBundleVersion`** (currently `1`) -- The internal build number,
+  an integer that must always increment. macOS uses this to determine
+  whether a build is newer. Required by the App Store and TestFlight.
+
+### When to Increment
+
+- **Marketing version** (`CFBundleShortVersionString`): Bump according to
+  semver. MAJOR for breaking changes, MINOR for new features, PATCH for
+  bug fixes.
+- **Build number** (`CFBundleVersion`): Increment with every release
+  build, regardless of version bump type. If v1.2.0 ships as build 5, the
+  next release (even v1.2.1) must be build 6 or higher.
+
+### Guidelines
+
+- Never decrement the build number.
+- Update both values together at release time.
+- During development, the version in `Info.plist` reflects the *next*
+  planned release.
+- Git tags use the format `vX.Y.Z` (prefixed with `v`) and must match
+  the marketing version.
+
+## Bump Script
+
+`Scripts/bump-version.sh` automates version updates. The working tree
+must be clean before running.
+
+```bash
+./Scripts/bump-version.sh patch     # 1.0.0 -> 1.0.1
+./Scripts/bump-version.sh minor     # 1.0.0 -> 1.1.0
+./Scripts/bump-version.sh major     # 1.0.0 -> 2.0.0
+./Scripts/bump-version.sh 1.2.3     # Set to an explicit version
+```
+
+### What It Does
+
+1. Reads `CFBundleShortVersionString` and `CFBundleVersion` from
+   `PresentApp/Info.plist`.
+2. Computes the new marketing version (bump type or explicit semver).
+3. Increments the build number by 1.
+4. Writes both values back to `Info.plist` via `plutil`.
+5. Updates `Constants.cliVersion` in
+   `Sources/PresentCore/Utilities/Constants.swift`.
+6. Collects commits since the last tag, groups them by conventional
+   commit type, and prepends a new section to `CHANGELOG.md`.
+7. Stages the changed files and creates a git commit (`chore(build):
+   bump version to X.Y.Z`) plus a `vX.Y.Z` tag.
+
+## Release Process
+
+Releases follow three steps: bump the version, optionally publish a
+beta, then publish a stable release.
+
+### 1. Bump Version
+
+Run the bump script to prepare the release:
+
+```bash
+./Scripts/bump-version.sh patch     # or minor / major / X.Y.Z
+```
+
+This creates a tagged commit locally. Push the branch (but not the tag
+yet) if a beta is planned first.
+
+### 2. Beta Release
+
+Trigger the beta workflow manually from the GitHub Actions UI
+(`.github/workflows/beta.yml`). An optional version override input is
+available; if omitted, the workflow reads the version from `Info.plist`.
+
+The workflow:
+
+1. Resolves the marketing version (input or `Info.plist`).
+2. Computes the next beta tag by scanning existing tags (e.g.,
+   `v1.1.0-beta.1`, `v1.1.0-beta.2`).
+3. Builds an unsigned DMG via `Scripts/build-dmg.sh`.
+4. Creates a GitHub pre-release with the DMG attached.
+
+No tag push is required. The workflow handles tagging internally.
+
+### 3. Stable Release
+
+Push the tag created by the bump script:
+
+```bash
+git push origin vX.Y.Z
+```
+
+The stable release workflow (`.github/workflows/release.yml`) triggers
+automatically on `v*` tag pushes matching `v[0-9]+.[0-9]+.[0-9]+`
+(excludes `-beta` suffixes). It builds the DMG and publishes a GitHub
+release marked as latest.
+
+## Distribution Scripts
+
+Three scripts in `Scripts/` handle building and distributing the app:
+
+- **`build-dmg.sh`** -- Builds a signed DMG. Set `SIGNING_IDENTITY`
+  for real code signing (defaults to ad-hoc).
+- **`notarize.sh`** -- Submits the DMG for Apple notarization. Requires
+  `APPLE_ID`, `TEAM_ID`, and `APP_PASSWORD` environment variables.
+- **`install-cli.sh`** -- Builds and installs the CLI binary locally.
+
+```bash
+# Build signed DMG (set SIGNING_IDENTITY for real signing)
+./Scripts/build-dmg.sh
+
+# Notarize (requires Apple Developer credentials)
+APPLE_ID=you@example.com TEAM_ID=XXXXX APP_PASSWORD=xxxx ./Scripts/notarize.sh
+
+# Install CLI locally
+./Scripts/install-cli.sh
+```

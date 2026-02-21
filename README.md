@@ -15,6 +15,7 @@ database.
 - [Features](#features)
 - [Requirements](#requirements)
 - [Installation](#installation)
+  - [Download (Recommended)](#download-recommended)
   - [From Source](#from-source)
 - [Quick Start](#quick-start)
 - [CLI Usage](#cli-usage)
@@ -46,6 +47,15 @@ All data is stored locally in SQLite via [GRDB](https://github.com/groue/GRDB.sw
 - Xcode 16+ (for building from source)
 
 ## Installation
+
+### Download (Recommended)
+
+Go to the [GitHub Releases](https://github.com/terriann/present/releases)
+page and download the latest `Present.dmg`. Open it and drag Present to your
+Applications folder. The CLI binary (`present-cli`) is included in the DMG
+alongside the app.
+
+Requires macOS 15 (Sequoia) or later.
 
 ### From Source
 

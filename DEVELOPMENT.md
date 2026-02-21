@@ -19,8 +19,7 @@ contributing.
 - [IPC](#ipc)
 - [Code Style](#code-style)
 - [Colors](#colors)
-- [Distribution](#distribution)
-- [Versioning](#versioning)
+- [Releasing](#releasing)
 - [Data Utilities](#data-utilities)
   - [Generate Sample Data](#generate-sample-data)
   - [Delete Data](#delete-data)
@@ -268,52 +267,10 @@ system controls automatically use the brand blue.
 3. Verify in both light and dark mode — check opacity modifiers still look
    good with the new values.
 
-## Distribution
+## Releasing
 
-```bash
-# Build signed DMG (set SIGNING_IDENTITY for real signing)
-./Scripts/build-dmg.sh
-
-# Notarize (requires Apple Developer credentials)
-APPLE_ID=you@example.com TEAM_ID=XXXXX APP_PASSWORD=xxxx ./Scripts/notarize.sh
-
-# Install CLI locally
-./Scripts/install-cli.sh
-```
-
-## Versioning
-
-Present tracks two version identifiers in `PresentApp/Info.plist`:
-
-- **`CFBundleShortVersionString`** (currently `1.0`) -- The user-facing
-  marketing version, following
-  [Semantic Versioning](https://semver.org/) (MAJOR.MINOR.PATCH).
-- **`CFBundleVersion`** (currently `1`) -- The internal build number, an
-  integer that must always increment. macOS uses this to determine whether
-  a build is newer, and it is required by the App Store and TestFlight.
-
-### When to increment
-
-- **Marketing version** (`CFBundleShortVersionString`): Bump according to
-  semver. MAJOR for breaking changes, MINOR for new features, PATCH for bug
-  fixes.
-- **Build number** (`CFBundleVersion`): Increment with every release build,
-  regardless of version bump type. It must never go backwards. If you ship
-  v1.2.0 as build 5, the next release (even v1.2.1) must be build 6 or
-  higher.
-
-### Guidelines
-
-- Never decrement the build number.
-- Update both values together at release time.
-- During development, the version in `Info.plist` reflects the *next*
-  planned release.
-- Git tags use the format `v1.2.0` (prefixed with `v`) and should match the
-  marketing version.
-
-> [!NOTE]
-> A version bump script (`Scripts/bump-version.sh`) is planned to automate
-> updates to both values. See [GitHub issue #3](https://github.com/terriann/present/issues/3).
+See [RELEASE.md](RELEASE.md) for the full release process, including
+versioning, the bump script, beta workflow, and stable release workflow.
 
 ## Data Utilities
 
