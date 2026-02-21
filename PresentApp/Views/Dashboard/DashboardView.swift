@@ -7,17 +7,13 @@ struct DashboardView: View {
     @Environment(ThemeManager.self) private var theme
     @State private var hoveredBarLabel: String?
     @State private var barHoverLocation: CGPoint = .zero
+    @State private var quickRestartSuggestions: [(Session, Activity)] = []
 
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
-                // Current session
-                if appState.isSessionActive {
-                    currentSessionCard
-                }
-
-                // Today's summary
-                todaySummaryCard
+                // Greeting header with timer or quick restarts
+                dashboardHeader
 
                 // Weekly chart
                 if let weekly = appState.weeklySummary, !weekly.activities.isEmpty {
@@ -36,25 +32,144 @@ struct DashboardView: View {
         } message: {
             Text("You've earned a \(appState.suggestedBreakMinutes)-minute break. Step away and recharge.")
         }
+        .task(id: appState.isSessionActive) {
+            if appState.isSessionActive {
+                quickRestartSuggestions = []
+            } else {
+                await loadQuickRestarts()
+            }
+        }
     }
 
-    // MARK: - Current Session Card
+    // MARK: - Greeting helpers
 
-    private var currentSessionCard: some View {
+    private var greeting: String {
+        let hour = Calendar.current.component(.hour, from: Date())
+        switch hour {
+        case 0..<12: return "Good morning"
+        case 12..<18: return "Good afternoon"
+        default: return "Good evening"
+        }
+    }
+
+    private var dateText: String {
+        let f = DateFormatter()
+        f.dateStyle = .full
+        return f.string(from: Date())
+    }
+
+    // MARK: - Quick restart loader
+
+    private func loadQuickRestarts() async {
+        let lookback = Date().addingTimeInterval(-7 * 24 * 60 * 60)
+        guard let sessions = try? await appState.service.listSessions(
+            from: lookback, to: Date(), type: nil, activityId: nil, includeArchived: false
+        ) else { return }
+        var seen = Set<String>()
+        var unique: [(Session, Activity)] = []
+        for (session, activity) in sessions {
+            let key = "\(session.activityId)-\(session.sessionType.rawValue)"
+            if seen.insert(key).inserted {
+                unique.append((session, activity))
+                if unique.count == 3 { break }
+            }
+        }
+        quickRestartSuggestions = unique
+    }
+
+    // MARK: - Dashboard Header
+
+    private var dashboardHeader: some View {
+        VStack(spacing: Constants.spacingCard) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(greeting)
+                        .font(.largeTitle.bold())
+                    Text(dateText)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                if appState.isSessionActive {
+                    activeTimerPanel
+                } else if !quickRestartSuggestions.isEmpty {
+                    quickRestartPanel
+                }
+            }
+
+            GroupBox {
+                HStack(spacing: 40) {
+                    StatItem(
+                        title: "Total Time",
+                        value: TimeFormatting.formatDuration(seconds: appState.todayTotalSeconds),
+                        icon: "clock"
+                    )
+
+                    StatItem(
+                        title: "Sessions",
+                        value: "\(appState.todaySessionCount)",
+                        icon: "number"
+                    )
+
+                    StatItem(
+                        title: "Activities",
+                        value: "\(appState.todayActivities.count)",
+                        icon: "tray"
+                    )
+
+                    Spacer()
+                }
+                .padding(Constants.spacingCard)
+            }
+        }
+    }
+
+    // MARK: - Active Timer Panel
+
+    private var activeTimerPanel: some View {
         GroupBox {
-            Text("Current Session")
-                .font(.largeTitle.bold())
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, Constants.spacingCard)
-                .padding(.top, Constants.spacingCard)
-                .padding(.bottom, Constants.spacingCard)
+            VStack(spacing: 12) {
+                if let activity = appState.currentActivity, let session = appState.currentSession {
+                    VStack(spacing: 4) {
+                        Text(activity.title)
+                            .font(.headline)
+                            .lineLimit(1)
 
-            if let activity = appState.currentActivity, let session = appState.currentSession {
-                VStack(spacing: 12) {
+                        Text(SessionTypeConfig.config(for: session.sessionType).displayName)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Text(appState.formattedTimerValue)
+                    .font(.system(size: 36, weight: .light, design: .monospaced))
+                    .contentTransition(.numericText())
+
+                SessionControls()
+            }
+            .padding(Constants.spacingCard)
+            .frame(width: 320)
+        }
+        .frame(width: 320)
+    }
+
+    // MARK: - Quick Restart Panel
+
+    private var quickRestartPanel: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(quickRestartSuggestions.enumerated()), id: \.offset) { index, pair in
+                let (session, activity) = pair
+                Button {
+                    Task { await appState.startSession(activityId: session.activityId, type: session.sessionType) }
+                } label: {
                     HStack {
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .leading, spacing: 2) {
                             Text(activity.title)
-                                .font(.title3.bold())
+                                .font(.body)
+                                .foregroundStyle(.primary)
+                                .lineLimit(1)
 
                             Text(SessionTypeConfig.config(for: session.sessionType).displayName)
                                 .font(.subheadline)
@@ -63,49 +178,19 @@ struct DashboardView: View {
 
                         Spacer()
 
-                        Text(appState.formattedTimerValue)
-                            .font(.system(size: 42, weight: .light, design: .monospaced))
-                            .contentTransition(.numericText())
+                        Image(systemName: "play.circle")
+                            .font(.title2)
+                            .foregroundStyle(.secondary)
                     }
-
-                    SessionControls()
+                    .padding(.vertical, Constants.spacingCompact)
+                    .padding(.horizontal, Constants.spacingCard)
+                    .background(index.isMultiple(of: 2) ? Color.clear : Color.gray.opacity(0.08))
+                    .contentShape(Rectangle())
                 }
-                .padding(.horizontal, Constants.spacingCard)
-                .padding(.bottom, Constants.spacingCard)
+                .buttonStyle(.plain)
             }
         }
-    }
-
-    // MARK: - Today's Summary
-
-    private var todaySummaryCard: some View {
-        VStack(spacing: 12) {
-            Text(Date.now.formatted(date: .complete, time: .omitted))
-                .font(.largeTitle.bold())
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            HStack(spacing: 40) {
-                StatItem(
-                    title: "Total Time",
-                    value: TimeFormatting.formatDuration(seconds: appState.todayTotalSeconds),
-                    icon: "clock"
-                )
-
-                StatItem(
-                    title: "Sessions",
-                    value: "\(appState.todaySessionCount)",
-                    icon: "number"
-                )
-
-                StatItem(
-                    title: "Activities",
-                    value: "\(appState.todayActivities.count)",
-                    icon: "tray"
-                )
-
-                Spacer()
-            }
-        }
+        .frame(minWidth: 200)
     }
 
     // MARK: - Weekly Chart
