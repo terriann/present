@@ -475,7 +475,7 @@ struct ReportsView: View {
 
         return ChartTooltip {
             Text(tooltipLabels[label] ?? label)
-                .font(.caption.bold())
+                .font(.dataLabel)
 
             ForEach(matching, id: \.id) { entry in
                 HStack(spacing: 6) {
@@ -489,7 +489,7 @@ struct ReportsView: View {
                         .lineLimit(1)
                     Spacer()
                     Text(formatValue(entry.value))
-                        .font(.caption.monospacedDigit())
+                        .font(.dataValue)
                 }
             }
 
@@ -497,10 +497,10 @@ struct ReportsView: View {
                 Divider()
                 HStack {
                     Text("Total")
-                        .font(.caption.bold())
+                        .font(.dataLabel)
                     Spacer()
                     Text(formatValue(bucketTotal))
-                        .font(.caption.bold().monospacedDigit())
+                        .font(.dataBoldValue)
                 }
             }
         }
@@ -513,7 +513,7 @@ struct ReportsView: View {
         return ChartTooltip {
             if let tag = matching {
                 Text(tag.tagName)
-                    .font(.caption.bold())
+                    .font(.dataLabel)
 
                 ForEach(tag.activities, id: \.activity.id) { summary in
                     HStack(spacing: 6) {
@@ -527,7 +527,7 @@ struct ReportsView: View {
                             .lineLimit(1)
                         Spacer()
                         Text(TimeFormatting.formatDuration(seconds: summary.totalSeconds))
-                            .font(.caption.monospacedDigit())
+                            .font(.dataValue)
                     }
                 }
 
@@ -535,10 +535,10 @@ struct ReportsView: View {
                     Divider()
                     HStack {
                         Text("Total")
-                            .font(.caption.bold())
+                            .font(.dataLabel)
                         Spacer()
                         Text(TimeFormatting.formatDuration(seconds: tag.totalSeconds))
-                            .font(.caption.bold().monospacedDigit())
+                            .font(.dataBoldValue)
                     }
                 }
             }
@@ -616,11 +616,11 @@ struct ReportsView: View {
                        let group = groups.first(where: { $0.externalId == segmentId }) {
                         DonutCenterTooltip {
                             Text(group.externalId)
-                                .font(.caption.bold())
+                                .font(.dataLabel)
                                 .lineLimit(2)
                                 .multilineTextAlignment(.center)
                             Text(TimeFormatting.formatDuration(seconds: group.totalSeconds))
-                                .font(.caption.monospacedDigit())
+                                .font(.dataValue)
                             let pct = combinedTotal > 0 ? Double(group.totalSeconds) / Double(combinedTotal) * 100 : 0
                             Text(String(format: "%.1f%%", pct))
                                 .font(.caption2)
@@ -711,11 +711,11 @@ struct ReportsView: View {
                        let summary = activities.first(where: { $0.activity.title == name }) {
                         DonutCenterTooltip {
                             Text(summary.activity.title)
-                                .font(.caption.bold())
+                                .font(.dataLabel)
                                 .lineLimit(2)
                                 .multilineTextAlignment(.center)
                             Text(TimeFormatting.formatDuration(seconds: summary.totalSeconds))
-                                .font(.caption.monospacedDigit())
+                                .font(.dataValue)
                             let pct = totalSeconds > 0 ? Double(summary.totalSeconds) / Double(totalSeconds) * 100 : 0
                             Text(String(format: "%.1f%%", pct))
                                 .font(.caption2)
@@ -886,7 +886,7 @@ struct ReportsView: View {
                         Text("Power up with ")
                             .foregroundStyle(.primary)
                         + Text("present-cli")
-                            .font(.system(.body, design: .monospaced))
+                            .font(.codeBlock)
                             .foregroundStyle(.primary)
                     }
                     .font(.headline)
@@ -899,10 +899,10 @@ struct ReportsView: View {
                 HStack(spacing: 16) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(pair.command)
-                            .font(.system(.caption, design: .monospaced))
+                            .font(.codeCaption)
                             .foregroundStyle(.green)
                         Text(pair.output)
-                            .font(.system(.caption, design: .monospaced))
+                            .font(.codeCaption)
                             .foregroundStyle(.green.opacity(0.7))
                     }
                     .id(currentCommandIndex)

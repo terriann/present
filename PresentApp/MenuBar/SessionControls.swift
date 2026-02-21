@@ -18,7 +18,7 @@ struct SessionControls: View {
                         Task { await appState.pauseSession() }
                     } label: {
                         Image(systemName: "pause.circle.fill")
-                            .font(.title)
+                            .font(.controlIcon)
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Pause session")
@@ -29,7 +29,7 @@ struct SessionControls: View {
                         Task { await appState.resumeSession() }
                     } label: {
                         Image(systemName: "play.circle.fill")
-                            .font(.title)
+                            .font(.controlIcon)
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Resume session")
@@ -43,7 +43,7 @@ struct SessionControls: View {
                     Task { await appState.stopSession() }
                 } label: {
                     Image(systemName: "stop.circle.fill")
-                        .font(.title)
+                        .font(.controlIcon)
                         .foregroundStyle(theme.alert)
                 }
                 .buttonStyle(.plain)
@@ -55,7 +55,7 @@ struct SessionControls: View {
                         Task { await appState.cancelSession() }
                     } label: {
                         Image(systemName: "trash")
-                            .font(.title2)
+                            .font(.controlIconSmall)
                             .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)

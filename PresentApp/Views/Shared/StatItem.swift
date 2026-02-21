@@ -15,13 +15,13 @@ struct StatItem: View {
         VStack(spacing: 4) {
             if let icon {
                 Image(systemName: icon)
-                    .font(.title2)
+                    .font(.controlIconSmall)
                     .foregroundStyle(.secondary)
                     .accessibilityHidden(true)
             }
 
             Text(value)
-                .font(.title.bold())
+                .font(.statValue)
 
             Text(title)
                 .font(.caption)

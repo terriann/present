@@ -103,7 +103,7 @@ struct ActivityDetailView: View {
                     InlineEditableField(
                         value: activity.title,
                         placeholder: "Activity title",
-                        font: .title.bold(),
+                        font: .statValue,
                         isEditable: !activity.isArchived,
                         onSave: { newTitle in
                             Task { await updateTitle(newTitle) }

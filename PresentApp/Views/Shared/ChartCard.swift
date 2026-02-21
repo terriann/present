@@ -16,7 +16,7 @@ struct ChartCard<Content: View>: View {
         GroupBox {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.largeTitle.bold())
+                    .font(.cardTitle)
                 if let subtitle {
                     Text(subtitle)
                         .font(.periodHeader)

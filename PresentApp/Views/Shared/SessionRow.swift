@@ -28,7 +28,7 @@ struct SessionRow: View {
 
             if let duration = session.durationSeconds {
                 Text(TimeFormatting.formatDuration(seconds: duration))
-                    .font(.body.monospacedDigit())
+                    .font(.durationValue)
                     .foregroundStyle(.secondary)
             }
 

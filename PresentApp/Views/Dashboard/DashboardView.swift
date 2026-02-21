@@ -127,7 +127,7 @@ struct DashboardView: View {
 
             GroupBox {
                 Text("Today")
-                    .font(.largeTitle.bold())
+                    .font(.cardTitle)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, Constants.spacingCard)
                     .padding(.top, Constants.spacingCard)
@@ -180,7 +180,7 @@ struct DashboardView: View {
                 }
 
                 Text(appState.formattedTimerValue)
-                    .font(.largeTitle.weight(.light).monospacedDigit())
+                    .font(.timerDisplay)
                     .contentTransition(.numericText())
 
                 SessionControls()
@@ -356,7 +356,7 @@ struct DashboardView: View {
 
         return ChartTooltip {
             Text(tooltipLabels[label] ?? label)
-                .font(.caption.bold())
+                .font(.dataLabel)
 
             ForEach(matching, id: \.id) { entry in
                 HStack(spacing: 6) {
@@ -370,7 +370,7 @@ struct DashboardView: View {
                         .lineLimit(1)
                     Spacer()
                     Text(formatHours(entry.value))
-                        .font(.caption.monospacedDigit())
+                        .font(.dataValue)
                 }
             }
 
@@ -378,10 +378,10 @@ struct DashboardView: View {
                 Divider()
                 HStack {
                     Text("Total")
-                        .font(.caption.bold())
+                        .font(.dataLabel)
                     Spacer()
                     Text(formatHours(bucketTotal))
-                        .font(.caption.bold().monospacedDigit())
+                        .font(.dataBoldValue)
                 }
             }
         }
@@ -644,7 +644,7 @@ private struct ActivityBreakdownCard: View {
                                 Spacer()
 
                                 Text(TimeFormatting.formatDuration(seconds: summary.totalSeconds))
-                                    .font(.body.monospacedDigit())
+                                    .font(.durationValue)
                                     .foregroundStyle(.secondary)
                             }
                             .padding(.vertical, Constants.spacingCompact)
@@ -676,7 +676,7 @@ private struct ActivityBreakdownCard: View {
                                         }
                                         Spacer()
                                         Text(appState.formattedTimerValue)
-                                            .font(.subheadline.monospacedDigit())
+                                            .font(.durationDetail)
                                             .foregroundStyle(theme.accent)
                                             .contentTransition(.numericText())
                                         SpinningClockIcon(isRunning: activeSession?.state == .running)
@@ -705,7 +705,7 @@ private struct ActivityBreakdownCard: View {
 
                                         if let duration = session.durationSeconds {
                                             Text(TimeFormatting.formatDuration(seconds: duration))
-                                                .font(.subheadline.monospacedDigit())
+                                                .font(.durationDetail)
                                                 .foregroundStyle(.secondary)
                                         }
 
