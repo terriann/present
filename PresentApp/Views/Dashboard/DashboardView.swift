@@ -101,6 +101,13 @@ struct DashboardView: View {
             }
 
             GroupBox {
+                Text("Today")
+                    .font(.largeTitle.bold())
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, Constants.spacingCard)
+                    .padding(.top, Constants.spacingCard)
+                    .padding(.bottom, Constants.spacingCard)
+
                 HStack(spacing: 40) {
                     StatItem(
                         title: "Total Time",
