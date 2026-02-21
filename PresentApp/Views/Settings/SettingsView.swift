@@ -359,7 +359,7 @@ struct CLISettingsTab: View {
         let escapedPath = bundlePath.replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "\"", with: "\\\"")
         let script = """
-        do shell script "cp \\\"\(escapedPath)\\\" /usr/local/bin/present-cli && chmod +x /usr/local/bin/present-cli" with administrator privileges
+        do shell script "cp \\\"\(escapedPath)\\\" /usr/local/bin/present-cli && chmod +x /usr/local/bin/present-cli" with prompt "Present needs your password to install present-cli into /usr/local/bin." with administrator privileges
         """
 
         var error: NSDictionary?
