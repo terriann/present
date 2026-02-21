@@ -29,7 +29,19 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          allowed_tools: "Bash,Read,Grep,Glob"
+          # Bypass project-level .claude/settings.json; CI permissions are defined
+          # explicitly below via `settings` so they are independent of local dev config.
+          claude_args: --setting-sources user --allowedTools "Bash,Read,Glob,Grep"
+          settings: |
+            {
+              "permissions": {
+                "allow": [
+                  "Bash(gh issue view *)",
+                  "Bash(gh issue edit *)",
+                  "Bash(gh issue comment *)"
+                ]
+              }
+            }
           prompt: |
             You are acting as the PM agent for the Present project. Issue #${{ github.event.issue.number }} was just opened and needs to be triaged and labeled immediately.
 
