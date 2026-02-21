@@ -84,9 +84,10 @@ struct DashboardView: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(greeting)
-                        .font(.largeTitle.bold())
+                        .font(.dashboardGreeting)
+                        .tracking(1.5)
                     Text(dateText)
-                        .font(.subheadline)
+                        .font(.periodHeader)
                         .foregroundStyle(.secondary)
                 }
 

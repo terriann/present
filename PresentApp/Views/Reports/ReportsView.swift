@@ -129,7 +129,7 @@ struct ReportsView: View {
             .buttonStyle(.borderless)
 
             Text(periodHeaderText)
-                .font(.headline)
+                .font(.periodHeader)
                 .frame(minWidth: 200)
 
             Button {
