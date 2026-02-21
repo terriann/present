@@ -166,39 +166,26 @@ struct DashboardView: View {
     // MARK: - Quick Restart Panel
 
     private var quickRestartPanel: some View {
-        VStack(spacing: 0) {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Continue Recent Activities")
+                .font(.title3.bold())
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, Constants.spacingCard)
+                .padding(.bottom, Constants.spacingCompact)
+
             ForEach(Array(quickRestartSuggestions.enumerated()), id: \.offset) { index, pair in
                 let (session, activity) = pair
-                Button {
-                    Task { await appState.startSession(activityId: session.activityId, type: session.sessionType) }
-                } label: {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(activity.title)
-                                .font(.body)
-                                .foregroundStyle(.primary)
-                                .lineLimit(1)
-
-                            Text(SessionTypeConfig.config(for: session.sessionType).displayName)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
-
-                        Spacer()
-
-                        Image(systemName: "play.circle")
-                            .font(.title2)
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(.vertical, Constants.spacingCompact)
-                    .padding(.horizontal, Constants.spacingCard)
-                    .background(index.isMultiple(of: 2) ? Color.clear : Color.gray.opacity(0.08))
-                    .contentShape(Rectangle())
+                QuickRestartRow(
+                    session: session,
+                    activity: activity,
+                    index: index
+                ) {
+                    Task { await appState.startSession(activityId: session.activityId, type: session.sessionType, timerMinutes: session.timerLengthMinutes, breakMinutes: session.breakMinutes) }
                 }
-                .buttonStyle(.plain)
             }
         }
         .frame(minWidth: 200)
+        .padding(.leading, Constants.spacingPage)
     }
 
     // MARK: - Weekly Chart
@@ -513,6 +500,70 @@ private struct ActivityBreakdownCard: View {
                 // Fail silently — the row just won't expand
             }
         }
+    }
+}
+
+// MARK: - Quick Restart Row
+
+private struct QuickRestartRow: View {
+    @Environment(ThemeManager.self) private var theme
+    let session: Session
+    let activity: Activity
+    let index: Int
+    let action: () -> Void
+
+    @State private var isHovered = false
+
+    private var timerLabel: String? {
+        switch session.sessionType {
+        case .rhythm:
+            if let focus = session.timerLengthMinutes, let brk = session.breakMinutes {
+                return "\(focus)m / \(brk)m"
+            }
+            return nil
+        case .timebound:
+            if let minutes = session.timerLengthMinutes {
+                return "(\(minutes)m)"
+            }
+            return nil
+        default:
+            return nil
+        }
+    }
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: Constants.spacingCompact) {
+                Image(systemName: "arrow.counterclockwise.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(isHovered ? theme.accent : .secondary)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(activity.title)
+                        .font(.body)
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+
+                    HStack(spacing: 4) {
+                        Text(SessionTypeConfig.config(for: session.sessionType).displayName)
+                        if let timerLabel {
+                            Text("·")
+                            Text(timerLabel)
+                        }
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+            }
+            .padding(.vertical, Constants.spacingCompact)
+            .padding(.horizontal, Constants.spacingCard)
+            .background(index.isMultiple(of: 2) ? Color.clear : Color.gray.opacity(0.08))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
     }
 }
 
