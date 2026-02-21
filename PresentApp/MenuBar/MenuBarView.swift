@@ -11,8 +11,6 @@ struct MenuBarView: View {
     @State private var selectedRhythmOption: RhythmOption?
     @State private var timeboundMinutes: Int = 25
     @State private var newActivityTitle = ""
-    @State private var editingActivity: Activity?
-
     var body: some View {
         VStack(spacing: 0) {
             if appState.isSessionRunning {
@@ -202,7 +200,16 @@ struct MenuBarView: View {
                             await startSessionForType(activityId: activity.id!)
                         }
                     }, onEdit: {
-                        editingActivity = activity
+                        dismiss()
+                        appState.navigateToActivityId = activity.id
+                        appState.selectedSidebarItem = .activities
+                        NSApplication.shared.setActivationPolicy(.regular)
+                        DispatchQueue.main.async {
+                            NotificationCenter.default.post(
+                                name: StatusItemMenuManager.openMainWindowNotification,
+                                object: nil
+                            )
+                        }
                     })
                 }
             }
@@ -240,9 +247,6 @@ struct MenuBarView: View {
             if selectedRhythmOption == nil || !appState.rhythmDurationOptions.contains(where: { $0 == selectedRhythmOption }) {
                 selectedRhythmOption = appState.rhythmDurationOptions.first
             }
-        }
-        .sheet(item: $editingActivity) { activity in
-            ActivityFormSheet(mode: .edit(activity))
         }
     }
 

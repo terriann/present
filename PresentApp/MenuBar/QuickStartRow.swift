@@ -30,7 +30,7 @@ struct QuickStartRow: View {
 
             Button(action: onEdit) {
                 Image(systemName: "pencil")
-                    .font(.caption)
+                    .font(.body)
                     .foregroundStyle(isEditHovered ? theme.accent : .secondary)
                     .padding(5)
                     .background(isEditHovered ? theme.accent.opacity(0.15) : Color.clear, in: Circle())

@@ -108,6 +108,12 @@ struct ActivitiesListView: View {
         .onChange(of: showArchived) {
             Task { await appState.refreshAll() }
         }
+        .onChange(of: appState.navigateToActivityId) {
+            if let targetId = appState.navigateToActivityId {
+                selectedActivity = appState.allActivities.first { $0.id == targetId }
+                appState.navigateToActivityId = nil
+            }
+        }
     }
 
     private var displayedActivities: [Activity] {

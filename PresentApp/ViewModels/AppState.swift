@@ -51,6 +51,7 @@ final class AppState {
     // MARK: - Navigation
 
     var selectedSidebarItem: SidebarItem = .dashboard
+    var navigateToActivityId: Int64?
 
     // MARK: - Services
 
