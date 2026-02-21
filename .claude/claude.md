@@ -79,6 +79,7 @@ CLI Commands ──────────────────────�
 - Named migrations: `"v1-create-tables"`, etc.
 - Parameterized queries always — never string interpolation for values.
 - FTS5 virtual table for activity search.
+- See `docs/database.md` for schema reference, file location, and debug queries.
 
 ### IPC
 - Unix domain socket at `~/Library/Application Support/Present/present.sock`.
