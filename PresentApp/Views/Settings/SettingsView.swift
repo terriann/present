@@ -266,8 +266,8 @@ struct CLISettingsTab: View {
                     Spacer()
                 }
 
-                Text("Run `present-cli --help` for a full list of commands.\nRun `present-cli --experimental-dump-help` for JSON docs to use in agentic AI experiences.")
-                    .font(.footnote)
+                Text("`present-cli --help` for a full list of commands.\n`present-cli --experimental-dump-help` to inform use in agentic AI.")
+                    .font(.callout)
                     .foregroundStyle(.secondary)
                     .textSelection(.enabled)
             }
