@@ -22,13 +22,8 @@ jobs:
       contents: write # create GitHub releases and tags
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2 • 7.5k ★ 2025 Jan
-        with:
-          persist-credentials: false
-
-      - name: Select Xcode 16
-        run: sudo xcode-select -s /Applications/Xcode_16.app
+      - name: Build DMG
+        uses: ./.github/actions/build-dmg
 
       - name: Resolve version
         id: version
@@ -56,14 +51,6 @@ jobs:
           BETA_TAG="v${BASE_VERSION}-beta.${BETA_NUM}"
           echo "tag=$BETA_TAG" >> "$GITHUB_OUTPUT"
           echo "Beta tag: $BETA_TAG"
-
-      - name: Install XcodeGen
-        run: brew install xcodegen
-
-      - name: Build DMG
-        env:
-          SIGNING_IDENTITY: '-'
-        run: ./Scripts/build-dmg.sh
 
       - name: Create pre-release
         env:
