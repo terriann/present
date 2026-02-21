@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import GRDB
 @testable import PresentCore
 
 @Suite("PresentService Tests")
@@ -755,5 +756,151 @@ struct PresentServiceTests {
 
         let recent = try await service.recentActivities(limit: 6)
         #expect(recent.count == 2)
+    }
+
+    // MARK: - Session Segments
+
+    private func makeServiceWithWriter() throws -> (PresentService, any DatabaseWriter) {
+        let dbManager = try DatabaseManager(inMemory: true)
+        return (PresentService(databasePool: dbManager.writer), dbManager.writer)
+    }
+
+    @Test func sessionSegmentCreatedOnStart() async throws {
+        let (service, dbWriter) = try makeServiceWithWriter()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Work"))
+        let session = try await service.startSession(activityId: activity.id!, type: .work)
+
+        let segments = try await dbWriter.read { db in
+            try SessionSegment
+                .filter(SessionSegment.Columns.sessionId == session.id!)
+                .fetchAll(db)
+        }
+
+        #expect(segments.count == 1)
+        #expect(segments[0].endedAt == nil)  // open segment
+    }
+
+    @Test func sessionSegmentClosedOnPause() async throws {
+        let (service, dbWriter) = try makeServiceWithWriter()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Work"))
+        let session = try await service.startSession(activityId: activity.id!, type: .work)
+        _ = try await service.pauseSession()
+
+        let segments = try await dbWriter.read { db in
+            try SessionSegment
+                .filter(SessionSegment.Columns.sessionId == session.id!)
+                .fetchAll(db)
+        }
+
+        #expect(segments.count == 1)
+        #expect(segments[0].endedAt != nil)  // segment closed on pause
+    }
+
+    @Test func sessionSegmentCreatedOnResume() async throws {
+        let (service, dbWriter) = try makeServiceWithWriter()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Work"))
+        let session = try await service.startSession(activityId: activity.id!, type: .work)
+        _ = try await service.pauseSession()
+        _ = try await service.resumeSession()
+
+        let segments = try await dbWriter.read { db in
+            try SessionSegment
+                .filter(SessionSegment.Columns.sessionId == session.id!)
+                .fetchAll(db)
+        }
+
+        // Two segments: first closed on pause, second open after resume
+        #expect(segments.count == 2)
+        let open = segments.filter { $0.endedAt == nil }
+        let closed = segments.filter { $0.endedAt != nil }
+        #expect(open.count == 1)
+        #expect(closed.count == 1)
+    }
+
+    @Test func segmentSumMatchesDuration() async throws {
+        let (service, dbWriter) = try makeServiceWithWriter()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Work"))
+        _ = try await service.startSession(activityId: activity.id!, type: .work)
+        _ = try await service.pauseSession()
+        _ = try await service.resumeSession()
+        let stopped = try await service.stopSession()
+
+        guard let sessionId = stopped.id, let duration = stopped.durationSeconds else {
+            Issue.record("Session missing id or durationSeconds")
+            return
+        }
+
+        let segments = try await dbWriter.read { db in
+            try SessionSegment
+                .filter(SessionSegment.Columns.sessionId == sessionId)
+                .filter(SessionSegment.Columns.endedAt != nil)
+                .fetchAll(db)
+        }
+
+        let sumFromSegments = segments.reduce(0) { sum, seg in
+            guard let end = seg.endedAt else { return sum }
+            return sum + Int(end.timeIntervalSince(seg.startedAt))
+        }
+
+        #expect(duration == sumFromSegments)
+    }
+
+    @Test func hourlyBreakdownAcrossHours() async throws {
+        let (service, dbWriter) = try makeServiceWithWriter()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Focus"))
+
+        // Build fixed dates on Jan 15, 2024 in local time
+        let cal = Calendar.current
+        func makeDate(hour: Int, minute: Int) -> Date {
+            var c = DateComponents()
+            c.year = 2024; c.month = 1; c.day = 15
+            c.hour = hour; c.minute = minute; c.second = 0
+            return cal.date(from: c)!
+        }
+
+        let sessionStart = makeDate(hour: 1, minute: 30)
+        let sessionEnd   = makeDate(hour: 3, minute: 22)
+        let seg1Start    = makeDate(hour: 1, minute: 30)
+        let seg1End      = makeDate(hour: 1, minute: 35)  // 300s in hour 1
+        let seg2Start    = makeDate(hour: 1, minute: 59)  // 60s in hour 1
+        let seg2End      = makeDate(hour: 3, minute: 22)  // 3600s in hour 2, 1320s in hour 3
+
+        // Session covers 1:30–3:22; createBackdatedSession inserts one full segment
+        let session = try await service.createBackdatedSession(CreateBackdatedSessionInput(
+            activityId: activity.id!,
+            startedAt: sessionStart,
+            endedAt: sessionEnd
+        ))
+
+        // Replace with the pause topology: two segments reflecting a pause from 1:35–1:59
+        try await dbWriter.write { db in
+            try SessionSegment
+                .filter(SessionSegment.Columns.sessionId == session.id!)
+                .deleteAll(db)
+
+            var s1 = SessionSegment(sessionId: session.id!, startedAt: seg1Start, endedAt: seg1End)
+            try s1.insert(db)
+            var s2 = SessionSegment(sessionId: session.id!, startedAt: seg2Start, endedAt: seg2End)
+            try s2.insert(db)
+
+            // Active time = 300 + 4980 = 5280s
+            try db.execute(sql: "UPDATE session SET durationSeconds = 5280 WHERE id = ?", arguments: [session.id!])
+        }
+
+        let summary = try await service.dailySummary(date: sessionStart, includeArchived: false)
+        let buckets = summary.hourlyBreakdown.sorted { $0.hour < $1.hour }
+
+        // hour 1: seg1 (01:30–01:35 = 300s) + seg2 slice (01:59–02:00 = 60s) = 360s
+        // hour 2: seg2 slice (02:00–03:00 = 3600s)
+        // hour 3: seg2 slice (03:00–03:22 = 1320s)
+        #expect(buckets.count == 3)
+
+        let hour1 = buckets.first { $0.hour == 1 }
+        let hour2 = buckets.first { $0.hour == 2 }
+        let hour3 = buckets.first { $0.hour == 3 }
+
+        #expect(hour1?.totalSeconds == 360)
+        #expect(hour2?.totalSeconds == 3600)
+        #expect(hour3?.totalSeconds == 1320)
     }
 }

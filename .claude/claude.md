@@ -69,6 +69,10 @@ CLI Commands ──────────────────────�
 - **IPC**: Send IPC message after mutations (`IPCClient().send(.eventName)`). Read-only commands skip IPC.
 - **Parameters**: `--after`/`--before` for dates (YYYY-MM-DD, inclusive), `--page` for pagination (1-indexed, max 100/page), `--type` for enum filters.
 - Conform to `AsyncParsableCommand` with static `configuration`.
+- **CLI versioning**: The installed binary at `/usr/local/bin/present-cli` is independent of the source. **Whenever a change affects CLI commands, service methods, the `PresentAPI` protocol, or the database schema, do all three:**
+  1. Bump `cliVersion` in `Sources/PresentCore/Utilities/Constants.swift` (patch for fixes, minor for new commands/behaviour).
+  2. Remind user to rebuild the app in Xcode so the new version string appears in the About tab.
+  3. Remind user to reinstall the CLI: _"The CLI at `/usr/local/bin/present-cli` is still the old version — run `swift build -c release && cp .build/release/present-cli /usr/local/bin/present-cli` to pick up these changes."_
 
 ### Database
 - GRDB with WAL mode. `DatabaseManager` handles setup and migrations.

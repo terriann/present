@@ -67,4 +67,5 @@ extension Session: FetchableRecord, PersistableRecord {
     }
 
     public static let activity = belongsTo(Activity.self)
+    public static let segments = hasMany(SessionSegment.self)
 }
