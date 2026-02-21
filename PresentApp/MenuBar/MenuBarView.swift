@@ -11,6 +11,9 @@ struct MenuBarView: View {
     @State private var selectedRhythmOption: RhythmOption?
     @State private var timeboundMinutes: Int = 25
     @State private var newActivityTitle = ""
+
+    private var zoomScale: CGFloat { appState.zoomScale }
+
     var body: some View {
         VStack(spacing: 0) {
             if appState.isSessionRunning {
@@ -32,48 +35,71 @@ struct MenuBarView: View {
                 bottomBar
             }
         }
-        .frame(width: 320)
+        .frame(width: 320 * zoomScale)
+    }
+
+    // MARK: - Scaled Fonts
+
+    /// Base macOS system font sizes for each text style.
+    private func scaledFont(_ style: Font.TextStyle, weight: Font.Weight = .regular) -> Font {
+        guard zoomScale != 1.0 else {
+            return .system(style, weight: weight)
+        }
+        let baseSize: CGFloat = switch style {
+        case .largeTitle: 26
+        case .title: 22
+        case .title2: 17
+        case .title3: 15
+        case .headline: 13
+        case .body: 13
+        case .callout: 12
+        case .subheadline: 11
+        case .footnote: 10
+        case .caption, .caption2: 10
+        default: 13
+        }
+        return .system(size: round(baseSize * zoomScale), weight: weight)
     }
 
     // MARK: - Current Session
 
     private var currentSessionSection: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 12 * zoomScale) {
             if let activity = appState.currentActivity, let session = appState.currentSession {
-                VStack(spacing: 4) {
+                VStack(spacing: 4 * zoomScale) {
                     Text(activity.title)
-                        .font(.headline)
+                        .font(scaledFont(.headline, weight: .semibold))
                         .lineLimit(1)
 
                     Text(SessionTypeConfig.config(for: session.sessionType).displayName)
-                        .font(.caption)
+                        .font(scaledFont(.caption))
                         .foregroundStyle(.secondary)
                 }
 
                 Text(appState.formattedTimerValue)
-                    .font(.title.weight(.light).monospacedDigit())
+                    .font(scaledFont(.title, weight: .light).monospacedDigit())
                     .contentTransition(.numericText())
 
                 SessionControls()
             }
         }
-        .padding()
+        .padding(Constants.spacingCard * zoomScale)
     }
 
     // MARK: - Idle
 
     private var idleSection: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 8 * zoomScale) {
             Image(systemName: "clock")
-                .font(.largeTitle)
+                .font(scaledFont(.largeTitle))
                 .foregroundStyle(.secondary)
 
             Text("No active session")
-                .font(.headline)
+                .font(scaledFont(.headline, weight: .semibold))
 
             if appState.todaySessionCount > 0 {
                 Text("\(appState.todaySessionCount) sessions today \u{2022} \(TimeFormatting.formatDuration(seconds: appState.todayTotalSeconds))")
-                    .font(.caption)
+                    .font(scaledFont(.caption))
                     .foregroundStyle(.secondary)
             }
 
@@ -94,7 +120,7 @@ struct MenuBarView: View {
                 .padding(.top, Constants.spacingTight)
             }
         }
-        .padding()
+        .padding(Constants.spacingCard * zoomScale)
     }
 
     // MARK: - Quick Start
@@ -113,16 +139,16 @@ struct MenuBarView: View {
                             }
                         } label: {
                             Text(SessionTypeConfig.config(for: type).displayName)
-                                .font(.caption.weight(isSelected ? .semibold : .regular))
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 5)
+                                .font(scaledFont(.caption, weight: isSelected ? .semibold : .regular))
+                                .padding(.horizontal, 10 * zoomScale)
+                                .padding(.vertical, 5 * zoomScale)
                                 .background(isSelected ? theme.accent.opacity(0.15) : Color.clear, in: Capsule())
                                 .foregroundStyle(isSelected ? theme.accent : .secondary)
                         }
                         .buttonStyle(.plain)
                     }
                 }
-                .padding(.bottom, Constants.spacingCompact)
+                .padding(.bottom, Constants.spacingCompact * zoomScale)
 
                 // Duration controls for rhythm/timebound
                 if selectedSessionType == .rhythm {
@@ -133,66 +159,68 @@ struct MenuBarView: View {
                                 selectedRhythmOption = option
                             } label: {
                                 Text("\(option.focusMinutes) m / \(option.breakMinutes) m")
-                                    .font(.caption2.weight(isSelected ? .semibold : .regular))
-                                    .padding(.horizontal, Constants.spacingCompact)
-                                    .padding(.vertical, 3)
+                                    .font(scaledFont(.caption2, weight: isSelected ? .semibold : .regular))
+                                    .padding(.horizontal, Constants.spacingCompact * zoomScale)
+                                    .padding(.vertical, 3 * zoomScale)
                                     .background(isSelected ? theme.accent.opacity(0.12) : Color.secondary.opacity(0.08), in: Capsule())
                                     .foregroundStyle(isSelected ? theme.accent : .secondary)
                             }
                             .buttonStyle(.plain)
                         }
                     }
-                    .padding(.bottom, 6)
+                    .padding(.bottom, 6 * zoomScale)
                 } else if selectedSessionType == .timebound {
                     HStack(spacing: 4) {
                         Text("Duration:")
-                            .font(.caption)
+                            .font(scaledFont(.caption))
                             .foregroundStyle(.secondary)
                         TextField("", value: $timeboundMinutes, format: .number)
                             .textFieldStyle(.roundedBorder)
-                            .frame(width: 48)
-                            .font(.caption)
+                            .frame(width: 48 * zoomScale)
+                            .font(scaledFont(.caption))
                         Text("min")
-                            .font(.caption)
+                            .font(scaledFont(.caption))
                             .foregroundStyle(.secondary)
                     }
-                    .padding(.bottom, 6)
+                    .padding(.bottom, 6 * zoomScale)
                 }
             }
             .frame(maxWidth: .infinity)
-            .padding(.horizontal, Constants.spacingCard)
-            .padding(.top, Constants.spacingCompact)
+            .padding(.horizontal, Constants.spacingCard * zoomScale)
+            .padding(.top, Constants.spacingCompact * zoomScale)
 
             // Search
             HStack {
                 Image(systemName: "magnifyingglass")
+                    .font(scaledFont(.body))
                     .foregroundStyle(.secondary)
                 TextField("Search activities...", text: $searchText)
                     .textFieldStyle(.plain)
+                    .font(scaledFont(.body))
                 if !searchText.isEmpty {
                     ClearSearchButton {
                         searchText = ""
                     }
                 }
             }
-            .padding(.horizontal, Constants.spacingCard)
-            .padding(.vertical, Constants.spacingCompact)
+            .padding(.horizontal, Constants.spacingCard * zoomScale)
+            .padding(.vertical, Constants.spacingCompact * zoomScale)
 
             // Activity list heading
             Text(searchText.isEmpty ? "Recent Activities" : "Search Results")
-                .font(.caption)
+                .font(scaledFont(.caption))
                 .foregroundStyle(.secondary)
-                .padding(.horizontal, Constants.spacingCard)
-                .padding(.top, Constants.spacingTight)
+                .padding(.horizontal, Constants.spacingCard * zoomScale)
+                .padding(.top, Constants.spacingTight * zoomScale)
 
             // Activity list
             let activities = filteredActivities
             if activities.isEmpty && !searchText.isEmpty {
                 Text("No matching activities")
-                    .font(.caption)
+                    .font(scaledFont(.caption))
                     .foregroundStyle(.secondary)
-                    .padding(.horizontal, Constants.spacingCard)
-                    .padding(.vertical, Constants.spacingTight)
+                    .padding(.horizontal, Constants.spacingCard * zoomScale)
+                    .padding(.vertical, Constants.spacingTight * zoomScale)
             } else {
                 ForEach(activities) { activity in
                     QuickStartRow(activity: activity, onTap: {
@@ -215,12 +243,13 @@ struct MenuBarView: View {
             }
 
             // Quick-create activity
-            HStack(spacing: 8) {
+            HStack(spacing: 8 * zoomScale) {
                 Image(systemName: "plus")
-                    .font(.caption)
+                    .font(scaledFont(.caption))
                     .foregroundStyle(.secondary)
                 TextField("New activity...", text: $newActivityTitle)
                     .textFieldStyle(.plain)
+                    .font(scaledFont(.body))
                     .onSubmit {
                         guard !newActivityTitle.trimmingCharacters(in: .whitespaces).isEmpty else { return }
                         Task {
@@ -232,8 +261,8 @@ struct MenuBarView: View {
                         }
                     }
             }
-            .padding(.horizontal, Constants.spacingCard)
-            .padding(.vertical, Constants.spacingCompact)
+            .padding(.horizontal, Constants.spacingCard * zoomScale)
+            .padding(.vertical, Constants.spacingCompact * zoomScale)
         }
         .onAppear {
             if selectedRhythmOption == nil || !appState.rhythmDurationOptions.contains(where: { $0 == selectedRhythmOption }) {
@@ -305,13 +334,14 @@ struct MenuBarView: View {
                 }
             } label: {
                 Image(systemName: "gear")
+                    .font(scaledFont(.body))
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
             .help("Settings")
         }
-        .padding(.horizontal, Constants.spacingCard)
-        .padding(.vertical, Constants.spacingCompact)
+        .padding(.horizontal, Constants.spacingCard * zoomScale)
+        .padding(.vertical, Constants.spacingCompact * zoomScale)
     }
 
 }
