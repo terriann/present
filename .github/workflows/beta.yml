@@ -1,0 +1,64 @@
+name: Beta Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Marketing version (e.g. 1.1.0) — leave blank to read from Info.plist'
+        required: false
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: beta-release
+  cancel-in-progress: false
+
+jobs:
+  beta:
+    name: Build and publish beta
+    runs-on: macos-15
+    permissions:
+      contents: write # create GitHub releases and tags
+
+    steps:
+      - name: Build DMG
+        uses: ./.github/actions/build-dmg
+
+      - name: Resolve version
+        id: version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [[ -n "$INPUT_VERSION" ]]; then
+            VERSION="$INPUT_VERSION"
+          else
+            VERSION=$(plutil -extract CFBundleShortVersionString raw PresentApp/Info.plist)
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Compute beta tag
+        id: tag
+        env:
+          BASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          git fetch --tags --quiet
+          BETA_NUM=1
+          LAST=$(git tag -l "v${BASE_VERSION}-beta.*" | sed 's/.*-beta\.//' | sort -n | tail -1)
+          if [[ -n "$LAST" ]]; then
+            BETA_NUM=$((LAST + 1))
+          fi
+          BETA_TAG="v${BASE_VERSION}-beta.${BETA_NUM}"
+          echo "tag=$BETA_TAG" >> "$GITHUB_OUTPUT"
+          echo "Beta tag: $BETA_TAG"
+
+      - name: Create pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BETA_TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          gh release create "$BETA_TAG" \
+            build/Present.dmg \
+            --prerelease \
+            --generate-notes \
+            --title "Present $BETA_TAG"
