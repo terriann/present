@@ -41,6 +41,31 @@ struct DashboardView: View {
         }
     }
 
+    // MARK: - Today stats (including active session)
+
+    private var hasActiveTodaySession: Bool {
+        guard appState.isSessionActive, let session = appState.currentSession else { return false }
+        return Calendar.current.isDateInToday(session.startedAt)
+    }
+
+    private var displayTotalSeconds: Int {
+        appState.todayTotalSeconds + (hasActiveTodaySession ? appState.timerElapsedSeconds : 0)
+    }
+
+    private var displaySessionCount: Int {
+        appState.todaySessionCount + (hasActiveTodaySession ? 1 : 0)
+    }
+
+    private var displayActivityCount: Int {
+        var count = appState.todayActivities.count
+        if hasActiveTodaySession,
+           let activity = appState.currentActivity,
+           !appState.todayActivities.contains(where: { $0.activity.id == activity.id }) {
+            count += 1
+        }
+        return count
+    }
+
     // MARK: - Greeting helpers
 
     private var greeting: String {
@@ -112,19 +137,19 @@ struct DashboardView: View {
                     HStack(spacing: 40) {
                         StatItem(
                             title: "Total Time",
-                            value: TimeFormatting.formatDuration(seconds: appState.todayTotalSeconds),
+                            value: TimeFormatting.formatDuration(seconds: displayTotalSeconds),
                             icon: "clock"
                         )
 
                         StatItem(
                             title: "Sessions",
-                            value: "\(appState.todaySessionCount)",
+                            value: "\(displaySessionCount)",
                             icon: "number"
                         )
 
                         StatItem(
                             title: "Activities",
-                            value: "\(appState.todayActivities.count)",
+                            value: "\(displayActivityCount)",
                             icon: "tray"
                         )
                     }
