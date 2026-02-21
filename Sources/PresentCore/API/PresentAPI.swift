@@ -13,6 +13,7 @@ public protocol PresentAPI: Sendable {
     func listSessions(from: Date, to: Date, type: SessionType?, activityId: Int64?, includeArchived: Bool) async throws -> [(Session, Activity)]
     func lastCompletedSession(since: Date) async throws -> (Session, Activity)?
     func earliestSessionDate() async throws -> Date?
+    func deleteSession(id: Int64) async throws
 
     // Activities
     func createActivity(_ input: CreateActivityInput) async throws -> Activity

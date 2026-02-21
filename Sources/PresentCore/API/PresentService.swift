@@ -13,6 +13,7 @@ public enum PresentError: Error, LocalizedError, Sendable {
     case activityIsArchived(Int64)
     case invalidInput(String)
     case cannotDeleteActiveActivity
+    case cannotDeleteActiveSession
     case sessionOverlap
 
     public var errorDescription: String? {
@@ -28,6 +29,7 @@ public enum PresentError: Error, LocalizedError, Sendable {
         case .activityIsArchived(let id): "Activity \(id) is archived and cannot be used for new sessions."
         case .invalidInput(let msg): msg
         case .cannotDeleteActiveActivity: "Cannot delete an activity with an active session."
+        case .cannotDeleteActiveSession: "Active sessions must be stopped before they can be deleted."
         case .sessionOverlap: "Session overlaps with an existing session."
         }
     }
@@ -287,6 +289,18 @@ public final class PresentService: PresentAPI, Sendable {
                 throw PresentError.noActiveSession
             }
 
+            try session.delete(db)
+        }
+    }
+
+    public func deleteSession(id: Int64) async throws {
+        try await dbWriter.write { db in
+            guard let session = try Session.fetchOne(db, key: id) else {
+                throw PresentError.sessionNotFound
+            }
+            if session.state == .running || session.state == .paused {
+                throw PresentError.cannotDeleteActiveSession
+            }
             try session.delete(db)
         }
     }

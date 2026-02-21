@@ -903,4 +903,50 @@ struct PresentServiceTests {
         #expect(hour2?.totalSeconds == 3600)
         #expect(hour3?.totalSeconds == 1320)
     }
+
+    // MARK: - Session Delete
+
+    @Test func deleteSessionCompleted() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Delete Me"))
+        let session = try await service.createBackdatedSession(CreateBackdatedSessionInput(
+            activityId: activity.id!,
+            startedAt: Date().addingTimeInterval(-7200),
+            endedAt: Date().addingTimeInterval(-3600)
+        ))
+
+        try await service.deleteSession(id: session.id!)
+
+        await #expect(throws: PresentError.self) {
+            try await service.getSession(id: session.id!)
+        }
+    }
+
+    @Test func deleteSessionNotFoundThrows() async throws {
+        let service = try makeService()
+        await #expect(throws: PresentError.self) {
+            try await service.deleteSession(id: 999999)
+        }
+    }
+
+    @Test func deleteSessionRunningThrows() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Running"))
+        let session = try await service.startSession(activityId: activity.id!, type: .work)
+
+        await #expect(throws: PresentError.self) {
+            try await service.deleteSession(id: session.id!)
+        }
+    }
+
+    @Test func deleteSessionPausedThrows() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Paused"))
+        _ = try await service.startSession(activityId: activity.id!, type: .work)
+        let paused = try await service.pauseSession()
+
+        await #expect(throws: PresentError.self) {
+            try await service.deleteSession(id: paused.id!)
+        }
+    }
 }
