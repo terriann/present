@@ -7,17 +7,13 @@ struct DashboardView: View {
     @Environment(ThemeManager.self) private var theme
     @State private var hoveredBarLabel: String?
     @State private var barHoverLocation: CGPoint = .zero
+    @State private var quickRestartSuggestions: [(Session, Activity)] = []
 
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
-                // Current session
-                if appState.isSessionActive {
-                    currentSessionCard
-                }
-
-                // Today's summary
-                todaySummaryCard
+                // Greeting header with timer or quick restarts
+                dashboardHeader
 
                 // Weekly chart
                 if let weekly = appState.weeklySummary, !weekly.activities.isEmpty {
@@ -36,86 +32,207 @@ struct DashboardView: View {
         } message: {
             Text("You've earned a \(appState.suggestedBreakMinutes)-minute break. Step away and recharge.")
         }
-    }
-
-    // MARK: - Current Session Card
-
-    private var currentSessionCard: some View {
-        GroupBox {
-            Text("Current Session")
-                .font(.largeTitle.bold())
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, Constants.spacingCard)
-                .padding(.top, Constants.spacingCard)
-                .padding(.bottom, Constants.spacingCard)
-
-            if let activity = appState.currentActivity, let session = appState.currentSession {
-                VStack(spacing: 12) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(activity.title)
-                                .font(.title3.bold())
-
-                            Text(SessionTypeConfig.config(for: session.sessionType).displayName)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
-
-                        Spacer()
-
-                        Text(appState.formattedTimerValue)
-                            .font(.system(size: 42, weight: .light, design: .monospaced))
-                            .contentTransition(.numericText())
-                    }
-
-                    SessionControls()
-                }
-                .padding(.horizontal, Constants.spacingCard)
-                .padding(.bottom, Constants.spacingCard)
+        .task(id: appState.isSessionActive) {
+            if appState.isSessionActive {
+                quickRestartSuggestions = []
+            } else {
+                await loadQuickRestarts()
             }
         }
     }
 
-    // MARK: - Today's Summary
+    // MARK: - Today stats (including active session)
 
-    private var todaySummaryCard: some View {
-        VStack(spacing: 12) {
-            Text(Date.now.formatted(date: .complete, time: .omitted))
-                .font(.largeTitle.bold())
-                .frame(maxWidth: .infinity, alignment: .leading)
+    private var hasActiveTodaySession: Bool {
+        guard appState.isSessionActive, let session = appState.currentSession else { return false }
+        return Calendar.current.isDateInToday(session.startedAt)
+    }
 
-            HStack(spacing: 40) {
-                StatItem(
-                    title: "Total Time",
-                    value: TimeFormatting.formatDuration(seconds: appState.todayTotalSeconds),
-                    icon: "clock"
-                )
+    private var displayTotalSeconds: Int {
+        appState.todayTotalSeconds + (hasActiveTodaySession ? appState.timerElapsedSeconds : 0)
+    }
 
-                StatItem(
-                    title: "Sessions",
-                    value: "\(appState.todaySessionCount)",
-                    icon: "number"
-                )
+    private var displaySessionCount: Int {
+        appState.todaySessionCount + (hasActiveTodaySession ? 1 : 0)
+    }
 
-                StatItem(
-                    title: "Activities",
-                    value: "\(appState.todayActivities.count)",
-                    icon: "tray"
-                )
+    private var displayActivityCount: Int {
+        var count = appState.todayActivities.count
+        if hasActiveTodaySession,
+           let activity = appState.currentActivity,
+           !appState.todayActivities.contains(where: { $0.activity.id == activity.id }) {
+            count += 1
+        }
+        return count
+    }
+
+    // MARK: - Greeting helpers
+
+    private var greeting: String {
+        let hour = Calendar.current.component(.hour, from: Date())
+        switch hour {
+        case 0..<12: return "Good morning"
+        case 12..<18: return "Good afternoon"
+        default: return "Good evening"
+        }
+    }
+
+    private var dateText: String {
+        let f = DateFormatter()
+        f.dateStyle = .full
+        return f.string(from: Date())
+    }
+
+    // MARK: - Quick restart loader
+
+    private func loadQuickRestarts() async {
+        let lookback = Date().addingTimeInterval(-7 * 24 * 60 * 60)
+        guard let sessions = try? await appState.service.listSessions(
+            from: lookback, to: Date(), type: nil, activityId: nil, includeArchived: false
+        ) else { return }
+        var seen = Set<String>()
+        var unique: [(Session, Activity)] = []
+        for (session, activity) in sessions {
+            let key = "\(session.activityId)-\(session.sessionType.rawValue)"
+            if seen.insert(key).inserted {
+                unique.append((session, activity))
+                if unique.count == 3 { break }
+            }
+        }
+        quickRestartSuggestions = unique
+    }
+
+    // MARK: - Dashboard Header
+
+    private var dashboardHeader: some View {
+        VStack(spacing: Constants.spacingCard) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(greeting)
+                        .font(.dashboardGreeting)
+                        .tracking(1.5)
+                    Text(dateText)
+                        .font(.periodHeader)
+                        .foregroundStyle(.secondary)
+                }
 
                 Spacer()
+
+                if appState.isSessionActive {
+                    activeTimerPanel
+                } else if !quickRestartSuggestions.isEmpty {
+                    quickRestartPanel
+                }
+            }
+
+            GroupBox {
+                Text("Today")
+                    .font(.largeTitle.bold())
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, Constants.spacingCard)
+                    .padding(.top, Constants.spacingCard)
+                    .padding(.bottom, Constants.spacingCard)
+
+                HStack(alignment: .center, spacing: Constants.spacingPage * 2) {
+                    HStack(spacing: 40) {
+                        StatItem(
+                            title: "Total Time",
+                            value: TimeFormatting.formatDuration(seconds: displayTotalSeconds),
+                            icon: "clock"
+                        )
+
+                        StatItem(
+                            title: "Sessions",
+                            value: "\(displaySessionCount)",
+                            icon: "number"
+                        )
+
+                        StatItem(
+                            title: "Activities",
+                            value: "\(displayActivityCount)",
+                            icon: "tray"
+                        )
+                    }
+
+                    DayTimelineView()
+                        .frame(maxWidth: .infinity)
+                }
+                .padding(Constants.spacingCard)
             }
         }
+    }
+
+    // MARK: - Active Timer Panel
+
+    private var activeTimerPanel: some View {
+        GroupBox {
+            VStack(spacing: 12) {
+                if let activity = appState.currentActivity, let session = appState.currentSession {
+                    VStack(spacing: 4) {
+                        Text(activity.title)
+                            .font(.headline)
+                            .lineLimit(1)
+
+                        Text(SessionTypeConfig.config(for: session.sessionType).displayName)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Text(appState.formattedTimerValue)
+                    .font(.system(size: 36, weight: .light, design: .monospaced))
+                    .contentTransition(.numericText())
+
+                SessionControls()
+            }
+            .padding(Constants.spacingCard)
+            .frame(width: 320)
+        }
+        .frame(width: 320)
+    }
+
+    // MARK: - Quick Restart Panel
+
+    private var quickRestartPanel: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Continue Recent Activities")
+                .font(.title3.bold())
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, Constants.spacingCard)
+                .padding(.bottom, Constants.spacingCompact)
+
+            ForEach(Array(quickRestartSuggestions.enumerated()), id: \.offset) { index, pair in
+                let (session, activity) = pair
+                QuickRestartRow(
+                    session: session,
+                    activity: activity,
+                    index: index
+                ) {
+                    Task { await appState.startSession(activityId: session.activityId, type: session.sessionType, timerMinutes: session.timerLengthMinutes, breakMinutes: session.breakMinutes) }
+                }
+            }
+        }
+        .frame(minWidth: 200)
+        .padding(.leading, Constants.spacingPage)
     }
 
     // MARK: - Weekly Chart
+
+    private var weekRangeTitle: String {
+        var calendar = Calendar.current
+        calendar.firstWeekday = appState.weekStartDay
+        guard let interval = calendar.dateInterval(of: .weekOfYear, for: Date()) else { return "This Week" }
+        let start = interval.start
+        let end = calendar.date(byAdding: .day, value: 6, to: start) ?? start
+        return TimeFormatting.formatWeekRange(start: start, end: end)
+    }
 
     private func weeklyChartCard(_ weekly: WeeklySummary) -> some View {
         let entries = weeklyBarEntries(weekly)
         let domain = weekdayLabels(weekly)
         let tooltipLabels = weeklyTooltipLabels(weekStartDay: appState.weekStartDay, referenceDate: Date())
 
-        return ChartCard(title: "This Week") {
+        return ChartCard(title: "This Week", subtitle: weekRangeTitle) {
             weeklyBarChart(entries: entries, domain: domain, activities: weekly.activities, tooltipLabels: tooltipLabels)
         }
     }
@@ -293,10 +410,164 @@ struct DashboardView: View {
     }
 }
 
+// MARK: - Day Timeline View
+
+private struct DayTimelineView: View {
+    @Environment(AppState.self) private var appState
+    @Environment(ThemeManager.self) private var theme
+    @State private var completedSessions: [(Session, Activity)] = []
+    @State private var hoveredActivityTitle: String? = nil
+
+    private let barHeight: CGFloat = 48
+    private let axisHours = stride(from: 0, through: 21, by: 3).map { $0 }
+    private var startOfDay: Date { Calendar.current.startOfDay(for: Date()) }
+    private let secondsInDay: Double = 24 * 60 * 60
+
+    private var allSessions: [(Session, Activity)] {
+        var result = completedSessions
+        if let current = appState.currentSession,
+           let activity = appState.currentActivity,
+           Calendar.current.isDateInToday(current.startedAt),
+           !result.contains(where: { $0.0.id == current.id }) {
+            result.insert((current, activity), at: 0)
+        }
+        return result
+    }
+
+    private var legendItems: [(label: String, color: Color)] {
+        var seen = Set<Int64>()
+        var items: [(label: String, color: Color)] = []
+        for (_, activity) in allSessions {
+            guard let id = activity.id, seen.insert(id).inserted else { continue }
+            items.append((label: activity.title, color: activityColor(activity)))
+        }
+        return items
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Constants.spacingCompact) {
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    // Track background
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.gray.opacity(0.12))
+                        .frame(height: barHeight)
+
+                    // Session blocks
+                    ForEach(allSessions, id: \.0.id) { session, activity in
+                        let x = xPos(session, geo.size.width)
+                        let w = blockWidth(session, geo.size.width)
+                        let color = activityColor(activity)
+                        let isActive = session.id == appState.currentSession?.id
+                        let dimmed = hoveredActivityTitle != nil && hoveredActivityTitle != activity.title
+
+                        RoundedRectangle(cornerRadius: 5)
+                            .fill(color.opacity(isActive ? 1.0 : 0.75))
+                            .frame(width: w, height: barHeight)
+                            .offset(x: x)
+                            .opacity(dimmed ? 0.2 : 1.0)
+                            .help(tooltip(session, activity))
+                            .onHover { hovering in
+                                hoveredActivityTitle = hovering ? activity.title : nil
+                            }
+                    }
+
+                    // Current time indicator
+                    Rectangle()
+                        .fill(Color.white.opacity(0.4))
+                        .frame(width: 2, height: barHeight + 6)
+                        .offset(x: nowPos(geo.size.width))
+
+                    // X-axis tick marks
+                    ForEach(axisHours, id: \.self) { hour in
+                        Rectangle()
+                            .fill(Color.white.opacity(0.15))
+                            .frame(width: 1, height: barHeight)
+                            .offset(x: CGFloat(hour) / 24.0 * geo.size.width)
+                    }
+                }
+                .frame(height: barHeight)
+
+                // X-axis labels
+                ZStack(alignment: .topLeading) {
+                    ForEach(axisHours, id: \.self) { hour in
+                        Text(axisLabel(hour))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .offset(x: max(0, CGFloat(hour) / 24.0 * geo.size.width - 10))
+                    }
+                }
+                .frame(height: 14)
+                .offset(y: barHeight + 2)
+            }
+            .frame(height: barHeight + 16)
+
+            // Legend
+            if !legendItems.isEmpty {
+                HoverableChartLegend(items: legendItems, hoveredLabel: $hoveredActivityTitle)
+            }
+        }
+        .task(id: appState.todayActivities.map(\.activity.id)) {
+            await loadSessions()
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func xPos(_ session: Session, _ width: CGFloat) -> CGFloat {
+        let offset = session.startedAt.timeIntervalSince(startOfDay)
+        return CGFloat(offset / secondsInDay) * width
+    }
+
+    private func blockWidth(_ session: Session, _ width: CGFloat) -> CGFloat {
+        let end: Date = session.endedAt ?? session.startedAt.addingTimeInterval(
+            Double(appState.timerElapsedSeconds)
+        )
+        let duration = max(1, end.timeIntervalSince(session.startedAt))
+        return max(6, CGFloat(duration / secondsInDay) * width)
+    }
+
+    private func nowPos(_ width: CGFloat) -> CGFloat {
+        CGFloat(Date().timeIntervalSince(startOfDay) / secondsInDay) * width
+    }
+
+    private func activityColor(_ activity: Activity) -> Color {
+        let palette = ThemeManager.chartColors(for: theme.activePalette)
+        let index = appState.todayActivities.firstIndex(where: { $0.activity.id == activity.id }) ?? 0
+        return palette[index % palette.count]
+    }
+
+    private func axisLabel(_ hour: Int) -> String {
+        switch hour {
+        case 0: return "12am"
+        case 12: return "12pm"
+        default: return hour < 12 ? "\(hour)am" : "\(hour - 12)pm"
+        }
+    }
+
+    private func tooltip(_ session: Session, _ activity: Activity) -> String {
+        let type = SessionTypeConfig.config(for: session.sessionType).displayName
+        let start = TimeFormatting.formatTime(session.startedAt)
+        if let end = session.endedAt, let dur = session.durationSeconds {
+            return "\(activity.title) · \(type) · \(start) – \(TimeFormatting.formatTime(end)) (\(TimeFormatting.formatDuration(seconds: dur)))"
+        }
+        return "\(activity.title) · \(type) · \(start) – now"
+    }
+
+    private func loadSessions() async {
+        guard let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: startOfDay) else { return }
+        guard let result = try? await appState.service.listSessions(
+            from: startOfDay, to: endOfDay, type: nil, activityId: nil, includeArchived: false
+        ) else { return }
+        completedSessions = result
+    }
+}
+
 // MARK: - Activity Breakdown Card
 
 private struct ActivityBreakdownCard: View {
     @Environment(AppState.self) private var appState
+    @Environment(ThemeManager.self) private var theme
     @State private var expandedActivities: Set<Int64> = []
     @State private var todaySessions: [Int64: [Session]] = [:]
 
@@ -304,9 +575,9 @@ private struct ActivityBreakdownCard: View {
         ChartCard(title: "Activity Breakdown") {
             if appState.todayActivities.isEmpty {
                 ContentUnavailableView(
-                    "No Activity Yet",
-                    systemImage: "chart.bar",
-                    description: Text("Start a session to see your activity breakdown.")
+                    "No Activities",
+                    systemImage: "list.bullet",
+                    description: Text("No activities recorded for this period.")
                 )
                 .emptyStateStyle()
             } else {
@@ -314,14 +585,21 @@ private struct ActivityBreakdownCard: View {
                     ForEach(Array(appState.todayActivities.enumerated()), id: \.element.activity.id) { index, summary in
                         let activityId = summary.activity.id ?? -1
                         let isExpanded = expandedActivities.contains(activityId)
+                        let sessions = todaySessions[activityId]
+                        let activeSession: Session? = appState.currentSession?.activityId == activityId ? appState.currentSession : nil
+                        let totalCount = summary.sessionCount + (activeSession != nil ? 1 : 0)
 
                         VStack(spacing: 0) {
                             HStack {
-                                if summary.sessionCount > 1 {
+                                if totalCount > 1 {
                                     Image(systemName: "chevron.right")
                                         .font(.caption2)
                                         .foregroundStyle(.secondary)
                                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                                } else {
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption2)
+                                        .hidden()
                                 }
 
                                 VStack(alignment: .leading, spacing: 2) {
@@ -329,9 +607,15 @@ private struct ActivityBreakdownCard: View {
                                         .font(.body)
                                         .lineLimit(1)
 
-                                    Text("\(summary.sessionCount) \(summary.sessionCount == 1 ? "session" : "sessions")")
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
+                                    HStack(spacing: 4) {
+                                        Text("\(totalCount) \(totalCount == 1 ? "session" : "sessions")")
+                                        if let range = activityTimeRange(sessions, active: activeSession) {
+                                            Text("·")
+                                            Text(range)
+                                        }
+                                    }
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
                                 }
 
                                 Spacer()
@@ -345,27 +629,54 @@ private struct ActivityBreakdownCard: View {
                             .background(index.isMultiple(of: 2) ? Color.clear : Color.gray.opacity(0.08))
                             .contentShape(Rectangle())
                             .onTapGesture {
-                                guard summary.sessionCount > 1 else { return }
+                                guard totalCount > 1 else { return }
                                 withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
                                     if isExpanded {
                                         expandedActivities.remove(activityId)
                                     } else {
                                         expandedActivities.insert(activityId)
-                                        loadSessionsForActivity(activityId)
                                     }
                                 }
                             }
 
-                            if isExpanded, let sessions = todaySessions[activityId] {
-                                ForEach(sessions) { session in
-                                    HStack {
-                                        Text(SessionTypeConfig.config(for: session.sessionType).displayName)
-                                            .font(.subheadline)
-                                            .foregroundStyle(.secondary)
+                            if isExpanded {
+                                // Active session row (if any)
+                                if let active = activeSession {
+                                    HStack(spacing: Constants.spacingCompact) {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(SessionTypeConfig.config(for: active.sessionType).displayName)
+                                                .font(.subheadline)
+                                                .foregroundStyle(.secondary)
+                                            Text(TimeFormatting.formatTime(active.startedAt))
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                        Spacer()
+                                        Text(appState.formattedTimerValue)
+                                            .font(.subheadline.monospacedDigit())
+                                            .foregroundStyle(theme.accent)
+                                            .contentTransition(.numericText())
+                                        SpinningClockIcon(isRunning: activeSession?.state == .running)
+                                    }
+                                    .padding(.vertical, 6)
+                                    .padding(.horizontal, Constants.spacingCard)
+                                    .padding(.leading, 20)
+                                    .background(Color.gray.opacity(0.04))
+                                }
 
-                                        Text(TimeFormatting.formatTime(session.startedAt))
-                                            .font(.subheadline)
-                                            .foregroundStyle(.secondary)
+                                // Completed/cancelled sessions
+                                if let sessions {
+                                    ForEach(sessions) { session in
+                                    HStack(spacing: Constants.spacingCompact) {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(SessionTypeConfig.config(for: session.sessionType).displayName)
+                                                .font(.subheadline)
+                                                .foregroundStyle(.secondary)
+
+                                            Text(sessionTimeRange(session))
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
 
                                         Spacer()
 
@@ -374,6 +685,8 @@ private struct ActivityBreakdownCard: View {
                                                 .font(.subheadline.monospacedDigit())
                                                 .foregroundStyle(.secondary)
                                         }
+
+                                        stateIcon(for: session)
                                     }
                                     .padding(.vertical, 6)
                                     .padding(.horizontal, Constants.spacingCard)
@@ -381,11 +694,73 @@ private struct ActivityBreakdownCard: View {
                                     .background(Color.gray.opacity(0.04))
                                 }
                             }
+                            }
                         }
                     }
                 }
                 .padding(.bottom, Constants.spacingCard)
             }
+        }
+        .task(id: appState.todayActivities.map { $0.activity.id }) {
+            for summary in appState.todayActivities {
+                if let id = summary.activity.id {
+                    loadSessionsForActivity(id)
+                }
+            }
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func activityTimeRange(_ sessions: [Session]?, active: Session?) -> String? {
+        var starts: [Date] = sessions?.map(\.startedAt) ?? []
+        var ends: [Date] = sessions?.compactMap(\.endedAt) ?? []
+        if let active {
+            starts.append(active.startedAt)
+            // active session has no endedAt — omit end so range shows open start
+        }
+        guard let first = starts.min() else { return nil }
+        if let last = ends.max() {
+            return "\(TimeFormatting.formatTime(first)) – \(TimeFormatting.formatTime(last))"
+        }
+        // Only active session (no completed end times yet)
+        return TimeFormatting.formatTime(first)
+    }
+
+    private func sessionTimeRange(_ session: Session) -> String {
+        let start = TimeFormatting.formatTime(session.startedAt)
+        guard let end = session.endedAt else { return start }
+        return "\(start) – \(TimeFormatting.formatTime(end))"
+    }
+
+    @ViewBuilder
+    private func stateIcon(for session: Session) -> some View {
+        switch (session.state, session.sessionType) {
+        case (.cancelled, _):
+            Image(systemName: "xmark.circle")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+        case (.completed, .work):
+            Image(systemName: "checkmark.circle.fill")
+                .font(.subheadline)
+                .foregroundStyle(theme.success)
+
+        case (.completed, .rhythm), (.completed, .timebound):
+            let fullyElapsed = session.timerLengthMinutes
+                .flatMap { target in session.durationSeconds.map { $0 >= target * 60 } } ?? false
+            if fullyElapsed {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.subheadline)
+                    .foregroundStyle(theme.success)
+            } else {
+                Image(systemName: "xmark.circle")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+        default:
+            EmptyView()
         }
     }
 
@@ -404,9 +779,104 @@ private struct ActivityBreakdownCard: View {
                     ($0.endedAt ?? .distantFuture) > ($1.endedAt ?? .distantFuture)
                 }
             } catch {
-                // Fail silently — the row just won't expand
+                // Fail silently
             }
         }
+    }
+}
+
+// MARK: - Quick Restart Row
+
+private struct QuickRestartRow: View {
+    @Environment(ThemeManager.self) private var theme
+    let session: Session
+    let activity: Activity
+    let index: Int
+    let action: () -> Void
+
+    @State private var isHovered = false
+
+    private var timerLabel: String? {
+        switch session.sessionType {
+        case .rhythm:
+            if let focus = session.timerLengthMinutes, let brk = session.breakMinutes {
+                return "\(focus)m / \(brk)m"
+            }
+            return nil
+        case .timebound:
+            if let minutes = session.timerLengthMinutes {
+                return "(\(minutes)m)"
+            }
+            return nil
+        default:
+            return nil
+        }
+    }
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: Constants.spacingCompact) {
+                Image(systemName: "arrow.counterclockwise.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(isHovered ? theme.accent : .secondary)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(activity.title)
+                        .font(.body)
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+
+                    HStack(spacing: 4) {
+                        Text(SessionTypeConfig.config(for: session.sessionType).displayName)
+                        if let timerLabel {
+                            Text("·")
+                            Text(timerLabel)
+                        }
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+            }
+            .padding(.vertical, Constants.spacingCompact)
+            .padding(.horizontal, Constants.spacingCard)
+            .background(index.isMultiple(of: 2) ? Color.clear : Color.gray.opacity(0.08))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
+    }
+}
+
+// MARK: - Spinning Clock Icon
+
+private struct SpinningClockIcon: View {
+    @Environment(ThemeManager.self) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let isRunning: Bool
+    @State private var degrees: Double = 0
+
+    var body: some View {
+        Image(systemName: "arrow.clockwise")
+            .font(.subheadline)
+            .foregroundStyle(theme.accent)
+            .rotationEffect(.degrees(degrees))
+            .onAppear {
+                guard isRunning, !reduceMotion else { return }
+                withAnimation(.linear(duration: 3).repeatForever(autoreverses: false)) {
+                    degrees = 360
+                }
+            }
+            .onChange(of: isRunning) { _, running in
+                if running, !reduceMotion {
+                    withAnimation(.linear(duration: 3).repeatForever(autoreverses: false)) {
+                        degrees = 360
+                    }
+                } else {
+                    withAnimation(.default) { degrees = 0 }
+                }
+            }
     }
 }
 
