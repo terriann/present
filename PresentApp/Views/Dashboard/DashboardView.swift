@@ -201,19 +201,42 @@ struct DashboardView: View {
                 .padding(.horizontal, Constants.spacingCard)
                 .padding(.bottom, Constants.spacingCompact)
 
-            ForEach(Array(quickRestartSuggestions.enumerated()), id: \.offset) { index, pair in
+            ForEach(Array(quickRestartSuggestions.enumerated()), id: \.offset) { _, pair in
                 let (session, activity) = pair
-                QuickRestartRow(
-                    session: session,
+                QuickStartRow(
                     activity: activity,
-                    index: index
-                ) {
-                    Task { await appState.startSession(activityId: session.activityId, type: session.sessionType, timerMinutes: session.timerLengthMinutes, breakMinutes: session.breakMinutes) }
-                }
+                    icon: "arrow.counterclockwise.circle.fill",
+                    subtitle: sessionSubtitle(session),
+                    onTap: {
+                        Task { await appState.startSession(activityId: session.activityId, type: session.sessionType, timerMinutes: session.timerLengthMinutes, breakMinutes: session.breakMinutes) }
+                    },
+                    onEdit: {
+                        appState.navigateToActivityId = activity.id
+                        appState.selectedSidebarItem = .activities
+                    }
+                )
             }
         }
         .frame(minWidth: 200)
         .padding(.leading, Constants.spacingPage)
+    }
+
+    private func sessionSubtitle(_ session: Session) -> String {
+        let typeName = SessionTypeConfig.config(for: session.sessionType).displayName
+        switch session.sessionType {
+        case .rhythm:
+            if let focus = session.timerLengthMinutes, let brk = session.breakMinutes {
+                return "\(typeName) · \(focus)m / \(brk)m"
+            }
+            return typeName
+        case .timebound:
+            if let minutes = session.timerLengthMinutes {
+                return "\(typeName) (\(minutes)m)"
+            }
+            return typeName
+        default:
+            return typeName
+        }
     }
 
     // MARK: - Weekly Chart
@@ -782,70 +805,6 @@ private struct ActivityBreakdownCard: View {
                 // Fail silently
             }
         }
-    }
-}
-
-// MARK: - Quick Restart Row
-
-private struct QuickRestartRow: View {
-    @Environment(ThemeManager.self) private var theme
-    let session: Session
-    let activity: Activity
-    let index: Int
-    let action: () -> Void
-
-    @State private var isHovered = false
-
-    private var timerLabel: String? {
-        switch session.sessionType {
-        case .rhythm:
-            if let focus = session.timerLengthMinutes, let brk = session.breakMinutes {
-                return "\(focus)m / \(brk)m"
-            }
-            return nil
-        case .timebound:
-            if let minutes = session.timerLengthMinutes {
-                return "(\(minutes)m)"
-            }
-            return nil
-        default:
-            return nil
-        }
-    }
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: Constants.spacingCompact) {
-                Image(systemName: "arrow.counterclockwise.circle.fill")
-                    .font(.title2)
-                    .foregroundStyle(isHovered ? theme.accent : .secondary)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(activity.title)
-                        .font(.body)
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-
-                    HStack(spacing: 4) {
-                        Text(SessionTypeConfig.config(for: session.sessionType).displayName)
-                        if let timerLabel {
-                            Text("·")
-                            Text(timerLabel)
-                        }
-                    }
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-            }
-            .padding(.vertical, Constants.spacingCompact)
-            .padding(.horizontal, Constants.spacingCard)
-            .background(index.isMultiple(of: 2) ? Color.clear : Color.gray.opacity(0.08))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .onHover { isHovered = $0 }
     }
 }
 
