@@ -405,10 +405,12 @@ private struct ActivityBreakdownCard: View {
                         let activityId = summary.activity.id ?? -1
                         let isExpanded = expandedActivities.contains(activityId)
                         let sessions = todaySessions[activityId]
+                        let activeSession: Session? = appState.currentSession?.activityId == activityId ? appState.currentSession : nil
+                        let totalCount = summary.sessionCount + (activeSession != nil ? 1 : 0)
 
                         VStack(spacing: 0) {
                             HStack {
-                                if summary.sessionCount > 1 {
+                                if totalCount > 1 {
                                     Image(systemName: "chevron.right")
                                         .font(.caption2)
                                         .foregroundStyle(.secondary)
@@ -425,8 +427,8 @@ private struct ActivityBreakdownCard: View {
                                         .lineLimit(1)
 
                                     HStack(spacing: 4) {
-                                        Text("\(summary.sessionCount) \(summary.sessionCount == 1 ? "session" : "sessions")")
-                                        if let range = activityTimeRange(sessions) {
+                                        Text("\(totalCount) \(totalCount == 1 ? "session" : "sessions")")
+                                        if let range = activityTimeRange(sessions, active: activeSession) {
                                             Text("·")
                                             Text(range)
                                         }
@@ -446,7 +448,7 @@ private struct ActivityBreakdownCard: View {
                             .background(index.isMultiple(of: 2) ? Color.clear : Color.gray.opacity(0.08))
                             .contentShape(Rectangle())
                             .onTapGesture {
-                                guard summary.sessionCount > 1 else { return }
+                                guard totalCount > 1 else { return }
                                 withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
                                     if isExpanded {
                                         expandedActivities.remove(activityId)
@@ -456,8 +458,34 @@ private struct ActivityBreakdownCard: View {
                                 }
                             }
 
-                            if isExpanded, let sessions {
-                                ForEach(sessions) { session in
+                            if isExpanded {
+                                // Active session row (if any)
+                                if let active = activeSession {
+                                    HStack(spacing: Constants.spacingCompact) {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(SessionTypeConfig.config(for: active.sessionType).displayName)
+                                                .font(.subheadline)
+                                                .foregroundStyle(.secondary)
+                                            Text(TimeFormatting.formatTime(active.startedAt))
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                        Spacer()
+                                        Text(appState.formattedTimerValue)
+                                            .font(.subheadline.monospacedDigit())
+                                            .foregroundStyle(theme.accent)
+                                            .contentTransition(.numericText())
+                                        SpinningClockIcon(isRunning: activeSession?.state == .running)
+                                    }
+                                    .padding(.vertical, 6)
+                                    .padding(.horizontal, Constants.spacingCard)
+                                    .padding(.leading, 20)
+                                    .background(Color.gray.opacity(0.04))
+                                }
+
+                                // Completed/cancelled sessions
+                                if let sessions {
+                                    ForEach(sessions) { session in
                                     HStack(spacing: Constants.spacingCompact) {
                                         VStack(alignment: .leading, spacing: 2) {
                                             Text(SessionTypeConfig.config(for: session.sessionType).displayName)
@@ -470,12 +498,6 @@ private struct ActivityBreakdownCard: View {
                                         }
 
                                         Spacer()
-
-                                        if session.totalPausedSeconds > 0 {
-                                            Text("\(TimeFormatting.formatDuration(seconds: session.totalPausedSeconds)) paused")
-                                                .font(.caption)
-                                                .foregroundStyle(.secondary)
-                                        }
 
                                         if let duration = session.durationSeconds {
                                             Text(TimeFormatting.formatDuration(seconds: duration))
@@ -490,6 +512,7 @@ private struct ActivityBreakdownCard: View {
                                     .padding(.leading, 20)
                                     .background(Color.gray.opacity(0.04))
                                 }
+                            }
                             }
                         }
                     }
@@ -508,12 +531,19 @@ private struct ActivityBreakdownCard: View {
 
     // MARK: - Helpers
 
-    private func activityTimeRange(_ sessions: [Session]?) -> String? {
-        guard let sessions, !sessions.isEmpty else { return nil }
-        let starts = sessions.map(\.startedAt)
-        let ends = sessions.compactMap(\.endedAt)
-        guard let first = starts.min(), let last = ends.max() else { return nil }
-        return "\(TimeFormatting.formatTime(first)) – \(TimeFormatting.formatTime(last))"
+    private func activityTimeRange(_ sessions: [Session]?, active: Session?) -> String? {
+        var starts: [Date] = sessions?.map(\.startedAt) ?? []
+        var ends: [Date] = sessions?.compactMap(\.endedAt) ?? []
+        if let active {
+            starts.append(active.startedAt)
+            // active session has no endedAt — omit end so range shows open start
+        }
+        guard let first = starts.min() else { return nil }
+        if let last = ends.max() {
+            return "\(TimeFormatting.formatTime(first)) – \(TimeFormatting.formatTime(last))"
+        }
+        // Only active session (no completed end times yet)
+        return TimeFormatting.formatTime(first)
     }
 
     private func sessionTimeRange(_ session: Session) -> String {
@@ -524,15 +554,30 @@ private struct ActivityBreakdownCard: View {
 
     @ViewBuilder
     private func stateIcon(for session: Session) -> some View {
-        switch session.state {
-        case .completed:
-            Image(systemName: "checkmark.circle.fill")
-                .font(.subheadline)
-                .foregroundStyle(theme.success)
-        case .cancelled:
+        switch (session.state, session.sessionType) {
+        case (.cancelled, _):
             Image(systemName: "xmark.circle")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
+
+        case (.completed, .work):
+            Image(systemName: "checkmark.circle.fill")
+                .font(.subheadline)
+                .foregroundStyle(theme.success)
+
+        case (.completed, .rhythm), (.completed, .timebound):
+            let fullyElapsed = session.timerLengthMinutes
+                .flatMap { target in session.durationSeconds.map { $0 >= target * 60 } } ?? false
+            if fullyElapsed {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.subheadline)
+                    .foregroundStyle(theme.success)
+            } else {
+                Image(systemName: "xmark.circle")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
         default:
             EmptyView()
         }
@@ -620,6 +665,37 @@ private struct QuickRestartRow: View {
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
+    }
+}
+
+// MARK: - Spinning Clock Icon
+
+private struct SpinningClockIcon: View {
+    @Environment(ThemeManager.self) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let isRunning: Bool
+    @State private var degrees: Double = 0
+
+    var body: some View {
+        Image(systemName: "arrow.clockwise")
+            .font(.subheadline)
+            .foregroundStyle(theme.accent)
+            .rotationEffect(.degrees(degrees))
+            .onAppear {
+                guard isRunning, !reduceMotion else { return }
+                withAnimation(.linear(duration: 3).repeatForever(autoreverses: false)) {
+                    degrees = 360
+                }
+            }
+            .onChange(of: isRunning) { _, running in
+                if running, !reduceMotion {
+                    withAnimation(.linear(duration: 3).repeatForever(autoreverses: false)) {
+                        degrees = 360
+                    }
+                } else {
+                    withAnimation(.default) { degrees = 0 }
+                }
+            }
     }
 }
 
