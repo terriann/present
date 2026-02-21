@@ -42,7 +42,10 @@ jobs:
             2. Read `.claude/agents/pm.md` for sizing/priority conventions.
             3. Classify this issue and apply ALL relevant labels from the categories below — skip any already applied.
             4. Use `gh issue edit` to add labels (never remove existing ones).
-            5. Post one brief comment explaining your label choices.
+            5. Post a comment only if there is something worth saying — either the label choices need non-obvious explanation, or the issue has ambiguity that would meaningfully change how it is scoped or prioritized. Skip the comment entirely if the issue is clear and the labels are self-evident.
+               If you do post a comment, it may include:
+               - **Triage** (only if non-obvious): brief rationale for label choices that might surprise the author.
+               - **Clarification** (only if genuinely unclear): concise questions about missing context, scope, or expected behavior.
 
             ## Available Labels
 
