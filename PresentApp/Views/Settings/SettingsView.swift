@@ -252,20 +252,23 @@ struct CLISettingsTab: View {
     var body: some View {
         Form {
             Section("Install") {
-                Button("Install CLI to /usr/local/bin") {
-                    installCLI()
-                }
-                .alert("CLI Install", isPresented: $showCLIResult) {
-                    Button("OK") {}
-                } message: {
-                    Text(cliInstallStatus ?? "")
+                HStack(spacing: Constants.spacingCompact) {
+                    Button("Install present-cli v\(Constants.cliVersion)") {
+                        installCLI()
+                    }
+                    .alert("CLI Install", isPresented: $showCLIResult) {
+                        Button("OK") {}
+                    } message: {
+                        Text(cliInstallStatus ?? "")
+                    }
+
+                    cliVersionBadge
+                    Spacer()
                 }
 
                 Text("Copies the `present-cli` (\(Constants.cliVersion)) command-line tool so you can use it from Terminal.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-
-                cliVersionStatus
             }
 
             Section("What you can do") {
@@ -279,9 +282,16 @@ struct CLISettingsTab: View {
             }
 
             Section {
-                Text("Run `present-cli --help` for a full list of commands.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: Constants.spacingTight) {
+                    Text("Run `present-cli --help` for a full list of commands.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                    Text("Run `present-cli --experimental-dump-help` for JSON docs to use in agentic AI experiences.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
             }
         }
         .formStyle(.grouped)
@@ -294,30 +304,17 @@ struct CLISettingsTab: View {
     // MARK: - Subviews
 
     @ViewBuilder
-    private var cliVersionStatus: some View {
-        if isDetecting {
-            HStack(spacing: 4) {
-                ProgressView()
-                    .controlSize(.small)
-                Text("Checking CLI…")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        } else if let installed = installedVersion {
+    private var cliVersionBadge: some View {
+        if !isDetecting, let installed = installedVersion {
             if installed == bundledVersion {
-                Text("Installed — v\(installed)")
-                    .font(.caption)
+                Label("v\(installed)", systemImage: "checkmark.circle.fill")
                     .foregroundStyle(theme.success)
             } else {
-                Text("Installed — v\(installed) (update available)")
-                    .font(.caption)
+                Label("v\(installed)", systemImage: "exclamationmark.circle.fill")
                     .foregroundStyle(theme.warning)
             }
-        } else {
-            Text("CLI is not installed")
-                .font(.caption)
-                .foregroundStyle(.secondary)
         }
+        // Not installed or still detecting: no indicator shown
     }
 
     private func cliFeatureRow(icon: String, text: String) -> some View {
