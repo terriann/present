@@ -38,11 +38,11 @@ final class AppState {
     var isCompletedTimerFading: Bool = false
     private var completedTimerLingerTask: Task<Void, Never>?
 
-    // MARK: - Break Suggestion
+    // MARK: - Timer Completion Alert
 
-    var showBreakSuggestion = false
-    var suggestedBreakMinutes: Int = 5
-    var isLongBreak = false
+    var timerCompletionContext: TimerCompletionContext?
+    /// Saved when starting a break so the break-end alert knows what to resume
+    var breakPrecedingContext: (activityId: Int64, title: String, timerMinutes: Int, breakMinutes: Int)?
 
     // MARK: - Zoom
 
@@ -227,6 +227,7 @@ final class AppState {
 
     func startSession(activityId: Int64, type: SessionType, timerMinutes: Int? = nil, breakMinutes: Int? = nil) async {
         clearCompletedTimerLinger()
+        timerCompletionContext = nil
         do {
             let session = try await service.startSession(
                 activityId: activityId,
@@ -270,7 +271,7 @@ final class AppState {
         let finalText = formattedTimerValue
 
         do {
-            let stoppedSession = try await service.stopSession()
+            _ = try await service.stopSession()
             currentSession = nil
             currentActivity = nil
             stopTimer()
@@ -278,11 +279,6 @@ final class AppState {
             // Start linger unless handleTimerCompletion already did
             if completedTimerText == nil {
                 startCompletedTimerLinger(text: finalText, isCountdown: false)
-            }
-
-            // For rhythm sessions, suggest a break
-            if stoppedSession.sessionType == .rhythm, let index = stoppedSession.rhythmSessionIndex {
-                await suggestBreak(session: stoppedSession, sessionIndex: index)
             }
 
             await refreshAll()
@@ -348,6 +344,38 @@ final class AppState {
 
         let finalText = formattedTimerValue
         let isCountdown = session.sessionType == .rhythm || session.sessionType == .timebound
+        let timerMinutes = session.timerLengthMinutes ?? 0
+
+        // Build completion context BEFORE stopping the session
+        let completionType: TimerCompletionContext.CompletionType
+        if activity.isSystem {
+            // Break session ended — read the preceding context
+            if let ctx = breakPrecedingContext {
+                completionType = .rhythmBreakExpiry(
+                    previousActivityId: ctx.activityId,
+                    previousActivityTitle: ctx.title,
+                    previousTimerMinutes: ctx.timerMinutes,
+                    previousBreakMinutes: ctx.breakMinutes
+                )
+            } else {
+                completionType = .timeboundExpiry
+            }
+        } else if session.sessionType == .rhythm, let index = session.rhythmSessionIndex {
+            let breakMins = await resolveBreakMinutes(session: session, sessionIndex: index)
+            let cycleLength = await resolveCycleLength()
+            let isLong = index >= cycleLength
+            completionType = .rhythmFocusExpiry(breakMinutes: breakMins, isLongBreak: isLong)
+        } else {
+            completionType = .timeboundExpiry
+        }
+
+        let context = TimerCompletionContext(
+            completionType: completionType,
+            activityId: activity.id ?? 0,
+            activityTitle: activity.title,
+            durationFormatted: finalText,
+            timerMinutes: timerMinutes
+        )
 
         // Send notification and play completion sound
         NotificationManager.shared.sendTimerCompleted(
@@ -362,6 +390,29 @@ final class AppState {
 
         // Auto-stop the session
         await stopSession()
+
+        // Show floating alert
+        timerCompletionContext = context
+    }
+
+    private func resolveBreakMinutes(session: Session, sessionIndex: Int) async -> Int {
+        let cycleLength = await resolveCycleLength()
+        let isLong = sessionIndex >= cycleLength
+
+        if isLong {
+            if let val = try? await service.getPreference(key: PreferenceKey.longBreakMinutes) {
+                return Int(val) ?? Constants.longBreakMinutes
+            }
+            return Constants.longBreakMinutes
+        }
+        return session.breakMinutes ?? Constants.defaultShortBreakMinutes
+    }
+
+    private func resolveCycleLength() async -> Int {
+        if let val = try? await service.getPreference(key: PreferenceKey.rhythmCycleLength) {
+            return Int(val) ?? Constants.rhythmCycleLength
+        }
+        return Constants.rhythmCycleLength
     }
 
     // MARK: - Completed Timer Linger
@@ -391,40 +442,64 @@ final class AppState {
         isCompletedTimerFading = false
     }
 
-    // MARK: - Break Suggestions
+    // MARK: - Timer Completion Alert Actions
 
-    private func suggestBreak(session: Session, sessionIndex: Int) async {
-        let cycleLength: Int
-        if let val = try? await service.getPreference(key: PreferenceKey.rhythmCycleLength) {
-            cycleLength = Int(val) ?? Constants.rhythmCycleLength
-        } else {
-            cycleLength = Constants.rhythmCycleLength
-        }
-        let isLong = sessionIndex >= cycleLength
-
-        let breakMinutes: Int
-        if isLong {
-            // Long break: use global preference
-            if let val = try? await service.getPreference(key: PreferenceKey.longBreakMinutes) {
-                breakMinutes = Int(val) ?? Constants.longBreakMinutes
-            } else {
-                breakMinutes = Constants.longBreakMinutes
-            }
-        } else {
-            // Short break: use session's paired break duration, fall back to default
-            breakMinutes = session.breakMinutes ?? Constants.defaultShortBreakMinutes
-        }
-
-        self.isLongBreak = isLong
-        self.suggestedBreakMinutes = breakMinutes
-        self.showBreakSuggestion = true
-
-        SoundManager.shared.play(.approach)
-        NotificationManager.shared.sendBreakSuggestion(isLongBreak: isLong, breakMinutes: breakMinutes, playSound: SoundManager.shared.isEnabled)
+    func dismissTimerAlert() {
+        timerCompletionContext = nil
+        breakPrecedingContext = nil
     }
 
-    func dismissBreakSuggestion() {
-        showBreakSuggestion = false
+    func restartTimeboundSession() async {
+        guard let ctx = timerCompletionContext else { return }
+        timerCompletionContext = nil
+        await startSession(activityId: ctx.activityId, type: .timebound, timerMinutes: ctx.timerMinutes)
+    }
+
+    func startBreakSession() async {
+        guard let ctx = timerCompletionContext else { return }
+        guard case .rhythmFocusExpiry(let breakMins, _) = ctx.completionType else { return }
+
+        // Save context so break-end alert knows what to resume
+        breakPrecedingContext = (
+            activityId: ctx.activityId,
+            title: ctx.activityTitle,
+            timerMinutes: ctx.timerMinutes,
+            breakMinutes: breakMins
+        )
+        timerCompletionContext = nil
+
+        do {
+            let breakActivity = try await service.getBreakActivity()
+            guard let breakId = breakActivity.id else { return }
+            await startSession(activityId: breakId, type: .rhythm, timerMinutes: breakMins)
+        } catch {
+            showError(error, context: "Could not start break")
+        }
+    }
+
+    func startNextFocusSession() async {
+        guard let ctx = timerCompletionContext else { return }
+        timerCompletionContext = nil
+
+        switch ctx.completionType {
+        case .rhythmFocusExpiry:
+            // Skip break, restart same focus session
+            await startSession(activityId: ctx.activityId, type: .rhythm,
+                               timerMinutes: ctx.timerMinutes)
+        case .rhythmBreakExpiry(let prevId, _, let prevTimer, let prevBreak):
+            // Resume focus after break
+            breakPrecedingContext = nil
+            await startSession(activityId: prevId, type: .rhythm,
+                               timerMinutes: prevTimer, breakMinutes: prevBreak)
+        case .timeboundExpiry:
+            await startSession(activityId: ctx.activityId, type: .timebound,
+                               timerMinutes: ctx.timerMinutes)
+        }
+    }
+
+    func endBreakSession() {
+        timerCompletionContext = nil
+        breakPrecedingContext = nil
     }
 
     // MARK: - Database Observation

@@ -25,6 +25,7 @@ public protocol PresentAPI: Sendable {
     func getActivity(id: Int64) async throws -> Activity
     func searchActivities(query: String) async throws -> [Activity]
     func recentActivities(limit: Int) async throws -> [Activity]
+    func getBreakActivity() async throws -> Activity
 
     // Notes
     func appendNote(activityId: Int64, text: String) async throws -> Activity

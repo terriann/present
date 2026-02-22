@@ -31,7 +31,10 @@ struct PresentApp: App {
                 .modifier(ErrorAlertModifier(appState: appState))
                 .onAppear {
                     appDelegate.appState = appState
+                    let manager = FloatingAlertPanelManager(appState: appState, themeManager: themeManager)
+                    appDelegate.floatingAlertManager = manager
                     appState.showDockIcon(true)
+                    observeTimerCompletion(manager: manager)
                 }
                 .onDisappear { appState.showDockIcon(false) }
         }
@@ -57,6 +60,24 @@ struct PresentApp: App {
                 .environment(themeManager)
                 .tint(themeManager.accent)
                 .modifier(ErrorAlertModifier(appState: appState))
+        }
+    }
+
+    private func observeTimerCompletion(manager: FloatingAlertPanelManager) {
+        Task { @MainActor in
+            var lastContext: TimerCompletionContext?
+            while true {
+                let currentContext = appState.timerCompletionContext
+                if currentContext != lastContext {
+                    lastContext = currentContext
+                    if let ctx = currentContext {
+                        manager.showAlert(context: ctx)
+                    } else {
+                        manager.dismissAlert()
+                    }
+                }
+                try? await Task.sleep(for: .milliseconds(100))
+            }
         }
     }
 
@@ -130,6 +151,7 @@ private struct MenuBarLabelView: View {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     var appState: AppState?
     var statusItemMenuManager: StatusItemMenuManager?
+    var floatingAlertManager: FloatingAlertPanelManager?
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard let appState, appState.isSessionActive else {

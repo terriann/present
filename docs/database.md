@@ -100,6 +100,7 @@ CREATE TABLE "activity" (
     "link" TEXT,
     "notes" TEXT,
     "isArchived" BOOLEAN NOT NULL DEFAULT 0,
+    "isSystem" BOOLEAN NOT NULL DEFAULT 0,
     "createdAt" DATETIME NOT NULL,
     "updatedAt" DATETIME NOT NULL
 );
@@ -113,6 +114,7 @@ CREATE TABLE "activity" (
 | `link` | TEXT | Yes | URL to external resource |
 | `notes` | TEXT | Yes | Markdown notes |
 | `isArchived` | BOOLEAN | No | Stored as 0/1 |
+| `isSystem` | BOOLEAN | No | Stored as 0/1. System activities (e.g., "Break") cannot be modified or deleted |
 | `createdAt` | DATETIME | No | ISO8601 |
 | `updatedAt` | DATETIME | No | ISO8601, updated on modification |
 
@@ -330,6 +332,7 @@ in order. GRDB tracks applied migrations in `grdb_migrations`.
 | 4 | `v4-seed-default-timebound-minutes` | Seed `defaultTimeboundMinutes` |
 | 5 | `v5-add-tag-timestamps` | `createdAt`/`updatedAt` on tag |
 | 6 | `v6-add-session-segment` | session_segment table, backfill |
+| 7 | `v7-add-system-activity` | `isSystem` column on activity, seed "Break" activity |
 
 ## Data Type Conventions
 

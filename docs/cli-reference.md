@@ -4,7 +4,7 @@
 
 > Present — time tracking from the command line.
 
-*Auto-generated on 2026-02-21 19:14 UTC from `present-cli --experimental-dump-help`.*
+*Auto-generated on 2026-02-22 16:20 UTC from `present-cli --experimental-dump-help`.*
 
 ## Commands
 

@@ -8,6 +8,7 @@ public struct Activity: Codable, Sendable, Identifiable, Equatable, Hashable {
     public var link: String?
     public var notes: String?
     public var isArchived: Bool
+    public var isSystem: Bool
     public var createdAt: Date
     public var updatedAt: Date
 
@@ -18,6 +19,7 @@ public struct Activity: Codable, Sendable, Identifiable, Equatable, Hashable {
         link: String? = nil,
         notes: String? = nil,
         isArchived: Bool = false,
+        isSystem: Bool = false,
         createdAt: Date = Date(),
         updatedAt: Date = Date()
     ) {
@@ -27,6 +29,7 @@ public struct Activity: Codable, Sendable, Identifiable, Equatable, Hashable {
         self.link = link
         self.notes = notes
         self.isArchived = isArchived
+        self.isSystem = isSystem
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
@@ -42,6 +45,7 @@ extension Activity: FetchableRecord, PersistableRecord {
         static let link = Column(CodingKeys.link)
         static let notes = Column(CodingKeys.notes)
         static let isArchived = Column(CodingKeys.isArchived)
+        static let isSystem = Column(CodingKeys.isSystem)
         static let createdAt = Column(CodingKeys.createdAt)
         static let updatedAt = Column(CodingKeys.updatedAt)
     }

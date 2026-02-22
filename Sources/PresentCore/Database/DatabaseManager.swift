@@ -167,6 +167,22 @@ public final class DatabaseManager: Sendable {
                 """)
         }
 
+        migrator.registerMigration("v7-add-system-activity") { db in
+            try db.alter(table: "activity") { t in
+                t.add(column: "isSystem", .boolean).notNull().defaults(to: false)
+            }
+
+            // Seed the "Break" system activity
+            let now = Date()
+            try db.execute(
+                sql: """
+                    INSERT INTO activity (title, isArchived, isSystem, createdAt, updatedAt)
+                    VALUES (?, 0, 1, ?, ?)
+                    """,
+                arguments: [Constants.breakActivityTitle, now, now]
+            )
+        }
+
         try migrator.migrate(writer)
     }
 }

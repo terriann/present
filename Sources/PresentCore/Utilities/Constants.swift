@@ -54,7 +54,11 @@ public enum Constants {
     /// Tight inner padding (GroupBox content wrappers)
     public static let spacingTight: CGFloat = 4
 
+    // MARK: - System Activities
+
+    public static let breakActivityTitle = "Break"
+
     // MARK: - CLI
 
-    public static let cliVersion = "0.3.0 (2)"
+    public static let cliVersion = "0.4.0"
 }

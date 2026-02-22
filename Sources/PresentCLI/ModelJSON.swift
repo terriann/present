@@ -35,6 +35,7 @@ extension Activity {
             "externalId": externalId as Any,
             "link": link as Any,
             "isArchived": isArchived,
+            "isSystem": isSystem,
             "createdAt": isoFormatter.string(from: createdAt),
             "updatedAt": isoFormatter.string(from: updatedAt),
         ]
@@ -48,6 +49,7 @@ extension Activity {
             "id": "\(id!)",
             "title": title,
             "isArchived": "\(isArchived)",
+            "isSystem": "\(isSystem)",
             "createdAt": TimeFormatting.formatDate(createdAt),
             "updatedAt": TimeFormatting.formatDate(updatedAt),
         ]

@@ -15,6 +15,7 @@ public enum PresentError: Error, LocalizedError, Sendable {
     case cannotDeleteActiveActivity
     case cannotDeleteActiveSession
     case sessionOverlap
+    case cannotModifySystemActivity
 
     public var errorDescription: String? {
         switch self {
@@ -31,6 +32,7 @@ public enum PresentError: Error, LocalizedError, Sendable {
         case .cannotDeleteActiveActivity: "Cannot delete an activity with an active session."
         case .cannotDeleteActiveSession: "Active sessions must be stopped before they can be deleted."
         case .sessionOverlap: "Session overlaps with an existing session."
+        case .cannotModifySystemActivity: "System activities cannot be modified or deleted."
         }
     }
 }
@@ -83,14 +85,20 @@ public final class PresentService: PresentAPI, Sendable {
             // For rhythm sessions, store break duration and determine the session index
             if type == .rhythm {
                 session.breakMinutes = breakMinutes
-                let lastRhythm = try Session
-                    .filter(Session.Columns.sessionType == SessionType.rhythm.rawValue)
-                    .filter(Session.Columns.state == SessionState.completed.rawValue)
-                    .order(Session.Columns.id.desc)
-                    .fetchOne(db)
 
-                let lastIndex = lastRhythm?.rhythmSessionIndex ?? 0
-                session.rhythmSessionIndex = (lastIndex % 4) + 1
+                // Break sessions don't advance the rhythm cycle
+                if activity.isSystem {
+                    session.rhythmSessionIndex = nil
+                } else {
+                    let lastRhythm = try Session
+                        .filter(Session.Columns.sessionType == SessionType.rhythm.rawValue)
+                        .filter(Session.Columns.state == SessionState.completed.rawValue)
+                        .order(Session.Columns.id.desc)
+                        .fetchOne(db)
+
+                    let lastIndex = lastRhythm?.rhythmSessionIndex ?? 0
+                    session.rhythmSessionIndex = (lastIndex % 4) + 1
+                }
             }
 
             try session.insert(db)
@@ -340,7 +348,7 @@ public final class PresentService: PresentAPI, Sendable {
             let sql = """
                 SELECT s.*, a.id AS a_id, a.title AS a_title, a.externalId AS a_externalId,
                        a.link AS a_link, a.notes AS a_notes, a.isArchived AS a_isArchived,
-                       a.createdAt AS a_createdAt, a.updatedAt AS a_updatedAt
+                       a.isSystem AS a_isSystem, a.createdAt AS a_createdAt, a.updatedAt AS a_updatedAt
                 FROM session s
                 INNER JOIN activity a ON a.id = s.activityId
                 WHERE \(conditions.joined(separator: " AND "))
@@ -357,6 +365,7 @@ public final class PresentService: PresentAPI, Sendable {
                     link: row["a_link"],
                     notes: row["a_notes"],
                     isArchived: row["a_isArchived"],
+                    isSystem: row["a_isSystem"],
                     createdAt: row["a_createdAt"],
                     updatedAt: row["a_updatedAt"]
                 )
@@ -370,7 +379,7 @@ public final class PresentService: PresentAPI, Sendable {
             let sql = """
                 SELECT s.*, a.id AS a_id, a.title AS a_title, a.externalId AS a_externalId,
                        a.link AS a_link, a.notes AS a_notes, a.isArchived AS a_isArchived,
-                       a.createdAt AS a_createdAt, a.updatedAt AS a_updatedAt
+                       a.isSystem AS a_isSystem, a.createdAt AS a_createdAt, a.updatedAt AS a_updatedAt
                 FROM session s
                 INNER JOIN activity a ON a.id = s.activityId
                 WHERE s.id = ?
@@ -400,7 +409,7 @@ public final class PresentService: PresentAPI, Sendable {
             let sql = """
                 SELECT s.*, a.id AS a_id, a.title AS a_title, a.externalId AS a_externalId,
                        a.link AS a_link, a.notes AS a_notes, a.isArchived AS a_isArchived,
-                       a.createdAt AS a_createdAt, a.updatedAt AS a_updatedAt
+                       a.isSystem AS a_isSystem, a.createdAt AS a_createdAt, a.updatedAt AS a_updatedAt
                 FROM session s
                 INNER JOIN activity a ON a.id = s.activityId
                 WHERE s.state = ? AND s.endedAt >= ? AND a.isArchived = 0
@@ -451,7 +460,10 @@ public final class PresentService: PresentAPI, Sendable {
         let link = try Validation.sanitizeOptional(input.link, fieldName: "Link", maxLength: Constants.maxLinkLength)
 
         return try await dbWriter.write { db in
-            let activeCount = try Activity.filter(Activity.Columns.isArchived == false).fetchCount(db)
+            let activeCount = try Activity
+                .filter(Activity.Columns.isArchived == false)
+                .filter(Activity.Columns.isSystem == false)
+                .fetchCount(db)
             if activeCount >= PresentService.maxActiveActivities {
                 throw PresentError.activityLimitReached(max: PresentService.maxActiveActivities)
             }
@@ -509,6 +521,9 @@ public final class PresentService: PresentAPI, Sendable {
             guard var activity = try Activity.fetchOne(db, key: id) else {
                 throw PresentError.activityNotFound(id)
             }
+            if activity.isSystem {
+                throw PresentError.cannotModifySystemActivity
+            }
 
             if let title = validatedTitle {
                 activity.title = title
@@ -544,6 +559,9 @@ public final class PresentService: PresentAPI, Sendable {
             guard var activity = try Activity.fetchOne(db, key: id) else {
                 throw PresentError.activityNotFound(id)
             }
+            if activity.isSystem {
+                throw PresentError.cannotModifySystemActivity
+            }
 
             // Check if there's an active session for this activity
             let activeSession = try Session
@@ -576,6 +594,9 @@ public final class PresentService: PresentAPI, Sendable {
             guard let activity = try Activity.fetchOne(db, key: id) else {
                 throw PresentError.activityNotFound(id)
             }
+            if activity.isSystem {
+                throw PresentError.cannotModifySystemActivity
+            }
 
             // Check if there's an active session for this activity
             let activeSession = try Session
@@ -598,7 +619,10 @@ public final class PresentService: PresentAPI, Sendable {
                 throw PresentError.activityNotFound(id)
             }
 
-            let activeCount = try Activity.filter(Activity.Columns.isArchived == false).fetchCount(db)
+            let activeCount = try Activity
+                .filter(Activity.Columns.isArchived == false)
+                .filter(Activity.Columns.isSystem == false)
+                .fetchCount(db)
             if activeCount >= PresentService.maxActiveActivities {
                 throw PresentError.activityLimitReached(max: PresentService.maxActiveActivities)
             }
@@ -613,10 +637,14 @@ public final class PresentService: PresentAPI, Sendable {
     public func listActivities(includeArchived: Bool) async throws -> [Activity] {
         try await dbWriter.read { db in
             if includeArchived {
-                return try Activity.order(Activity.Columns.title.asc).fetchAll(db)
+                return try Activity
+                    .filter(Activity.Columns.isSystem == false)
+                    .order(Activity.Columns.title.asc)
+                    .fetchAll(db)
             } else {
                 return try Activity
                     .filter(Activity.Columns.isArchived == false)
+                    .filter(Activity.Columns.isSystem == false)
                     .order(Activity.Columns.title.asc)
                     .fetchAll(db)
             }
@@ -662,11 +690,23 @@ public final class PresentService: PresentAPI, Sendable {
                 SELECT DISTINCT a.*
                 FROM activity a
                 INNER JOIN session s ON s.activityId = a.id
-                WHERE a.isArchived = 0
+                WHERE a.isArchived = 0 AND a.isSystem = 0
                 ORDER BY s.startedAt DESC
                 LIMIT ?
                 """
             return try Activity.fetchAll(db, sql: sql, arguments: [limit])
+        }
+    }
+
+    public func getBreakActivity() async throws -> Activity {
+        try await dbWriter.read { db in
+            guard let activity = try Activity
+                .filter(Activity.Columns.isSystem == true)
+                .filter(Activity.Columns.title == Constants.breakActivityTitle)
+                .fetchOne(db) else {
+                throw PresentError.activityNotFound(-1)
+            }
+            return activity
         }
     }
 
@@ -1143,7 +1183,7 @@ public final class PresentService: PresentAPI, Sendable {
             let sql = """
                 SELECT COALESCE(t.name, 'Untagged') as tagName,
                        a.id as activityId, a.title as activityTitle,
-                       a.externalId, a.link, a.notes, a.isArchived,
+                       a.externalId, a.link, a.notes, a.isArchived, a.isSystem,
                        a.createdAt, a.updatedAt,
                        COALESCE(SUM(s.durationSeconds), 0) as totalSecs,
                        COUNT(s.id) as sessCount
@@ -1176,6 +1216,7 @@ public final class PresentService: PresentAPI, Sendable {
                     link: row["link"],
                     notes: row["notes"],
                     isArchived: row["isArchived"],
+                    isSystem: row["isSystem"],
                     createdAt: row["createdAt"],
                     updatedAt: row["updatedAt"]
                 )
@@ -1298,17 +1339,33 @@ public final class PresentService: PresentAPI, Sendable {
         try await dbWriter.write { db in
             var cancelledActive = false
 
-            // Cancel active session first
+            // Cancel active session first (only for non-system activities)
             if let active = try Session
                 .filter(Session.Columns.state == SessionState.running.rawValue || Session.Columns.state == SessionState.paused.rawValue)
                 .fetchOne(db) {
-                try active.delete(db)
-                cancelledActive = true
+                let activity = try Activity.fetchOne(db, key: active.activityId)
+                if activity?.isSystem != true {
+                    try active.delete(db)
+                    cancelledActive = true
+                }
             }
 
-            let sessionsDeleted = try Session.deleteAll(db)
-            let activitiesDeleted = try Activity.deleteAll(db)
-            // activity_tag rows cascade from activity deletion
+            // Delete sessions for non-system activities
+            let sessionsDeleted = try Int.fetchOne(db, sql: """
+                SELECT COUNT(*) FROM session WHERE activityId IN (
+                    SELECT id FROM activity WHERE isSystem = 0
+                )
+                """) ?? 0
+            try db.execute(sql: """
+                DELETE FROM session WHERE activityId IN (
+                    SELECT id FROM activity WHERE isSystem = 0
+                )
+                """)
+
+            // Delete non-system activities (cascade handles activity_tag)
+            let activitiesDeleted = try Activity
+                .filter(Activity.Columns.isSystem == false)
+                .deleteAll(db)
 
             return BulkDeleteResult(
                 sessionsDeleted: sessionsDeleted + (cancelledActive ? 1 : 0),
@@ -1349,6 +1406,16 @@ public final class PresentService: PresentAPI, Sendable {
                     arguments: [key, value]
                 )
             }
+
+            // Re-seed Break system activity
+            let now = Date()
+            try db.execute(
+                sql: """
+                    INSERT INTO activity (title, isArchived, isSystem, createdAt, updatedAt)
+                    VALUES (?, 0, 1, ?, ?)
+                    """,
+                arguments: [Constants.breakActivityTitle, now, now]
+            )
         }
     }
 
