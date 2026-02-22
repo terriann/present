@@ -758,6 +758,9 @@ private struct ActivityBreakdownCard: View {
     @Environment(ThemeManager.self) private var theme
     @State private var expandedActivities: Set<Int64> = []
     @State private var todaySessions: [Int64: [Session]] = [:]
+    @State private var todayPortions: [Int64: Int] = [:]
+    /// Pre-midnight active seconds for a cross-midnight active session; computed once from segments.
+    @State private var activePreMidnightSeconds: Int?
 
     /// Includes the active session's activity even if it's not in DB summaries (cross-midnight).
     private var displayActivities: [ActivitySummary] {
@@ -848,10 +851,23 @@ private struct ActivityBreakdownCard: View {
                                                 .foregroundStyle(.secondary)
                                         }
                                         Spacer()
-                                        Text(appState.formattedTimerValue)
-                                            .font(.durationDetail)
-                                            .foregroundStyle(theme.accent)
-                                            .contentTransition(.numericText())
+                                        if let preMidnight = activePreMidnightSeconds {
+                                            HStack(spacing: 0) {
+                                                Text(TimeFormatting.formatDuration(seconds: max(0, appState.timerElapsedSeconds - preMidnight)))
+                                                    .font(.durationDetail)
+                                                    .foregroundStyle(theme.accent)
+                                                    .contentTransition(.numericText())
+                                                Text(" / \(appState.formattedTimerValue)")
+                                                    .font(.durationDetail)
+                                                    .foregroundStyle(theme.accent.opacity(0.5))
+                                                    .contentTransition(.numericText())
+                                            }
+                                        } else {
+                                            Text(appState.formattedTimerValue)
+                                                .font(.durationDetail)
+                                                .foregroundStyle(theme.accent)
+                                                .contentTransition(.numericText())
+                                        }
                                         SpinningClockIcon(isRunning: activeSession?.state == .running)
                                     }
                                     .padding(.vertical, 6)
@@ -876,11 +892,7 @@ private struct ActivityBreakdownCard: View {
 
                                         Spacer()
 
-                                        if let duration = session.durationSeconds {
-                                            Text(TimeFormatting.formatDuration(seconds: duration))
-                                                .font(.durationDetail)
-                                                .foregroundStyle(.secondary)
-                                        }
+                                        sessionDurationLabel(session)
 
                                         stateIcon(for: session)
                                     }
@@ -903,6 +915,9 @@ private struct ActivityBreakdownCard: View {
                     loadSessionsForActivity(id)
                 }
             }
+        }
+        .task(id: appState.currentSession?.id) {
+            await loadActivePreMidnightSeconds()
         }
     }
 
@@ -979,6 +994,28 @@ private struct ActivityBreakdownCard: View {
         }
     }
 
+    /// Duration label for a completed session. Shows "todayPortion / total" when the session
+    /// crosses midnight, with the slash and total at reduced opacity.
+    @ViewBuilder
+    private func sessionDurationLabel(_ session: Session) -> some View {
+        if let total = session.durationSeconds {
+            if let id = session.id, let todayPortion = todayPortions[id] {
+                HStack(spacing: 0) {
+                    Text(TimeFormatting.formatDuration(seconds: todayPortion))
+                        .font(.durationDetail)
+                        .foregroundStyle(.secondary)
+                    Text(" / \(TimeFormatting.formatDuration(seconds: total))")
+                        .font(.durationDetail)
+                        .foregroundStyle(.secondary.opacity(0.5))
+                }
+            } else {
+                Text(TimeFormatting.formatDuration(seconds: total))
+                    .font(.durationDetail)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
     private func loadSessionsForActivity(_ activityId: Int64) {
         guard todaySessions[activityId] == nil else { return }
         Task {
@@ -990,12 +1027,46 @@ private struct ActivityBreakdownCard: View {
                     from: startOfDay, to: endOfDay,
                     type: nil, activityId: activityId, includeArchived: false
                 )
-                todaySessions[activityId] = sessions.map(\.0).sorted {
+                let sorted = sessions.map(\.0).sorted {
                     ($0.endedAt ?? .distantFuture) > ($1.endedAt ?? .distantFuture)
+                }
+                todaySessions[activityId] = sorted
+
+                // Compute segment-based today portions for cross-midnight sessions
+                let crossMidnightIds = sorted.compactMap { session -> Int64? in
+                    guard let id = session.id,
+                          !Calendar.current.isDateInToday(session.startedAt) else { return nil }
+                    return id
+                }
+                if !crossMidnightIds.isEmpty {
+                    let portions = try await appState.service.sessionDayPortions(
+                        sessionIds: crossMidnightIds, date: Date()
+                    )
+                    for (id, secs) in portions {
+                        todayPortions[id] = secs
+                    }
                 }
             } catch {
                 // Fail silently
             }
+        }
+    }
+
+    private func loadActivePreMidnightSeconds() async {
+        guard let session = appState.currentSession,
+              let sessionId = session.id,
+              !Calendar.current.isDateInToday(session.startedAt) else {
+            activePreMidnightSeconds = nil
+            return
+        }
+        do {
+            let portions = try await appState.service.sessionDayPortions(
+                sessionIds: [sessionId], date: Date()
+            )
+            let todayFromSegments = portions[sessionId] ?? 0
+            activePreMidnightSeconds = max(0, appState.timerElapsedSeconds - todayFromSegments)
+        } catch {
+            activePreMidnightSeconds = nil
         }
     }
 }

@@ -907,6 +907,46 @@ public final class PresentService: PresentAPI, Sendable {
         }
     }
 
+    // MARK: - Segments
+
+    public func sessionDayPortions(sessionIds: [Int64], date: Date) async throws -> [Int64: Int] {
+        guard !sessionIds.isEmpty else { return [:] }
+        return try await dbWriter.read { db in
+            let calendar = Calendar.current
+            let startOfDay = calendar.startOfDay(for: date)
+            guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else { return [:] }
+
+            let placeholders = sessionIds.map { _ in "?" }.joined(separator: ", ")
+            let sql = """
+                SELECT ss.sessionId,
+                    COALESCE(SUM(
+                        MAX(0,
+                            CAST(strftime('%s', MIN(COALESCE(ss.endedAt, ?), ?)) AS INTEGER) -
+                            CAST(strftime('%s', MAX(ss.startedAt, ?)) AS INTEGER)
+                        )
+                    ), 0) as todaySecs
+                FROM session_segment ss
+                WHERE ss.sessionId IN (\(placeholders))
+                  AND ss.startedAt < ? AND (ss.endedAt > ? OR ss.endedAt IS NULL)
+                GROUP BY ss.sessionId
+                """
+
+            let now = Date()
+            var values: [any DatabaseValueConvertible] = [now, endOfDay, startOfDay]
+            values.append(contentsOf: sessionIds)
+            values.append(contentsOf: [endOfDay, startOfDay] as [Date])
+
+            let rows = try Row.fetchAll(db, sql: sql, arguments: StatementArguments(values))
+            var result: [Int64: Int] = [:]
+            for row in rows {
+                let sessionId: Int64 = row["sessionId"]
+                let secs: Int = row["todaySecs"]
+                result[sessionId] = secs
+            }
+            return result
+        }
+    }
+
     // MARK: - Reports
 
     public func activitySummary(from startDate: Date, to endDate: Date, includeArchived: Bool) async throws -> [ActivitySummary] {
