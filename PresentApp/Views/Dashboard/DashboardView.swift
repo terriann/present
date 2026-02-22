@@ -842,6 +842,8 @@ private struct ActivityBreakdownCard: View {
                                 // Active session row (if any)
                                 if let active = activeSession {
                                     HStack(spacing: Constants.spacingCompact) {
+                                        SpinningClockIcon(isRunning: activeSession?.state == .running)
+
                                         VStack(alignment: .leading, spacing: 2) {
                                             Text(sessionTypeLabel(active))
                                                 .font(.body)
@@ -857,18 +859,17 @@ private struct ActivityBreakdownCard: View {
                                                     .font(.durationDetail)
                                                     .foregroundStyle(theme.accent)
                                                     .contentTransition(.numericText())
-                                                Text(" / \(appState.formattedTimerValue)")
+                                                Text(" / \(TimeFormatting.formatDuration(seconds: appState.timerElapsedSeconds))")
                                                     .font(.durationDetail)
                                                     .foregroundStyle(theme.accent.opacity(0.5))
                                                     .contentTransition(.numericText())
                                             }
                                         } else {
-                                            Text(appState.formattedTimerValue)
+                                            Text(TimeFormatting.formatDuration(seconds: appState.timerElapsedSeconds))
                                                 .font(.durationDetail)
                                                 .foregroundStyle(theme.accent)
                                                 .contentTransition(.numericText())
                                         }
-                                        SpinningClockIcon(isRunning: activeSession?.state == .running)
                                     }
                                     .padding(.vertical, 6)
                                     .padding(.horizontal, Constants.spacingCard)
@@ -880,6 +881,8 @@ private struct ActivityBreakdownCard: View {
                                 if let sessions {
                                     ForEach(sessions) { session in
                                     HStack(spacing: Constants.spacingCompact) {
+                                        stateIcon(for: session)
+
                                         VStack(alignment: .leading, spacing: 2) {
                                             Text(sessionTypeLabel(session))
                                                 .font(.body)
@@ -893,8 +896,6 @@ private struct ActivityBreakdownCard: View {
                                         Spacer()
 
                                         sessionDurationLabel(session)
-
-                                        stateIcon(for: session)
                                     }
                                     .padding(.vertical, 6)
                                     .padding(.horizontal, Constants.spacingCard)
@@ -963,35 +964,27 @@ private struct ActivityBreakdownCard: View {
         return "\(start) – \(TimeFormatting.formatTime(end, referenceDate: today))"
     }
 
-    @ViewBuilder
-    private func stateIcon(for session: Session) -> some View {
+    private func isSessionComplete(_ session: Session) -> Bool {
         switch (session.state, session.sessionType) {
         case (.cancelled, _):
-            Image(systemName: "xmark.circle")
-                .font(.body)
-                .foregroundStyle(.secondary)
-
+            return false
         case (.completed, .work):
-            Image(systemName: "checkmark.circle.fill")
-                .font(.body)
-                .foregroundStyle(theme.success)
-
+            return true
         case (.completed, .rhythm), (.completed, .timebound):
-            let fullyElapsed = session.timerLengthMinutes
+            return session.timerLengthMinutes
                 .flatMap { target in session.durationSeconds.map { $0 >= target * 60 } } ?? false
-            if fullyElapsed {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.body)
-                    .foregroundStyle(theme.success)
-            } else {
-                Image(systemName: "xmark.circle")
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-            }
-
         default:
-            EmptyView()
+            return false
         }
+    }
+
+    @ViewBuilder
+    private func stateIcon(for session: Session) -> some View {
+        let complete = isSessionComplete(session)
+        Image(systemName: complete ? "checkmark.circle" : "exclamationmark.circle")
+            .font(.body)
+            .foregroundStyle(.tertiary)
+            .help(complete ? "Completed" : "Ended early")
     }
 
     /// Duration label for a completed session. Shows "todayPortion / total" when the session
