@@ -41,8 +41,17 @@ final class AppState {
     // MARK: - Timer Completion Alert
 
     var timerCompletionContext: TimerCompletionContext?
-    /// Saved when starting a break so the break-end alert knows what to resume
-    var breakPrecedingContext: (activityId: Int64, title: String, timerMinutes: Int, breakMinutes: Int)?
+    /// Saved when starting a break so the break-end alert knows what to resume.
+    /// Also persisted to UserDefaults so it survives crashes/force-quits.
+    var breakPrecedingContext: (activityId: Int64, title: String, timerMinutes: Int, breakMinutes: Int)? {
+        didSet {
+            if let ctx = breakPrecedingContext {
+                persistBreakContext(ctx)
+            } else {
+                UserDefaults.standard.removeObject(forKey: "breakPrecedingContext")
+            }
+        }
+    }
 
     // MARK: - Zoom
 
@@ -347,9 +356,10 @@ final class AppState {
         let timerMinutes = session.timerLengthMinutes ?? 0
 
         // Build completion context BEFORE stopping the session
-        let completionType: TimerCompletionContext.CompletionType
+        let completionType: TimerCompletionContext.CompletionType?
         if activity.isSystem {
-            // Break session ended — read the preceding context
+            // Break session ended — restore from disk if lost (e.g., after crash)
+            restoreBreakContextIfNeeded()
             if let ctx = breakPrecedingContext {
                 completionType = .rhythmBreakExpiry(
                     previousActivityId: ctx.activityId,
@@ -358,7 +368,9 @@ final class AppState {
                     previousBreakMinutes: ctx.breakMinutes
                 )
             } else {
-                completionType = .timeboundExpiry
+                // Context irrecoverably lost — skip floating alert.
+                // The notification and sound below still fire.
+                completionType = nil
             }
         } else if session.sessionType == .rhythm, let index = session.rhythmSessionIndex {
             let breakMins = await resolveBreakMinutes(session: session, sessionIndex: index)
@@ -368,14 +380,6 @@ final class AppState {
         } else {
             completionType = .timeboundExpiry
         }
-
-        let context = TimerCompletionContext(
-            completionType: completionType,
-            activityId: activity.id ?? 0,
-            activityTitle: activity.title,
-            durationFormatted: finalText,
-            timerMinutes: timerMinutes
-        )
 
         // Send notification and play completion sound
         NotificationManager.shared.sendTimerCompleted(
@@ -391,8 +395,16 @@ final class AppState {
         // Auto-stop the session
         await stopSession()
 
-        // Show floating alert
-        timerCompletionContext = context
+        // Show floating alert (skip if context couldn't be determined)
+        if let completionType {
+            timerCompletionContext = TimerCompletionContext(
+                completionType: completionType,
+                activityId: activity.id ?? 0,
+                activityTitle: activity.title,
+                durationFormatted: finalText,
+                timerMinutes: timerMinutes
+            )
+        }
     }
 
     private func resolveBreakMinutes(session: Session, sessionIndex: Int) async -> Int {
@@ -500,6 +512,32 @@ final class AppState {
     func endBreakSession() {
         timerCompletionContext = nil
         breakPrecedingContext = nil
+    }
+
+    // MARK: - Break Context Persistence
+
+    private func persistBreakContext(
+        _ ctx: (activityId: Int64, title: String, timerMinutes: Int, breakMinutes: Int)
+    ) {
+        let dict: [String: Any] = [
+            "activityId": ctx.activityId,
+            "title": ctx.title,
+            "timerMinutes": ctx.timerMinutes,
+            "breakMinutes": ctx.breakMinutes,
+        ]
+        UserDefaults.standard.set(dict, forKey: "breakPrecedingContext")
+    }
+
+    private func restoreBreakContextIfNeeded() {
+        guard breakPrecedingContext == nil else { return }
+        guard let dict = UserDefaults.standard.dictionary(forKey: "breakPrecedingContext"),
+              let activityId = dict["activityId"] as? Int64,
+              let title = dict["title"] as? String,
+              let timerMinutes = dict["timerMinutes"] as? Int,
+              let breakMinutes = dict["breakMinutes"] as? Int else { return }
+        // Set directly to avoid re-persisting via didSet
+        breakPrecedingContext = (activityId: activityId, title: title,
+                                timerMinutes: timerMinutes, breakMinutes: breakMinutes)
     }
 
     // MARK: - Database Observation
