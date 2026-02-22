@@ -148,6 +148,26 @@ struct SystemActivityTests {
         #expect(session.state == .running)
     }
 
+    @Test func getBreakActivitySelfHealsIfMissing() async throws {
+        let dbManager = try DatabaseManager(inMemory: true)
+        let service = PresentService(databasePool: dbManager.writer)
+
+        // Verify Break exists after migration
+        let original = try await service.getBreakActivity()
+        #expect(original.isSystem == true)
+
+        // Delete Break via raw SQL to simulate DB corruption
+        try await dbManager.writer.write { db in
+            try db.execute(sql: "DELETE FROM activity WHERE isSystem = 1")
+        }
+
+        // getBreakActivity should self-heal by re-creating it
+        let restored = try await service.getBreakActivity()
+        #expect(restored.isSystem == true)
+        #expect(restored.title == "Break")
+        #expect(restored.id != nil)
+    }
+
     @Test func breakSessionGetsNilRhythmSessionIndex() async throws {
         let service = try makeService()
         let breakActivity = try await service.getBreakActivity()

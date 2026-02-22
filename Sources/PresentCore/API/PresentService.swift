@@ -699,13 +699,23 @@ public final class PresentService: PresentAPI, Sendable {
     }
 
     public func getBreakActivity() async throws -> Activity {
-        try await dbWriter.read { db in
-            guard let activity = try Activity
+        try await dbWriter.write { db in
+            if let activity = try Activity
                 .filter(Activity.Columns.isSystem == true)
                 .filter(Activity.Columns.title == Constants.breakActivityTitle)
-                .fetchOne(db) else {
-                throw PresentError.activityNotFound(-1)
+                .fetchOne(db) {
+                return activity
             }
+            // Self-heal: re-create Break if missing (e.g., DB corruption)
+            let now = Date()
+            var activity = Activity(
+                title: Constants.breakActivityTitle,
+                isSystem: true,
+                createdAt: now,
+                updatedAt: now
+            )
+            try activity.insert(db)
+            activity.id = db.lastInsertedRowID
             return activity
         }
     }
