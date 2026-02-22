@@ -457,7 +457,7 @@ struct DashboardView: View {
     // MARK: - Activity Breakdown
 
     private var activityBreakdownCard: some View {
-        ActivityBreakdownCard()
+        ActivityBreakdownCard(activityColorMap: activityColorMap)
     }
 }
 
@@ -682,6 +682,7 @@ private struct DayTimelineView: View {
 // MARK: - Activity Breakdown Card
 
 private struct ActivityBreakdownCard: View {
+    let activityColorMap: [String: Color]
     @Environment(AppState.self) private var appState
     @Environment(ThemeManager.self) private var theme
     @State private var expandedActivities: Set<Int64> = []
@@ -707,20 +708,18 @@ private struct ActivityBreakdownCard: View {
 
                         VStack(spacing: 0) {
                             HStack {
-                                if totalCount > 1 {
-                                    Image(systemName: "chevron.right")
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                                } else {
-                                    Image(systemName: "chevron.right")
-                                        .font(.caption2)
-                                        .hidden()
-                                }
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
+
+                                Circle()
+                                    .fill(activityColorMap[summary.activity.title] ?? .secondary)
+                                    .frame(width: 8, height: 8)
 
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(summary.activity.title)
-                                        .font(.body)
+                                        .font(.title3)
                                         .lineLimit(1)
 
                                     HStack(spacing: 4) {
@@ -730,7 +729,7 @@ private struct ActivityBreakdownCard: View {
                                             Text(range)
                                         }
                                     }
-                                    .font(.subheadline)
+                                    .font(.body)
                                     .foregroundStyle(.secondary)
                                 }
 
@@ -745,7 +744,6 @@ private struct ActivityBreakdownCard: View {
                             .background(index.isMultiple(of: 2) ? Color.clear : Color.gray.opacity(0.08))
                             .contentShape(Rectangle())
                             .onTapGesture {
-                                guard totalCount > 1 else { return }
                                 withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
                                     if isExpanded {
                                         expandedActivities.remove(activityId)
@@ -760,11 +758,11 @@ private struct ActivityBreakdownCard: View {
                                 if let active = activeSession {
                                     HStack(spacing: Constants.spacingCompact) {
                                         VStack(alignment: .leading, spacing: 2) {
-                                            Text(SessionTypeConfig.config(for: active.sessionType).displayName)
-                                                .font(.subheadline)
+                                            Text(sessionTypeLabel(active))
+                                                .font(.body)
                                                 .foregroundStyle(.secondary)
                                             Text(TimeFormatting.formatTime(active.startedAt))
-                                                .font(.caption)
+                                                .font(.subheadline)
                                                 .foregroundStyle(.secondary)
                                         }
                                         Spacer()
@@ -785,12 +783,12 @@ private struct ActivityBreakdownCard: View {
                                     ForEach(sessions) { session in
                                     HStack(spacing: Constants.spacingCompact) {
                                         VStack(alignment: .leading, spacing: 2) {
-                                            Text(SessionTypeConfig.config(for: session.sessionType).displayName)
-                                                .font(.subheadline)
+                                            Text(sessionTypeLabel(session))
+                                                .font(.body)
                                                 .foregroundStyle(.secondary)
 
                                             Text(sessionTimeRange(session))
-                                                .font(.caption)
+                                                .font(.subheadline)
                                                 .foregroundStyle(.secondary)
                                         }
 
@@ -843,6 +841,23 @@ private struct ActivityBreakdownCard: View {
         return TimeFormatting.formatTime(first)
     }
 
+    private func sessionTypeLabel(_ session: Session) -> String {
+        let base = SessionTypeConfig.config(for: session.sessionType).displayName
+        switch session.sessionType {
+        case .timebound:
+            if let minutes = session.timerLengthMinutes {
+                return "\(base) (\(minutes)m)"
+            }
+        case .rhythm:
+            if let work = session.timerLengthMinutes, let brk = session.breakMinutes {
+                return "\(base) (\(work)m/\(brk)m)"
+            }
+        case .work:
+            break
+        }
+        return base
+    }
+
     private func sessionTimeRange(_ session: Session) -> String {
         let start = TimeFormatting.formatTime(session.startedAt)
         guard let end = session.endedAt else { return start }
@@ -854,12 +869,12 @@ private struct ActivityBreakdownCard: View {
         switch (session.state, session.sessionType) {
         case (.cancelled, _):
             Image(systemName: "xmark.circle")
-                .font(.subheadline)
+                .font(.body)
                 .foregroundStyle(.secondary)
 
         case (.completed, .work):
             Image(systemName: "checkmark.circle.fill")
-                .font(.subheadline)
+                .font(.body)
                 .foregroundStyle(theme.success)
 
         case (.completed, .rhythm), (.completed, .timebound):
@@ -867,11 +882,11 @@ private struct ActivityBreakdownCard: View {
                 .flatMap { target in session.durationSeconds.map { $0 >= target * 60 } } ?? false
             if fullyElapsed {
                 Image(systemName: "checkmark.circle.fill")
-                    .font(.subheadline)
+                    .font(.body)
                     .foregroundStyle(theme.success)
             } else {
                 Image(systemName: "xmark.circle")
-                    .font(.subheadline)
+                    .font(.body)
                     .foregroundStyle(.secondary)
             }
 

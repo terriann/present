@@ -22,10 +22,10 @@ extension Font {
     static let statValue = Font.title.bold()
 
     /// Duration display in session rows and breakdown lists.
-    static let durationValue = Font.body.monospacedDigit()
+    static let durationValue = Font.title3.monospacedDigit()
 
     /// Duration in detail/sub-rows (expanded breakdown, activity detail).
-    static let durationDetail = Font.subheadline.monospacedDigit()
+    static let durationDetail = Font.body.monospacedDigit()
 
     // MARK: - Data & Charts
 
