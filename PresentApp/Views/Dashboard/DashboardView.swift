@@ -9,6 +9,8 @@ struct DashboardView: View {
     @State private var barHoverLocation: CGPoint = .zero
     @State private var quickRestartSuggestions: [(Session, Activity)] = []
     @State private var contentWidth: CGFloat = 600
+    /// Tracks the current date for greeting/date text; updated at period boundaries.
+    @State private var greetingDate = Date()
 
     /// Shared color mapping so today timeline and weekly chart use the same color per activity.
     private var activityColorMap: [String: Color] {
@@ -57,6 +59,7 @@ struct DashboardView: View {
             })
         }
         .navigationTitle("Dashboard")
+        .task { await refreshGreetingAtBoundary() }
         .task(id: appState.isSessionActive) {
             if appState.isSessionActive {
                 quickRestartSuggestions = []
@@ -103,19 +106,50 @@ struct DashboardView: View {
 
     // MARK: - Greeting helpers
 
+    /// Greeting periods defined as (start hour, phrase). Ordered chronologically.
+    /// Both `greeting` and `refreshGreetingAtBoundary` derive from this.
+    private static let greetingPeriods: [(hour: Int, phrase: String)] = [
+        (0, "Good morning"),
+        (12, "Good afternoon"),
+        (18, "Good evening"),
+    ]
+
     private var greeting: String {
-        let hour = Calendar.current.component(.hour, from: Date())
-        switch hour {
-        case 0..<12: return "Good morning"
-        case 12..<18: return "Good afternoon"
-        default: return "Good evening"
-        }
+        let hour = Calendar.current.component(.hour, from: greetingDate)
+        // Walk backwards to find the last period whose start hour we've passed.
+        return Self.greetingPeriods.last { hour >= $0.hour }?.phrase ?? Self.greetingPeriods[0].phrase
     }
 
     private var dateText: String {
         let f = DateFormatter()
         f.dateStyle = .full
-        return f.string(from: Date())
+        return f.string(from: greetingDate)
+    }
+
+    /// Sleeps until the next greeting boundary and updates `greetingDate`.
+    private func refreshGreetingAtBoundary() async {
+        let boundaryHours = Self.greetingPeriods.map(\.hour)
+
+        while !Task.isCancelled {
+            let calendar = Calendar.current
+            let now = Date()
+            let hour = calendar.component(.hour, from: now)
+
+            // Next boundary is the first hour > current, or wrap to first boundary (midnight/next day).
+            let nextHour = boundaryHours.first { $0 > hour } ?? boundaryHours[0]
+
+            var target = calendar.date(bySettingHour: nextHour, minute: 0, second: 0, of: now) ?? now
+            if target <= now {
+                target = calendar.date(byAdding: .day, value: 1, to: target) ?? now
+            }
+
+            let delay = target.timeIntervalSinceNow
+            guard delay > 0 else { break }
+
+            try? await Task.sleep(for: .seconds(delay))
+            guard !Task.isCancelled else { break }
+            greetingDate = Date()
+        }
     }
 
     // MARK: - Quick restart loader
