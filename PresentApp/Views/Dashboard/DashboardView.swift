@@ -22,9 +22,10 @@ struct DashboardView: View {
                 titles.insert(summary.activity.title)
             }
         }
-        // Include active session's activity so cross-midnight sessions get a chart color
-        if let currentTitle = appState.currentActivity?.title {
-            titles.insert(currentTitle)
+        // Include active session's activity so cross-midnight sessions get a chart color.
+        // Skip system activities (Break) — they don't need chart representation.
+        if let current = appState.currentActivity, !current.isSystem {
+            titles.insert(current.title)
         }
         let sorted = titles.sorted()
         var map: [String: Color] = [:]
@@ -438,8 +439,11 @@ struct DashboardView: View {
             }
         }
 
-        // Inject active session's today portion into the chart
-        if hasActiveTodaySession, let activity = appState.currentActivity {
+        // Inject active session's today portion into the chart.
+        // Skip system activities (e.g., Break) — they aren't in the weekly
+        // summary's activity list yet, so the chart's colorDomain won't
+        // include them, causing a Swift Charts crash.
+        if hasActiveTodaySession, let activity = appState.currentActivity, !activity.isSystem {
             let todayLabel = dayLabel(Date())
             let activeHours = Double(todayPortionSeconds) / 3600.0
             if let index = entries.firstIndex(where: { $0.label == todayLabel && $0.activity == activity.title }) {
