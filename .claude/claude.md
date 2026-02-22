@@ -79,6 +79,13 @@ CLI Commands ──────────────────────�
 - **Code**: `codeBlock` (mono body), `codeCaption` (mono caption).
 - To add a new token: add a static property to the `Font` extension in `Typography.swift` with a doc comment explaining its semantic purpose.
 
+### Time Display
+- **Duration format**: `Xh Ym` (e.g., "2h 15m") or `Xm` for sub-hour. Use `TimeFormatting.formatDuration(seconds:)`.
+- **Timer format**: `H:MM:SS` or `M:SS` for the live timer display. Use `TimeFormatting.formatTimer(seconds:)`.
+- **Round at session level**: The database stores exact seconds, but UI durations are floored to the minute. When summing durations across sessions (activity totals, daily totals), round each session to the minute first using `TimeFormatting.floorToMinute(_:)`, then sum. This ensures the total matches the individually displayed values.
+- **Cross-midnight times**: When a time falls on a different calendar day than the reference context, append the day name in parentheses (e.g., "11:23 PM (Saturday)"). Use `TimeFormatting.formatTime(_:referenceDate:)`.
+- **Rhythm durations**: Use `RhythmOption.displayLabel` for compact format (`25m / 5m`) and `RhythmOption.settingsLabel` for settings/configuration (`25 minute focus / 5 minute break`).
+
 ### Spacing & Layout
 - **Page** (`Constants.spacingPage`, 20pt): Main content areas — ScrollView roots in Dashboard, ActivityDetail, Reports, and sheets.
 - **Toolbar** (`Constants.spacingToolbar`, 16pt): Toolbars and navigation bars.
