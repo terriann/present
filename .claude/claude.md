@@ -6,6 +6,26 @@ See [README.md](../README.md) for features, installation, and CLI usage.
 See [plans/v1-spec.md](../plans/v1-spec.md) for the full V1 specification.
 See [DEVELOPMENT.md](../DEVELOPMENT.md) for build, test, and contributor setup.
 
+## Voice & Tone
+
+Present speaks like a calm, thoughtful companion — never a demanding boss or a gamified coach. The app is a flexible tool that respects how each person chooses to track and report their time; it never prescribes a "right" way.
+
+- **Patient**: No urgency, no guilt. Time is observed, not judged.
+- **Clear**: Plain language, short sentences. Say what you mean without hedging.
+- **Warm**: Friendly but not bubbly. Encouraging without cheerleading.
+- **Humble**: The app serves the user, not the other way around. No boasting, no superlatives.
+- **Educational**: Explain when helpful (tooltips, onboarding, empty states), but step back once the user knows the way.
+
+### Anti-patterns
+- No guilt language ("You haven't tracked anything today!")
+- No gamification pressure ("Keep your streak going!")
+- No corporate speak ("Optimize your productivity workflow")
+- No condescension ("It's easy! Just...")
+- No false enthusiasm ("Amazing! You tracked 8 hours!")
+- No prescriptive workflows ("You should track every task")
+
+Apply this voice to all user-facing copy: UI labels, empty states, error messages, notifications, CLI help text, and documentation.
+
 ## Architecture
 
 ```
