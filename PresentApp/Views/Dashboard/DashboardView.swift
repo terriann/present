@@ -300,7 +300,7 @@ struct DashboardView: View {
         switch session.sessionType {
         case .rhythm:
             if let focus = session.timerLengthMinutes, let brk = session.breakMinutes {
-                return "\(typeName) · \(focus)m / \(brk)m"
+                return "\(typeName) · \(RhythmOption(focusMinutes: focus, breakMinutes: brk).displayLabel)"
             }
             return typeName
         case .timebound:
@@ -945,11 +945,11 @@ private struct ActivityBreakdownCard: View {
         switch session.sessionType {
         case .timebound:
             if let minutes = session.timerLengthMinutes {
-                return "\(base) (\(minutes)m)"
+                return "\(base) · \(minutes)m"
             }
         case .rhythm:
             if let work = session.timerLengthMinutes, let brk = session.breakMinutes {
-                return "\(base) (\(work)m/\(brk)m)"
+                return "\(base) · \(RhythmOption(focusMinutes: work, breakMinutes: brk).displayLabel)"
             }
         case .work:
             break

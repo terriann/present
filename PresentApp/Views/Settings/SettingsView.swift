@@ -398,7 +398,7 @@ struct SessionSettingsTab: View {
             Section {
                 ForEach(durationOptions, id: \.self) { option in
                     HStack {
-                        Text("\(option.focusMinutes) min focus / \(option.breakMinutes) min break")
+                        Text(option.settingsLabel)
                             .monospacedDigit()
                         Spacer()
                         Button {
@@ -471,7 +471,7 @@ struct SessionSettingsTab: View {
             Section {
                 Picker("Default duration", selection: $defaultMinutes) {
                     ForEach(durationOptions, id: \.self) { option in
-                        Text("\(option.focusMinutes) min (\(option.breakMinutes)m break)").tag(option.focusMinutes)
+                        Text(option.settingsLabel).tag(option.focusMinutes)
                     }
                 }
 

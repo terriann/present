@@ -174,7 +174,7 @@ struct ActivityDetailView: View {
                                 Button {
                                     selectedRhythmOption = option
                                 } label: {
-                                    Text("\(option.focusMinutes) min (\(option.breakMinutes)m)")
+                                    Text(option.displayLabel)
                                         .font(.caption.weight(isSelected ? .semibold : .regular))
                                         .padding(.horizontal, Constants.spacingCompact)
                                         .padding(.vertical, 3)

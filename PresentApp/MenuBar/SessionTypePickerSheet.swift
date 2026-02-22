@@ -30,7 +30,7 @@ struct SessionTypePickerSheet: View {
             if selectedType == .rhythm {
                 Picker("Duration", selection: $selectedRhythmOption) {
                     ForEach(appState.rhythmDurationOptions, id: \.self) { option in
-                        Text("\(option.focusMinutes) min (\(option.breakMinutes)m)").tag(Optional(option))
+                        Text(option.displayLabel).tag(Optional(option))
                     }
                 }
                 .pickerStyle(.segmented)

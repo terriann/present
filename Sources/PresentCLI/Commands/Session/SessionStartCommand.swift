@@ -66,7 +66,7 @@ struct SessionStartCommand: AsyncParsableCommand {
 
             if let mins = minutes {
                 guard let matched = validOptions.first(where: { $0.focusMinutes == mins }) else {
-                    let formatted = validOptions.map { "\($0.focusMinutes) min (\($0.breakMinutes)m break)" }.joined(separator: ", ")
+                    let formatted = validOptions.map { $0.displayLabel }.joined(separator: ", ")
                     print("Invalid duration: \(mins) minutes. Available options: \(formatted)")
                     throw ExitCode.failure
                 }

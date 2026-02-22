@@ -158,7 +158,7 @@ struct MenuBarView: View {
                             Button {
                                 selectedRhythmOption = option
                             } label: {
-                                Text("\(option.focusMinutes) m / \(option.breakMinutes) m")
+                                Text(option.displayLabel)
                                     .font(scaledFont(.caption2, weight: isSelected ? .semibold : .regular))
                                     .padding(.horizontal, Constants.spacingCompact * zoomScale)
                                     .padding(.vertical, 3 * zoomScale)
