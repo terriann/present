@@ -136,27 +136,109 @@ struct FloatingAlertView: View {
     }
 
     private var rhythmBreakActions: some View {
-        VStack(spacing: 8) {
-            if case .rhythmBreakExpiry(_, let prevTitle, _, _) = context.completionType {
-                Button {
-                    Task { await appState.startNextFocusSession() }
-                } label: {
-                    Label("Resume \(prevTitle)", systemImage: "play")
-                        .lineLimit(1)
-                        .frame(maxWidth: .infinity)
-                }
-                .controlSize(.large)
-                .buttonStyle(.borderedProminent)
+        VStack(spacing: Constants.spacingCard) {
+            if case .rhythmBreakExpiry(_, let prevTitle, let prevTimer, let prevBreak) = context.completionType {
+                resumeCard(title: prevTitle, timerMinutes: prevTimer, breakMinutes: prevBreak)
             }
 
-            Button {
+            EndRhythmButton(theme: theme) {
                 appState.endBreakSession()
-            } label: {
-                Label("End", systemImage: "stop")
-                    .frame(maxWidth: .infinity)
             }
-            .controlSize(.large)
-            .buttonStyle(.bordered)
+        }
+    }
+
+    // MARK: - Resume Card
+
+    private func resumeCard(title: String, timerMinutes: Int, breakMinutes: Int) -> some View {
+        ResumeActivityCard(
+            title: title,
+            subtitle: "Rhythm \u{00B7} \(timerMinutes)m / \(breakMinutes)m break",
+            theme: theme
+        ) {
+            Task { await appState.startNextFocusSession() }
+        }
+    }
+}
+
+// MARK: - Resume Activity Card
+
+/// Card-style button for resuming the previous focus activity after a break.
+/// Styled to match QuickStartRow: activity title, session subtitle, hover state.
+private struct ResumeActivityCard: View {
+    let title: String
+    let subtitle: String
+    let theme: ThemeManager
+    let onTap: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: Constants.spacingCompact) {
+                Image(systemName: "play.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(isHovered ? theme.accent : .secondary)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.body)
+                        .lineLimit(1)
+
+                    Text(subtitle)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Image(systemName: "arrow.right")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(Constants.spacingCard)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(isHovered ? theme.accent.opacity(0.1) : Color.primary.opacity(0.05))
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            isHovered = hovering
+        }
+    }
+}
+
+// MARK: - End Rhythm Button
+
+/// Destructive-style button for ending the rhythm session entirely.
+/// Uses alert color with hover state.
+private struct EndRhythmButton: View {
+    let theme: ThemeManager
+    let onTap: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 6) {
+                Image(systemName: "stop.fill")
+                    .font(.caption)
+                Text("End Rhythm Session")
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .foregroundStyle(isHovered ? .white : theme.alert)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(isHovered ? theme.alert : theme.alert.opacity(0.12))
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            isHovered = hovering
         }
     }
 }
