@@ -224,3 +224,7 @@ This applies when the user:
 - Asks to plan or propose milestones
 
 The PM agent handles issue creation (via the `/issue` skill), triage, labeling, sizing, and milestone management.
+
+### Milestones
+
+- **Future** — Placeholder milestone for far-future ideas and explorations. Not tied to a release. Assign issues here to keep the backlog filtered to actionable work. Do not use for anything with a concrete timeline.
