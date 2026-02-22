@@ -78,6 +78,7 @@ All label colors use the project's **Blue-Green base with Orange accent** palett
 | `duplicate` | `#EAF7F6` | Already exists |
 | `invalid` | `#EAF7F6` | Not applicable |
 | `wontfix` | `#EAF7F6` | Will not be addressed |
+| `chore` | `#EAF7F6` | Maintenance, tooling, and infrastructure tasks |
 
 **Feature labels** (teal — mid-range):
 | Label | Color | Description |
@@ -92,17 +93,17 @@ All label colors use the project's **Blue-Green base with Orange accent** palett
 | `feature/notifications` | `#5DBFC4` | System notifications, break suggestions |
 | `feature/timeboxing` | `#5DBFC4` | Time box planning |
 
-**Design labels** (seafoam — aligned with design-reviewer.md categories):
+**Design labels** (purple — aligned with design-reviewer.md categories):
 | Label | Color | Description |
 |---|---|---|
-| `design/layout` | `#A7DCCF` | Spacing, alignment, structure |
-| `design/typography` | `#A7DCCF` | Font styles, text hierarchy |
-| `design/color` | `#A7DCCF` | Color tokens, theming, palette |
-| `design/interaction` | `#A7DCCF` | Touch targets, gestures, controls |
-| `design/accessibility` | `#A7DCCF` | VoiceOver, contrast, assistive tech |
-| `design/feedback` | `#A7DCCF` | Loading states, errors, empty states |
-| `design/macos` | `#A7DCCF` | macOS conventions, platform patterns |
-| `design/sound` | `#A7DCCF` | Sound design, audio cues |
+| `design/layout` | `#8E44AD` | Spacing, alignment, structure |
+| `design/typography` | `#8E44AD` | Font styles, text hierarchy |
+| `design/color` | `#8E44AD` | Color tokens, theming, palette |
+| `design/interaction` | `#8E44AD` | Touch targets, gestures, controls |
+| `design/accessibility` | `#8E44AD` | VoiceOver, contrast, assistive tech |
+| `design/feedback` | `#8E44AD` | Loading states, errors, empty states |
+| `design/macos` | `#8E44AD` | macOS conventions, platform patterns |
+| `design/sound` | `#8E44AD` | Sound design, audio cues |
 
 **Delete these default labels if they exist:** `good first issue`, `help wanted`, `question`.
 

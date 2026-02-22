@@ -24,6 +24,12 @@ Present speaks like a calm, thoughtful companion — never a demanding boss or a
 - No false enthusiasm ("Amazing! You tracked 8 hours!")
 - No prescriptive workflows ("You should track every task")
 
+### Settings & configuration
+Brevity takes a back seat to clarity in settings UI and CLI configuration. Use enough words to remove ambiguity about what a value controls, what the valid options are, and what will change when the user saves. A slightly longer label or description is better than a confused setting.
+
+### Prefer positive framing
+Use affirmative conditions: "Show notifications" rather than "Disable notifications", "Include archived" rather than "Don't hide archived". Negative framing (double negatives, "don't", "disable") forces extra mental parsing. Reserve negative phrasing only when the negative action is genuinely the primary concept (e.g., "Mute sounds" where silence is the point).
+
 Apply this voice to all user-facing copy: UI labels, empty states, error messages, notifications, CLI help text, and documentation.
 
 ## Architecture
