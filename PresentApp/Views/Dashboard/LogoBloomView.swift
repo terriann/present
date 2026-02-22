@@ -8,7 +8,10 @@ import PresentCore
 /// vertically at the base and unfurl outward to their final positions.
 struct LogoBloomView: View {
     @Environment(ThemeManager.self) private var theme
-    @State private var bloomed = false
+
+    /// Tracks whether the bloom has already played this app session.
+    private static var hasBloomedOnce = false
+    @State private var bloomed = LogoBloomView.hasBloomedOnce
 
     /// Petal angles matching the logo: center, ±30°, ±60°, ±90°.
     private let petalAngles: [Double] = [-90, -60, -30, 0, 30, 60, 90]
@@ -40,9 +43,11 @@ struct LogoBloomView: View {
             .position(x: geo.size.width / 2, y: geo.size.height - petalWidth / 2)
         }
         .task {
+            guard !bloomed else { return }
             // Brief delay lets the GeometryReader settle before animating
             try? await Task.sleep(for: .milliseconds(100))
             bloomed = true
+            LogoBloomView.hasBloomedOnce = true
         }
     }
 
