@@ -59,7 +59,16 @@ final class FloatingAlertPanelManager {
     }
 
     func dismissAlert() {
-        panel?.close()
-        panel = nil
+        guard let panel else { return }
+        // Hide immediately but defer close to the next run loop iteration.
+        // Calling close() synchronously can destroy the NSHostingView while
+        // SwiftUI is still processing a button action inside the panel,
+        // which corrupts the view update cycle and crashes.
+        panel.orderOut(nil)
+        let panelToClose = panel
+        self.panel = nil
+        DispatchQueue.main.async {
+            panelToClose.close()
+        }
     }
 }

@@ -31,10 +31,19 @@ struct PresentApp: App {
                 .modifier(ErrorAlertModifier(appState: appState))
                 .onAppear {
                     appDelegate.appState = appState
-                    let manager = FloatingAlertPanelManager(appState: appState, themeManager: themeManager)
-                    appDelegate.floatingAlertManager = manager
+                    if appDelegate.floatingAlertManager == nil {
+                        appDelegate.floatingAlertManager = FloatingAlertPanelManager(
+                            appState: appState, themeManager: themeManager
+                        )
+                    }
                     appState.showDockIcon(true)
-                    observeTimerCompletion(manager: manager)
+                }
+                .onChange(of: appState.timerCompletionContext) { _, newValue in
+                    if let ctx = newValue {
+                        appDelegate.floatingAlertManager?.showAlert(context: ctx)
+                    } else {
+                        appDelegate.floatingAlertManager?.dismissAlert()
+                    }
                 }
                 .onDisappear { appState.showDockIcon(false) }
         }
@@ -60,24 +69,6 @@ struct PresentApp: App {
                 .environment(themeManager)
                 .tint(themeManager.accent)
                 .modifier(ErrorAlertModifier(appState: appState))
-        }
-    }
-
-    private func observeTimerCompletion(manager: FloatingAlertPanelManager) {
-        Task { @MainActor in
-            var lastContext: TimerCompletionContext?
-            while true {
-                let currentContext = appState.timerCompletionContext
-                if currentContext != lastContext {
-                    lastContext = currentContext
-                    if let ctx = currentContext {
-                        manager.showAlert(context: ctx)
-                    } else {
-                        manager.dismissAlert()
-                    }
-                }
-                try? await Task.sleep(for: .milliseconds(100))
-            }
         }
     }
 
