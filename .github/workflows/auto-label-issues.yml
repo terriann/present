@@ -27,7 +27,7 @@ jobs:
       - name: Label issue with Claude Code
         uses: anthropics/claude-code-action@edd85d61533cbba7b57ed0ca4af1750b1fdfd3c4 # v1 • 5.7k ★ 2025 Aug 26
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           # Bypass project-level .claude/settings.json; CI permissions are defined
           # explicitly below via `settings` so they are independent of local dev config.
