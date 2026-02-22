@@ -2,7 +2,7 @@ name: Auto-label Issues
 
 on:
   issues:
-    types: [opened]
+    types: [opened, reopened]
 
 # Deny all permissions by default; grant only what's needed per job
 permissions: {}
