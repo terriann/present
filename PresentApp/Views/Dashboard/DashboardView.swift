@@ -9,6 +9,26 @@ struct DashboardView: View {
     @State private var barHoverLocation: CGPoint = .zero
     @State private var quickRestartSuggestions: [(Session, Activity)] = []
 
+    /// Shared color mapping so today timeline and weekly chart use the same color per activity.
+    private var activityColorMap: [String: Color] {
+        let palette = ThemeManager.chartColors(for: theme.activePalette)
+        var titles = Set<String>()
+        for summary in appState.todayActivities {
+            titles.insert(summary.activity.title)
+        }
+        if let weekly = appState.weeklySummary {
+            for summary in weekly.activities {
+                titles.insert(summary.activity.title)
+            }
+        }
+        let sorted = titles.sorted()
+        var map: [String: Color] = [:]
+        for (index, title) in sorted.enumerated() {
+            map[title] = palette[index % palette.count]
+        }
+        return map
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
@@ -154,7 +174,7 @@ struct DashboardView: View {
                         )
                     }
 
-                    DayTimelineView()
+                    DayTimelineView(activityColorMap: activityColorMap)
                         .frame(maxWidth: .infinity)
                 }
                 .padding(Constants.spacingCard)
@@ -261,9 +281,8 @@ struct DashboardView: View {
     }
 
     private func weeklyBarChart(entries: [DashboardBarEntry], domain: [String], activities: [ActivitySummary], tooltipLabels: [String: String]) -> some View {
-        let colorDomain = activities.map(\.activity.title)
-        let palette = ThemeManager.chartColors(for: theme.activePalette)
-        let colorRange = activities.indices.map { palette[$0 % palette.count] }
+        let colorDomain = activities.map(\.activity.title).sorted()
+        let colorRange = colorDomain.map { activityColorMap[$0] ?? .secondary }
 
         // Compute y-axis domain
         var labelTotals: [String: Double] = [:]
@@ -352,7 +371,6 @@ struct DashboardView: View {
     private func weeklyBarTooltip(for label: String, entries: [DashboardBarEntry], activities: [ActivitySummary], tooltipLabels: [String: String]) -> some View {
         let matching = entries.filter { $0.label == label }
         let bucketTotal = matching.reduce(0.0) { $0 + $1.value }
-        let palette = ThemeManager.chartColors(for: theme.activePalette)
 
         return ChartTooltip {
             Text(tooltipLabels[label] ?? label)
@@ -360,8 +378,7 @@ struct DashboardView: View {
 
             ForEach(matching, id: \.id) { entry in
                 HStack(spacing: 6) {
-                    let color = activities.firstIndex(where: { $0.activity.title == entry.activity })
-                        .map { palette[$0 % palette.count] } ?? .secondary
+                    let color = activityColorMap[entry.activity] ?? .secondary
                     Circle()
                         .fill(color)
                         .frame(width: 8, height: 8)
@@ -436,6 +453,7 @@ struct DashboardView: View {
 // MARK: - Day Timeline View
 
 private struct DayTimelineView: View {
+    let activityColorMap: [String: Color]
     @Environment(AppState.self) private var appState
     @Environment(ThemeManager.self) private var theme
     @State private var completedSessions: [(Session, Activity)] = []
@@ -466,7 +484,7 @@ private struct DayTimelineView: View {
             guard let id = activity.id, seen.insert(id).inserted else { continue }
             items.append((label: activity.title, color: activityColor(activity)))
         }
-        return items
+        return items.sorted { $0.label < $1.label }
     }
 
     var body: some View {
@@ -584,9 +602,7 @@ private struct DayTimelineView: View {
     }
 
     private func activityColor(_ activity: Activity) -> Color {
-        let palette = ThemeManager.chartColors(for: theme.activePalette)
-        let index = appState.todayActivities.firstIndex(where: { $0.activity.id == activity.id }) ?? 0
-        return palette[index % palette.count]
+        activityColorMap[activity.title] ?? .secondary
     }
 
     private func axisLabel(_ hour: Int) -> String {
@@ -614,6 +630,10 @@ private struct DayTimelineView: View {
             Text(activity.title)
                 .font(.caption)
                 .fontWeight(.semibold)
+
+            Text(SessionTypeConfig.config(for: session.sessionType).displayName)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
 
             Text(tooltipDuration(session))
                 .font(.caption)
