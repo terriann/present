@@ -49,6 +49,19 @@ public enum TimeFormatting {
         return formatter.string(from: date)
     }
 
+    /// Format a time with a day label when it falls on a different calendar day than `referenceDate`.
+    /// Returns e.g. "11:23 PM" for same-day or "10:08 AM (Saturday)" for a different day.
+    public static func formatTime(_ date: Date, referenceDate: Date) -> String {
+        let time = formatTime(date)
+        let calendar = Calendar.current
+        if !calendar.isDate(date, inSameDayAs: referenceDate) {
+            let dayFormatter = DateFormatter()
+            dayFormatter.dateFormat = "EEEE"
+            return "\(time) (\(dayFormatter.string(from: date)))"
+        }
+        return time
+    }
+
     /// Format a week date range (e.g., "February 17 – February 23, 2026" or "December 30, 2025 – January 5, 2026")
     public static func formatWeekRange(start: Date, end: Date) -> String {
         let calendar = Calendar.current

@@ -843,7 +843,7 @@ private struct ActivityBreakdownCard: View {
                                             Text(sessionTypeLabel(active))
                                                 .font(.body)
                                                 .foregroundStyle(.secondary)
-                                            Text(TimeFormatting.formatTime(active.startedAt))
+                                            Text(TimeFormatting.formatTime(active.startedAt, referenceDate: Date()))
                                                 .font(.subheadline)
                                                 .foregroundStyle(.secondary)
                                         }
@@ -916,11 +916,12 @@ private struct ActivityBreakdownCard: View {
             // active session has no endedAt — omit end so range shows open start
         }
         guard let first = starts.min() else { return nil }
+        let today = Date()
         if let last = ends.max() {
-            return "\(TimeFormatting.formatTime(first)) – \(TimeFormatting.formatTime(last))"
+            return "\(TimeFormatting.formatTime(first, referenceDate: today)) – \(TimeFormatting.formatTime(last, referenceDate: today))"
         }
         // Only active session (no completed end times yet)
-        return TimeFormatting.formatTime(first)
+        return TimeFormatting.formatTime(first, referenceDate: today)
     }
 
     private func sessionTypeLabel(_ session: Session) -> String {
@@ -941,9 +942,10 @@ private struct ActivityBreakdownCard: View {
     }
 
     private func sessionTimeRange(_ session: Session) -> String {
-        let start = TimeFormatting.formatTime(session.startedAt)
+        let today = Date()
+        let start = TimeFormatting.formatTime(session.startedAt, referenceDate: today)
         guard let end = session.endedAt else { return start }
-        return "\(start) – \(TimeFormatting.formatTime(end))"
+        return "\(start) – \(TimeFormatting.formatTime(end, referenceDate: today))"
     }
 
     @ViewBuilder
