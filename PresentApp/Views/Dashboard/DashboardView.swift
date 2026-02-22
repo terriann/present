@@ -471,6 +471,7 @@ private struct DayTimelineView: View {
     @State private var hoveredActivityTitle: String? = nil
     @State private var hoveredSessionPair: (Session, Activity)?
     @State private var hoverLocation: CGPoint = .zero
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let barHeight: CGFloat = 48
     private let axisHours = stride(from: 0, through: 24, by: 3).map { $0 }
@@ -520,14 +521,16 @@ private struct DayTimelineView: View {
                             .fill(color.opacity(isActive ? 1.0 : 0.75))
                             .frame(width: w, height: barHeight)
                             .offset(x: x)
-                            .opacity(dimmed ? 0.2 : 1.0)
+                            .phaseAnimator(
+                                isActive && !reduceMotion ? [0.75, 0.3] : [isActive ? 0.75 : 1.0]
+                            ) { content, phase in
+                                content.opacity(dimmed ? 0.2 : phase)
+                            } animation: { phase in
+                                phase == 0.3
+                                    ? .easeInOut(duration: 3.0).delay(1.0)
+                                    : .easeInOut(duration: 3.0)
+                            }
                     }
-
-                    // Current time indicator
-                    Rectangle()
-                        .fill(Color.white.opacity(0.4))
-                        .frame(width: 2, height: barHeight + 6)
-                        .offset(x: nowPos(geo.size.width))
 
                     // X-axis tick marks
                     ForEach(axisHours, id: \.self) { hour in
@@ -606,10 +609,6 @@ private struct DayTimelineView: View {
         )
         let duration = max(1, end.timeIntervalSince(session.startedAt))
         return max(6, CGFloat(duration / secondsInDay) * width)
-    }
-
-    private func nowPos(_ width: CGFloat) -> CGFloat {
-        CGFloat(Date().timeIntervalSince(startOfDay) / secondsInDay) * width
     }
 
     private func activityColor(_ activity: Activity) -> Color {
