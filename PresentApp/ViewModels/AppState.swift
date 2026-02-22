@@ -214,7 +214,7 @@ final class AppState {
             }
 
             recentActivities = try await service.recentActivities(limit: 6)
-            allActivities = try await service.listActivities(includeArchived: true)
+            allActivities = try await service.listActivities(includeArchived: true, includeSystem: true)
             allTags = try await service.listTags()
 
             if let zoomStr = try? await service.getPreference(key: PreferenceKey.zoomLevel),

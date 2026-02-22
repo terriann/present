@@ -29,9 +29,11 @@ struct ActivityDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 headerRow
-                linksSection
-                notesSection
-                tagsSection
+                if !activity.isSystem {
+                    linksSection
+                    notesSection
+                    tagsSection
+                }
                 activityFooter
             }
             .padding(Constants.spacingPage)
@@ -85,12 +87,20 @@ struct ActivityDetailView: View {
             if selectedRhythmOption == nil || !appState.rhythmDurationOptions.contains(where: { $0 == selectedRhythmOption }) {
                 selectedRhythmOption = appState.rhythmDurationOptions.first
             }
+            if activity.isSystem && selectedSessionType == .rhythm {
+                selectedSessionType = .work
+            }
         }
         .onChange(of: appState.rhythmDurationOptions) {
             if selectedRhythmOption == nil || !appState.rhythmDurationOptions.contains(where: { $0 == selectedRhythmOption }) {
                 selectedRhythmOption = appState.rhythmDurationOptions.first
             }
         }
+    }
+
+    private var isEditable: Bool { !activity.isArchived && !activity.isSystem }
+    private var allowedSessionTypes: [SessionType] {
+        activity.isSystem ? [.work, .timebound] : SessionType.allCases
     }
 
     // MARK: - Header Row
@@ -104,11 +114,19 @@ struct ActivityDetailView: View {
                         value: activity.title,
                         placeholder: "Activity title",
                         font: .statValue,
-                        isEditable: !activity.isArchived,
+                        isEditable: isEditable,
                         onSave: { newTitle in
                             Task { await updateTitle(newTitle) }
                         }
                     )
+
+                    if activity.isSystem {
+                        Text("System")
+                            .font(.caption)
+                            .padding(.horizontal, Constants.spacingCompact)
+                            .padding(.vertical, 3)
+                            .background(theme.accent.opacity(0.2), in: Capsule())
+                    }
 
                     if activity.isArchived {
                         Text("Archived")
@@ -123,10 +141,10 @@ struct ActivityDetailView: View {
             Spacer()
 
             // Right: session controls (fixed position, not affected by title editing)
-            if !activity.isArchived {
+            if !activity.isArchived || activity.isSystem {
                 VStack(alignment: .trailing, spacing: 10) {
                     HStack(spacing: 4) {
-                        ForEach(SessionType.allCases, id: \.self) { type in
+                        ForEach(allowedSessionTypes, id: \.self) { type in
                             let isSelected = selectedSessionType == type
                             Button {
                                 withAdaptiveAnimation(.easeInOut(duration: 0.15)) {
@@ -438,32 +456,34 @@ struct ActivityDetailView: View {
 
             Spacer()
 
-            HStack(spacing: 8) {
-                if !activity.isArchived {
-                    Button {
-                        Task { await handleArchive() }
-                    } label: {
-                        Label("Archive", systemImage: "archivebox")
-                    }
-                    .buttonStyle(.bordered)
-                    .tint(theme.warning)
-                    .accessibilityLabel("Archive activity")
-                } else {
-                    Button {
-                        Task { await handleUnarchive() }
-                    } label: {
-                        Label("Unarchive", systemImage: "arrow.uturn.backward")
-                    }
-                    .buttonStyle(.bordered)
-                    .accessibilityLabel("Unarchive activity")
+            if !activity.isSystem {
+                HStack(spacing: 8) {
+                    if !activity.isArchived {
+                        Button {
+                            Task { await handleArchive() }
+                        } label: {
+                            Label("Archive", systemImage: "archivebox")
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(theme.warning)
+                        .accessibilityLabel("Archive activity")
+                    } else {
+                        Button {
+                            Task { await handleUnarchive() }
+                        } label: {
+                            Label("Unarchive", systemImage: "arrow.uturn.backward")
+                        }
+                        .buttonStyle(.bordered)
+                        .accessibilityLabel("Unarchive activity")
 
-                    Button(role: .destructive) {
-                        showingDeleteConfirm = true
-                    } label: {
-                        Label("Delete", systemImage: "trash")
+                        Button(role: .destructive) {
+                            showingDeleteConfirm = true
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                        .buttonStyle(.bordered)
+                        .accessibilityLabel("Delete activity")
                     }
-                    .buttonStyle(.bordered)
-                    .accessibilityLabel("Delete activity")
                 }
             }
         }

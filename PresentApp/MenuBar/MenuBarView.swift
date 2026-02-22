@@ -225,7 +225,7 @@ struct MenuBarView: View {
                 ForEach(activities) { activity in
                     QuickStartRow(activity: activity, onTap: {
                         Task {
-                            await startSessionForType(activityId: activity.id!)
+                            await startSessionForType(activity: activity)
                         }
                     }, onEdit: {
                         dismiss()
@@ -253,11 +253,11 @@ struct MenuBarView: View {
                     .onSubmit {
                         guard !newActivityTitle.trimmingCharacters(in: .whitespaces).isEmpty else { return }
                         Task {
-                            guard let activity = try? await appState.service.createActivity(
+                            guard let newActivity = try? await appState.service.createActivity(
                                 CreateActivityInput(title: newActivityTitle.trimmingCharacters(in: .whitespaces))
                             ) else { return }
                             newActivityTitle = ""
-                            await startSessionForType(activityId: activity.id!)
+                            await startSessionForType(activity: newActivity)
                         }
                     }
             }
@@ -279,8 +279,12 @@ struct MenuBarView: View {
         }
     }
 
-    private func startSessionForType(activityId: Int64) async {
-        switch selectedSessionType {
+    private func startSessionForType(activity: Activity) async {
+        let activityId = activity.id!
+        // System activities cannot use rhythm sessions — fall back to work
+        let effectiveType = (activity.isSystem && selectedSessionType == .rhythm) ? .work : selectedSessionType
+
+        switch effectiveType {
         case .rhythm:
             let option = selectedRhythmOption ?? appState.rhythmDurationOptions.first
             await appState.startSession(
@@ -298,7 +302,7 @@ struct MenuBarView: View {
         default:
             await appState.startSession(
                 activityId: activityId,
-                type: selectedSessionType
+                type: effectiveType
             )
         }
     }

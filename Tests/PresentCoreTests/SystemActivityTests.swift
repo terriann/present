@@ -81,9 +81,9 @@ struct SystemActivityTests {
         }
     }
 
-    // MARK: - System Activity Excluded from Lists
+    // MARK: - System Activity in Lists
 
-    @Test func systemActivityExcludedFromListActivities() async throws {
+    @Test func systemActivityExcludedByDefault() async throws {
         let service = try makeService()
         _ = try await service.createActivity(CreateActivityInput(title: "User Activity"))
 
@@ -93,6 +93,35 @@ struct SystemActivityTests {
 
         let allActivities = try await service.listActivities(includeArchived: true)
         #expect(allActivities.allSatisfy { !$0.isSystem })
+    }
+
+    @Test func systemActivityIncludedWhenRequested() async throws {
+        let service = try makeService()
+        _ = try await service.createActivity(CreateActivityInput(title: "User Activity"))
+
+        let activities = try await service.listActivities(includeArchived: false, includeSystem: true)
+        #expect(activities.count == 2)
+        #expect(activities.contains { $0.isSystem })
+        #expect(activities.contains { !$0.isSystem })
+    }
+
+    @Test func systemActivitySortsFirst() async throws {
+        let service = try makeService()
+        _ = try await service.createActivity(CreateActivityInput(title: "Alpha"))
+        _ = try await service.createActivity(CreateActivityInput(title: "Zeta"))
+
+        let activities = try await service.listActivities(includeArchived: false, includeSystem: true)
+        #expect(activities.first?.isSystem == true)
+        #expect(activities.first?.title == "Break")
+    }
+
+    @Test func backwardCompatibleListExcludesSystem() async throws {
+        let service = try makeService()
+        _ = try await service.createActivity(CreateActivityInput(title: "User Activity"))
+
+        // One-parameter form (protocol extension) should exclude system
+        let activities = try await service.listActivities(includeArchived: true)
+        #expect(activities.allSatisfy { !$0.isSystem })
     }
 
     @Test func systemActivityExcludedFromRecentActivities() async throws {

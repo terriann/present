@@ -29,7 +29,7 @@ struct ActivitiesListView: View {
 
                 Spacer()
 
-                Text("\(displayedActivities.count) activities")
+                Text("\(displayedActivities.filter { !$0.isSystem }.count) activities")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
@@ -137,13 +137,28 @@ struct ActivitiesListView: View {
 
 struct ActivityRow: View {
     let activity: Activity
+    @Environment(ThemeManager.self) private var theme
 
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
                 HStack {
+                    if activity.isSystem {
+                        Image(systemName: "cup.and.saucer")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
                     Text(activity.title)
                         .font(.body.bold())
+
+                    if activity.isSystem {
+                        Text("System")
+                            .font(.caption2)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(theme.accent.opacity(0.2), in: Capsule())
+                    }
 
                     if activity.isArchived {
                         Text("Archived")
@@ -163,9 +178,11 @@ struct ActivityRow: View {
 
             Spacer()
 
-            Text(TimeFormatting.formatDate(activity.updatedAt))
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            if !activity.isSystem {
+                Text(TimeFormatting.formatDate(activity.updatedAt))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding(.vertical, 2)
     }

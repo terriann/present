@@ -634,20 +634,25 @@ public final class PresentService: PresentAPI, Sendable {
         }
     }
 
-    public func listActivities(includeArchived: Bool) async throws -> [Activity] {
+    public func listActivities(includeArchived: Bool, includeSystem: Bool) async throws -> [Activity] {
         try await dbWriter.read { db in
-            if includeArchived {
-                return try Activity
-                    .filter(Activity.Columns.isSystem == false)
-                    .order(Activity.Columns.title.asc)
-                    .fetchAll(db)
-            } else {
-                return try Activity
-                    .filter(Activity.Columns.isArchived == false)
-                    .filter(Activity.Columns.isSystem == false)
-                    .order(Activity.Columns.title.asc)
-                    .fetchAll(db)
+            var request = Activity.all()
+
+            if !includeArchived {
+                request = request.filter(Activity.Columns.isArchived == false)
             }
+            if !includeSystem {
+                request = request.filter(Activity.Columns.isSystem == false)
+            }
+
+            if includeSystem {
+                // System activities sort first, then alphabetical
+                request = request.order(Activity.Columns.isSystem.desc, Activity.Columns.title.asc)
+            } else {
+                request = request.order(Activity.Columns.title.asc)
+            }
+
+            return try request.fetchAll(db)
         }
     }
 
