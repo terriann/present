@@ -143,10 +143,7 @@ struct DashboardView: View {
                 }
                 .frame(minWidth: contentWidth * 0.35, alignment: .leading)
 
-                // Logo animation placeholder
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.gray.opacity(0.12))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                Spacer(minLength: 0)
 
                 if appState.isSessionActive {
                     activeTimerPanel
@@ -155,6 +152,11 @@ struct DashboardView: View {
                     quickRestartPanel
                         .frame(minWidth: 320, maxWidth: max(320, contentWidth * 0.3))
                 }
+            }
+            .overlay {
+                // Logo bloom fills the space between greeting and panel
+                LogoBloomView()
+                    .allowsHitTesting(false)
             }
 
             GroupBox {
