@@ -321,8 +321,9 @@ public final class PresentService: PresentAPI, Sendable {
 
     public func listSessions(from startDate: Date, to endDate: Date, type: SessionType? = nil, activityId: Int64? = nil, includeArchived: Bool = true) async throws -> [(Session, Activity)] {
         try await dbWriter.read { db in
-            var conditions = ["s.startedAt >= ?", "s.startedAt < ?", "s.state IN (?, ?)"]
-            var arguments: [any DatabaseValueConvertible] = [startDate, endDate, SessionState.completed.rawValue, SessionState.cancelled.rawValue]
+            // Overlap: session started before range end AND ended after range start (or still running)
+            var conditions = ["s.startedAt < ?", "(s.endedAt > ? OR s.endedAt IS NULL)", "s.state IN (?, ?)"]
+            var arguments: [any DatabaseValueConvertible] = [endDate, startDate, SessionState.completed.rawValue, SessionState.cancelled.rawValue]
 
             if let type {
                 conditions.append("s.sessionType = ?")
@@ -888,20 +889,34 @@ public final class PresentService: PresentAPI, Sendable {
             let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
 
             let archiveFilter = includeArchived ? "" : " AND a.isArchived = 0"
+
+            // Segment-based attribution: compute overlap of each segment with [startOfDay, endOfDay)
             let sql = """
-                SELECT a.*, COALESCE(SUM(s.durationSeconds), 0) as totalSecs, COUNT(s.id) as sessCount
+                SELECT a.*,
+                    COALESCE(SUM(
+                        MAX(0,
+                            CAST(strftime('%s', MIN(ss.endedAt, ?)) AS INTEGER) -
+                            CAST(strftime('%s', MAX(ss.startedAt, ?)) AS INTEGER)
+                        )
+                    ), 0) as totalSecs,
+                    COUNT(DISTINCT s.id) as sessCount
                 FROM activity a
                 INNER JOIN session s ON s.activityId = a.id
+                INNER JOIN session_segment ss ON ss.sessionId = s.id
                 WHERE s.state = ?
-                  AND s.startedAt >= ? AND s.startedAt < ?
+                  AND s.startedAt < ? AND (s.endedAt > ? OR s.endedAt IS NULL)
+                  AND ss.endedAt IS NOT NULL
+                  AND ss.startedAt < ? AND ss.endedAt > ?
                   \(archiveFilter)
                 GROUP BY a.id
                 ORDER BY totalSecs DESC
                 """
 
             let rows = try Row.fetchAll(db, sql: sql, arguments: [
+                endOfDay, startOfDay,
                 SessionState.completed.rawValue,
-                startOfDay, endOfDay
+                endOfDay, startOfDay,
+                endOfDay, startOfDay
             ])
 
             var activities: [ActivitySummary] = []
@@ -924,26 +939,32 @@ public final class PresentService: PresentAPI, Sendable {
                 INNER JOIN session s ON s.id = ss.sessionId
                 INNER JOIN activity a ON a.id = s.activityId
                 WHERE s.state = ?
-                  AND s.startedAt >= ? AND s.startedAt < ?
+                  AND s.startedAt < ? AND (s.endedAt > ? OR s.endedAt IS NULL)
                   AND ss.endedAt IS NOT NULL
+                  AND ss.startedAt < ? AND ss.endedAt > ?
                   \(archiveFilter)
                 ORDER BY ss.startedAt
                 """
 
             let segmentRows = try Row.fetchAll(db, sql: segmentSql, arguments: [
                 SessionState.completed.rawValue,
-                startOfDay, endOfDay
+                endOfDay, startOfDay,
+                endOfDay, startOfDay
             ])
 
             var hourActivitySeconds: [Int: [Int64: Int]] = [:]
             var activityById: [Int64: Activity] = [:]
 
             for row in segmentRows {
-                let segStart: Date = row["seg_startedAt"]
-                let segEnd: Date = row["seg_endedAt"]
+                let rawSegStart: Date = row["seg_startedAt"]
+                let rawSegEnd: Date = row["seg_endedAt"]
                 let activity = try Activity(row: row)
                 guard let activityId = activity.id else { continue }
                 activityById[activityId] = activity
+
+                // Clamp segment boundaries to the queried day
+                let segStart = max(rawSegStart, startOfDay)
+                let segEnd = min(rawSegEnd, endOfDay)
 
                 // Walk through the segment hour by hour, splitting at boundaries
                 var cursor = segStart

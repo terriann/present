@@ -949,4 +949,169 @@ struct PresentServiceTests {
             try await service.deleteSession(id: paused.id!)
         }
     }
+
+    // MARK: - Cross-Midnight Sessions
+
+    /// Helper to build dates on a specific day in local time.
+    private func makeDateComponents(year: Int = 2024, month: Int = 6, day: Int, hour: Int, minute: Int = 0) -> Date {
+        var c = DateComponents()
+        c.year = year; c.month = month; c.day = day
+        c.hour = hour; c.minute = minute; c.second = 0
+        return Calendar.current.date(from: c)!
+    }
+
+    @Test func listSessionsCrossMidnight() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Late Work"))
+
+        // Session: June 15 11 PM → June 16 2 AM
+        let start = makeDateComponents(day: 15, hour: 23)
+        let end = makeDateComponents(day: 16, hour: 2)
+        _ = try await service.createBackdatedSession(CreateBackdatedSessionInput(
+            activityId: activity.id!, startedAt: start, endedAt: end
+        ))
+
+        // Query June 16 (today) — should include the cross-midnight session
+        let queryDate = makeDateComponents(day: 16, hour: 0)
+        let queryEnd = makeDateComponents(day: 17, hour: 0)
+        let results = try await service.listSessions(from: queryDate, to: queryEnd)
+        #expect(results.count == 1)
+        #expect(results[0].1.title == "Late Work")
+    }
+
+    @Test func listSessionsCrossMidnightExcludesPreviousDay() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Yesterday"))
+
+        // Session fully on June 15 (9 AM → 5 PM)
+        let start = makeDateComponents(day: 15, hour: 9)
+        let end = makeDateComponents(day: 15, hour: 17)
+        _ = try await service.createBackdatedSession(CreateBackdatedSessionInput(
+            activityId: activity.id!, startedAt: start, endedAt: end
+        ))
+
+        // Query June 16 — should NOT include yesterday's session
+        let queryDate = makeDateComponents(day: 16, hour: 0)
+        let queryEnd = makeDateComponents(day: 17, hour: 0)
+        let results = try await service.listSessions(from: queryDate, to: queryEnd)
+        #expect(results.isEmpty)
+    }
+
+    @Test func listSessionsSameDayRegression() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Normal"))
+
+        // Session fully on June 16 (10 AM → 12 PM)
+        let start = makeDateComponents(day: 16, hour: 10)
+        let end = makeDateComponents(day: 16, hour: 12)
+        _ = try await service.createBackdatedSession(CreateBackdatedSessionInput(
+            activityId: activity.id!, startedAt: start, endedAt: end
+        ))
+
+        // Query June 16 — should still include same-day sessions
+        let queryDate = makeDateComponents(day: 16, hour: 0)
+        let queryEnd = makeDateComponents(day: 17, hour: 0)
+        let results = try await service.listSessions(from: queryDate, to: queryEnd)
+        #expect(results.count == 1)
+    }
+
+    @Test func dailySummaryCrossMidnightAttributesTodayPortion() async throws {
+        let (service, dbWriter) = try makeServiceWithWriter()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Night Owl"))
+
+        // Session: June 15 11 PM → June 16 2 AM (3h total, 2h on June 16)
+        let start = makeDateComponents(day: 15, hour: 23)
+        let end = makeDateComponents(day: 16, hour: 2)
+        let session = try await service.createBackdatedSession(CreateBackdatedSessionInput(
+            activityId: activity.id!, startedAt: start, endedAt: end
+        ))
+
+        // Verify the segment spans midnight
+        let segments = try await dbWriter.read { db in
+            try SessionSegment
+                .filter(SessionSegment.Columns.sessionId == session.id!)
+                .fetchAll(db)
+        }
+        #expect(segments.count == 1)
+
+        // Query June 16 — should attribute only 2h (midnight to 2 AM)
+        let queryDate = makeDateComponents(day: 16, hour: 12) // any time on June 16
+        let summary = try await service.dailySummary(date: queryDate, includeArchived: false)
+
+        #expect(summary.activities.count == 1)
+        #expect(summary.activities[0].activity.title == "Night Owl")
+        // 2 hours = 7200 seconds (midnight to 2 AM)
+        #expect(summary.activities[0].totalSeconds == 7200)
+        #expect(summary.totalSeconds == 7200)
+    }
+
+    @Test func dailySummaryCrossMidnightSessionCount() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Counter"))
+
+        // Cross-midnight session
+        let start = makeDateComponents(day: 15, hour: 23)
+        let end = makeDateComponents(day: 16, hour: 1)
+        _ = try await service.createBackdatedSession(CreateBackdatedSessionInput(
+            activityId: activity.id!, startedAt: start, endedAt: end
+        ))
+
+        let queryDate = makeDateComponents(day: 16, hour: 12)
+        let summary = try await service.dailySummary(date: queryDate, includeArchived: false)
+
+        // Cross-midnight counts as 1 session on today
+        #expect(summary.sessionCount == 1)
+    }
+
+    @Test func dailySummaryCrossMidnightHourly() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Late Night"))
+
+        // Session: June 15 11 PM → June 16 2:30 AM
+        let start = makeDateComponents(day: 15, hour: 23)
+        let end = makeDateComponents(day: 16, hour: 2, minute: 30)
+        _ = try await service.createBackdatedSession(CreateBackdatedSessionInput(
+            activityId: activity.id!, startedAt: start, endedAt: end
+        ))
+
+        let queryDate = makeDateComponents(day: 16, hour: 12)
+        let summary = try await service.dailySummary(date: queryDate, includeArchived: false)
+        let buckets = summary.hourlyBreakdown.sorted { $0.hour < $1.hour }
+
+        // Should start at hour 0, not hour 23
+        #expect(buckets.first?.hour == 0)
+        // hour 0: 3600s, hour 1: 3600s, hour 2: 1800s
+        let hour0 = buckets.first { $0.hour == 0 }
+        let hour1 = buckets.first { $0.hour == 1 }
+        let hour2 = buckets.first { $0.hour == 2 }
+        #expect(hour0?.totalSeconds == 3600)
+        #expect(hour1?.totalSeconds == 3600)
+        #expect(hour2?.totalSeconds == 1800)
+    }
+
+    @Test func weeklySummaryCrossMidnightSplitAcrossDays() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Split Work"))
+
+        // Session: June 15 (Sat) 11 PM → June 16 (Sun) 2 AM
+        let start = makeDateComponents(day: 15, hour: 23)
+        let end = makeDateComponents(day: 16, hour: 2)
+        _ = try await service.createBackdatedSession(CreateBackdatedSessionInput(
+            activityId: activity.id!, startedAt: start, endedAt: end
+        ))
+
+        // Weekly summary starting Monday June 10 (weekStartDay=2 for Monday)
+        let weekDate = makeDateComponents(day: 12, hour: 12) // mid-week
+        let weekly = try await service.weeklySummary(weekOf: weekDate, includeArchived: false, weekStartDay: 2)
+
+        // Find the daily breakdowns for June 15 and June 16
+        let cal = Calendar.current
+        let june15Summary = weekly.dailyBreakdown.first { cal.component(.day, from: $0.date) == 15 }
+        let june16Summary = weekly.dailyBreakdown.first { cal.component(.day, from: $0.date) == 16 }
+
+        // June 15: 1h (11 PM to midnight)
+        #expect(june15Summary?.totalSeconds == 3600)
+        // June 16: 2h (midnight to 2 AM)
+        #expect(june16Summary?.totalSeconds == 7200)
+    }
 }

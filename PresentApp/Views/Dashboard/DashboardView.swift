@@ -22,6 +22,10 @@ struct DashboardView: View {
                 titles.insert(summary.activity.title)
             }
         }
+        // Include active session's activity so cross-midnight sessions get a chart color
+        if let currentTitle = appState.currentActivity?.title {
+            titles.insert(currentTitle)
+        }
         let sorted = titles.sorted()
         var map: [String: Color] = [:]
         for (index, title) in sorted.enumerated() {
@@ -69,13 +73,23 @@ struct DashboardView: View {
 
     // MARK: - Today stats (including active session)
 
+    /// Active session always contributes to today — even if it started yesterday (cross-midnight).
     private var hasActiveTodaySession: Bool {
-        guard appState.isSessionActive, let session = appState.currentSession else { return false }
-        return Calendar.current.isDateInToday(session.startedAt)
+        appState.isSessionActive && appState.currentSession != nil
+    }
+
+    /// For cross-midnight sessions, only count the portion since midnight.
+    private var todayPortionSeconds: Int {
+        guard hasActiveTodaySession, let session = appState.currentSession else { return 0 }
+        if Calendar.current.isDateInToday(session.startedAt) {
+            return appState.timerElapsedSeconds
+        }
+        let secondsSinceMidnight = Int(Date().timeIntervalSince(Calendar.current.startOfDay(for: Date())))
+        return min(appState.timerElapsedSeconds, secondsSinceMidnight)
     }
 
     private var displayTotalSeconds: Int {
-        appState.todayTotalSeconds + (hasActiveTodaySession ? appState.timerElapsedSeconds : 0)
+        appState.todayTotalSeconds + todayPortionSeconds
     }
 
     private var displaySessionCount: Int {
@@ -323,7 +337,9 @@ struct DashboardView: View {
                     y: .value("Hours", entry.value)
                 )
                 .foregroundStyle(by: .value("Activity", entry.activity))
-                .opacity(hoveredBarLabel == nil || hoveredBarLabel == entry.label ? 1.0 : 0.4)
+                .opacity(entry.isActive
+                    ? 0.6
+                    : (hoveredBarLabel == nil || hoveredBarLabel == entry.label ? 1.0 : 0.4))
             }
         }
         .chartForegroundStyleScale(domain: colorDomain, range: colorRange)
@@ -418,7 +434,7 @@ struct DashboardView: View {
     // MARK: - Weekly Chart Helpers
 
     private func weeklyBarEntries(_ weekly: WeeklySummary) -> [DashboardBarEntry] {
-        weekly.dailyBreakdown.flatMap { daily in
+        var entries = weekly.dailyBreakdown.flatMap { daily in
             daily.activities.map { summary in
                 DashboardBarEntry(
                     label: dayLabel(daily.date),
@@ -427,6 +443,26 @@ struct DashboardView: View {
                 )
             }
         }
+
+        // Inject active session's today portion into the chart
+        if hasActiveTodaySession, let activity = appState.currentActivity {
+            let todayLabel = dayLabel(Date())
+            let activeHours = Double(todayPortionSeconds) / 3600.0
+            if let index = entries.firstIndex(where: { $0.label == todayLabel && $0.activity == activity.title }) {
+                let existing = entries[index]
+                entries[index] = DashboardBarEntry(
+                    label: existing.label, activity: existing.activity,
+                    value: existing.value + activeHours, isActive: true
+                )
+            } else {
+                entries.append(DashboardBarEntry(
+                    label: todayLabel, activity: activity.title,
+                    value: activeHours, isActive: true
+                ))
+            }
+        }
+
+        return entries
     }
 
     private func weekdayLabels(_ weekly: WeeklySummary) -> [String] {
@@ -480,9 +516,9 @@ private struct DayTimelineView: View {
 
     private var allSessions: [(Session, Activity)] {
         var result = completedSessions
+        // Include active session regardless of start date (handles cross-midnight)
         if let current = appState.currentSession,
            let activity = appState.currentActivity,
-           Calendar.current.isDateInToday(current.startedAt),
            !result.contains(where: { $0.0.id == current.id }) {
             result.insert((current, activity), at: 0)
         }
@@ -599,15 +635,18 @@ private struct DayTimelineView: View {
     // MARK: - Helpers
 
     private func xPos(_ session: Session, _ width: CGFloat) -> CGFloat {
-        let offset = session.startedAt.timeIntervalSince(startOfDay)
+        // Clamp to start of day so cross-midnight sessions begin at x=0
+        let effectiveStart = max(session.startedAt, startOfDay)
+        let offset = effectiveStart.timeIntervalSince(startOfDay)
         return CGFloat(offset / secondsInDay) * width
     }
 
     private func blockWidth(_ session: Session, _ width: CGFloat) -> CGFloat {
+        let effectiveStart = max(session.startedAt, startOfDay)
         let end: Date = session.endedAt ?? session.startedAt.addingTimeInterval(
             Double(appState.timerElapsedSeconds)
         )
-        let duration = max(1, end.timeIntervalSince(session.startedAt))
+        let duration = max(1, end.timeIntervalSince(effectiveStart))
         return max(6, CGFloat(duration / secondsInDay) * width)
     }
 
@@ -688,9 +727,20 @@ private struct ActivityBreakdownCard: View {
     @State private var expandedActivities: Set<Int64> = []
     @State private var todaySessions: [Int64: [Session]] = [:]
 
+    /// Includes the active session's activity even if it's not in DB summaries (cross-midnight).
+    private var displayActivities: [ActivitySummary] {
+        var activities = appState.todayActivities
+        if appState.isSessionActive,
+           let activity = appState.currentActivity,
+           !activities.contains(where: { $0.activity.id == activity.id }) {
+            activities.append(ActivitySummary(activity: activity, totalSeconds: 0, sessionCount: 0))
+        }
+        return activities
+    }
+
     var body: some View {
         ChartCard(title: "Activity Breakdown") {
-            if appState.todayActivities.isEmpty {
+            if displayActivities.isEmpty {
                 ContentUnavailableView(
                     "No Activities",
                     systemImage: "list.bullet",
@@ -699,7 +749,7 @@ private struct ActivityBreakdownCard: View {
                 .emptyStateStyle()
             } else {
                 VStack(spacing: 0) {
-                    ForEach(Array(appState.todayActivities.enumerated()), id: \.element.activity.id) { index, summary in
+                    ForEach(Array(displayActivities.enumerated()), id: \.element.activity.id) { index, summary in
                         let activityId = summary.activity.id ?? -1
                         let isExpanded = expandedActivities.contains(activityId)
                         let sessions = todaySessions[activityId]
@@ -815,8 +865,8 @@ private struct ActivityBreakdownCard: View {
                 .padding(.bottom, Constants.spacingCard)
             }
         }
-        .task(id: appState.todayActivities.map { $0.activity.id }) {
-            for summary in appState.todayActivities {
+        .task(id: displayActivities.map { $0.activity.id }) {
+            for summary in displayActivities {
                 if let id = summary.activity.id {
                     loadSessionsForActivity(id)
                 }
@@ -954,4 +1004,5 @@ private struct DashboardBarEntry: Identifiable {
     let label: String
     let activity: String
     let value: Double
+    var isActive: Bool = false
 }
