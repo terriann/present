@@ -8,6 +8,7 @@ struct DashboardView: View {
     @State private var hoveredBarLabel: String?
     @State private var barHoverLocation: CGPoint = .zero
     @State private var quickRestartSuggestions: [(Session, Activity)] = []
+    @State private var contentWidth: CGFloat = 600
 
     /// Shared color mapping so today timeline and weekly chart use the same color per activity.
     private var activityColorMap: [String: Color] {
@@ -44,6 +45,11 @@ struct DashboardView: View {
                 activityBreakdownCard
             }
             .padding(Constants.spacingPage)
+            .background(GeometryReader { geo in
+                Color.clear
+                    .onAppear { contentWidth = geo.size.width }
+                    .onChange(of: geo.size.width) { _, newValue in contentWidth = newValue }
+            })
         }
         .navigationTitle("Dashboard")
         .alert(appState.isLongBreak ? "Time for a Long Break!" : "Take a Short Break",
@@ -135,13 +141,19 @@ struct DashboardView: View {
                         .font(.periodHeader)
                         .foregroundStyle(.secondary)
                 }
+                .frame(minWidth: contentWidth * 0.35, alignment: .leading)
 
-                Spacer()
+                // Logo animation placeholder
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.gray.opacity(0.12))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                 if appState.isSessionActive {
                     activeTimerPanel
+                        .frame(minWidth: 320, maxWidth: max(320, contentWidth * 0.3))
                 } else if !quickRestartSuggestions.isEmpty {
                     quickRestartPanel
+                        .frame(minWidth: 320, maxWidth: max(320, contentWidth * 0.3))
                 }
             }
 
@@ -206,9 +218,8 @@ struct DashboardView: View {
                 SessionControls()
             }
             .padding(Constants.spacingCard)
-            .frame(width: 320)
+            .frame(maxWidth: .infinity)
         }
-        .frame(width: 320)
     }
 
     // MARK: - Quick Restart Panel
@@ -237,8 +248,6 @@ struct DashboardView: View {
                 )
             }
         }
-        .frame(minWidth: 200)
-        .padding(.leading, Constants.spacingPage)
     }
 
     private func sessionSubtitle(_ session: Session) -> String {
