@@ -82,6 +82,21 @@ xcodebuild build \
   -destination 'platform=macOS'
 ```
 
+#### Xcode Keyboard Shortcuts
+
+If you're new to Xcode, these are the key shortcuts and their command line
+equivalents:
+
+| Shortcut | Action | CLI Equivalent |
+|----------|--------|----------------|
+| Cmd+B | Compile the project without running it | `xcodebuild build -scheme Present -destination 'platform=macOS'` |
+| Cmd+R | Compile and run the app | No direct equivalent — build then launch the `.app` manually |
+| Cmd+Shift+K | Delete all compiled artifacts and caches (Clean Build Folder) | `swift package clean` (SPM targets only) |
+
+**Cmd+Shift+K** is useful when Xcode shows stale errors, autocomplete
+stops working, or a build fails for no obvious reason. It forces a full
+recompile on the next build.
+
 ## Testing
 
 All tests use the [Swift Testing](https://github.com/swiftlang/swift-testing)
@@ -459,6 +474,22 @@ still works fully without the app.
 
 If the app is running but not reflecting CLI changes, try restarting the app.
 The app also polls the database every 2 seconds as a fallback.
+
+### Xcode build errors that don't make sense
+
+Xcode caches compiled artifacts aggressively. If you see errors that seem
+unrelated to your changes (phantom type errors, missing symbols that clearly
+exist, autocomplete breaking), the cache may be stale.
+
+Clean the build folder with **Cmd+Shift+K**, then rebuild with **Cmd+B**.
+This deletes all compiled output and forces a full recompile.
+
+For SPM targets, the equivalent is:
+
+```bash
+swift package clean
+swift build
+```
 
 ### Database locked errors
 
