@@ -440,9 +440,11 @@ private struct DayTimelineView: View {
     @Environment(ThemeManager.self) private var theme
     @State private var completedSessions: [(Session, Activity)] = []
     @State private var hoveredActivityTitle: String? = nil
+    @State private var hoveredSessionPair: (Session, Activity)?
+    @State private var hoverLocation: CGPoint = .zero
 
     private let barHeight: CGFloat = 48
-    private let axisHours = stride(from: 0, through: 21, by: 3).map { $0 }
+    private let axisHours = stride(from: 0, through: 24, by: 3).map { $0 }
     private var startOfDay: Date { Calendar.current.startOfDay(for: Date()) }
     private let secondsInDay: Double = 24 * 60 * 60
 
@@ -471,10 +473,11 @@ private struct DayTimelineView: View {
         VStack(alignment: .leading, spacing: Constants.spacingCompact) {
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    // Track background
+                    // Track background (extended past tick marks so corners don't clip them)
                     RoundedRectangle(cornerRadius: 8)
                         .fill(Color.gray.opacity(0.12))
-                        .frame(height: barHeight)
+                        .frame(width: geo.size.width + 16, height: barHeight)
+                        .offset(x: -8)
 
                     // Session blocks
                     ForEach(allSessions, id: \.0.id) { session, activity in
@@ -489,10 +492,6 @@ private struct DayTimelineView: View {
                             .frame(width: w, height: barHeight)
                             .offset(x: x)
                             .opacity(dimmed ? 0.2 : 1.0)
-                            .help(tooltip(session, activity))
-                            .onHover { hovering in
-                                hoveredActivityTitle = hovering ? activity.title : nil
-                            }
                     }
 
                     // Current time indicator
@@ -510,14 +509,44 @@ private struct DayTimelineView: View {
                     }
                 }
                 .frame(height: barHeight)
+                .contentShape(Rectangle())
+                .onContinuousHover { phase in
+                    switch phase {
+                    case .active(let point):
+                        hoverLocation = point
+                        let match = sessionAt(x: point.x, width: geo.size.width)
+                        hoveredSessionPair = match
+                        hoveredActivityTitle = match?.1.title
+                    case .ended:
+                        hoveredSessionPair = nil
+                        hoveredActivityTitle = nil
+                    }
+                }
+                .overlay {
+                    if let (session, activity) = hoveredSessionPair {
+                        let midX = xPos(session, geo.size.width)
+                            + blockWidth(session, geo.size.width) / 2
+                        let clampedX = min(max(90, midX), geo.size.width - 90)
+                        timelineTooltip(session: session, activity: activity)
+                            .fixedSize()
+                            .position(x: clampedX, y: -36)
+                    }
+                }
 
                 // X-axis labels
                 ZStack(alignment: .topLeading) {
                     ForEach(axisHours, id: \.self) { hour in
-                        Text(axisLabel(hour))
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .offset(x: max(0, CGFloat(hour) / 24.0 * geo.size.width - 10))
+                        if hour == 24 {
+                            Text(axisLabel(hour))
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .trailing)
+                        } else {
+                            Text(axisLabel(hour))
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .offset(x: max(0, CGFloat(hour) / 24.0 * geo.size.width - 10))
+                        }
                     }
                 }
                 .frame(height: 14)
@@ -562,19 +591,53 @@ private struct DayTimelineView: View {
 
     private func axisLabel(_ hour: Int) -> String {
         switch hour {
-        case 0: return "12am"
+        case 0, 24: return "12am"
         case 12: return "12pm"
         default: return hour < 12 ? "\(hour)am" : "\(hour - 12)pm"
         }
     }
 
-    private func tooltip(_ session: Session, _ activity: Activity) -> String {
-        let type = SessionTypeConfig.config(for: session.sessionType).displayName
-        let start = TimeFormatting.formatTime(session.startedAt)
-        if let end = session.endedAt, let dur = session.durationSeconds {
-            return "\(activity.title) · \(type) · \(start) – \(TimeFormatting.formatTime(end)) (\(TimeFormatting.formatDuration(seconds: dur)))"
+    private func sessionAt(x: CGFloat, width: CGFloat) -> (Session, Activity)? {
+        for (session, activity) in allSessions.reversed() {
+            let sx = xPos(session, width)
+            let sw = blockWidth(session, width)
+            if x >= sx && x <= sx + sw {
+                return (session, activity)
+            }
         }
-        return "\(activity.title) · \(type) · \(start) – now"
+        return nil
+    }
+
+    @ViewBuilder
+    private func timelineTooltip(session: Session, activity: Activity) -> some View {
+        ChartTooltip {
+            Text(activity.title)
+                .font(.caption)
+                .fontWeight(.semibold)
+
+            Text(tooltipDuration(session))
+                .font(.caption)
+                .monospacedDigit()
+
+            Text(tooltipTimeRange(session))
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func tooltipDuration(_ session: Session) -> String {
+        if let dur = session.durationSeconds {
+            return TimeFormatting.formatDuration(seconds: dur)
+        }
+        return TimeFormatting.formatDuration(seconds: appState.timerElapsedSeconds)
+    }
+
+    private func tooltipTimeRange(_ session: Session) -> String {
+        let start = TimeFormatting.formatTime(session.startedAt)
+        if let end = session.endedAt {
+            return "\(start) – \(TimeFormatting.formatTime(end))"
+        }
+        return "\(start) – now"
     }
 
     private func loadSessions() async {
@@ -737,7 +800,7 @@ private struct ActivityBreakdownCard: View {
 
     private func activityTimeRange(_ sessions: [Session]?, active: Session?) -> String? {
         var starts: [Date] = sessions?.map(\.startedAt) ?? []
-        var ends: [Date] = sessions?.compactMap(\.endedAt) ?? []
+        let ends: [Date] = sessions?.compactMap(\.endedAt) ?? []
         if let active {
             starts.append(active.startedAt)
             // active session has no endedAt — omit end so range shows open start
