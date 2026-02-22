@@ -988,17 +988,10 @@ struct ReportsView: View {
     private func formatValue(_ value: Double) -> String {
         if selectedPeriod == .daily {
             // Value is in minutes
-            if value < 1 {
-                return String(format: "%.0fs", value * 60)
-            }
-            return String(format: "%.0fm", value)
+            TimeFormatting.formatDuration(seconds: Int(value * 60))
         } else {
             // Value is in hours
-            if value < 0.1 {
-                let minutes = value * 60
-                return String(format: "%.0fm", minutes)
-            }
-            return String(format: "%.1fh", value)
+            TimeFormatting.formatDuration(seconds: Int(value * 3600))
         }
     }
 

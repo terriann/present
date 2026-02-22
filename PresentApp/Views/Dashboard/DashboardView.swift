@@ -516,10 +516,7 @@ struct DashboardView: View {
     }
 
     private func formatHours(_ value: Double) -> String {
-        if value < 0.1 {
-            return String(format: "%.0fm", value * 60)
-        }
-        return String(format: "%.1fh", value)
+        TimeFormatting.formatDuration(seconds: Int(value * 3600))
     }
 
     // MARK: - Activity Breakdown
@@ -585,7 +582,7 @@ private struct DayTimelineView: View {
                         let isActive = session.id == appState.currentSession?.id
                         let dimmed = hoveredActivityTitle != nil && hoveredActivityTitle != activity.title
 
-                        RoundedRectangle(cornerRadius: 5)
+                        RoundedRectangle(cornerRadius: 2.5)
                             .fill(color.opacity(isActive ? 1.0 : 0.75))
                             .frame(width: w, height: barHeight)
                             .offset(x: x)
@@ -820,9 +817,14 @@ private struct ActivityBreakdownCard: View {
 
                                 Spacer()
 
-                                Text(TimeFormatting.formatDuration(seconds: summary.totalSeconds))
+                                if activeSession?.state == .running {
+                                    SpinningClockIcon(isRunning: true)
+                                }
+
+                                Text(TimeFormatting.formatDuration(seconds: roundedTotalSeconds(for: activityId, baseTotalSeconds: summary.totalSeconds)))
                                     .font(.durationValue)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(activeSession != nil ? theme.accent : .secondary)
+                                    .contentTransition(.numericText())
                             }
                             .padding(.vertical, Constants.spacingCompact)
                             .padding(.horizontal, Constants.spacingCard)
@@ -938,6 +940,30 @@ private struct ActivityBreakdownCard: View {
         }
         // Only active session (no completed end times yet)
         return TimeFormatting.formatTime(first, referenceDate: today)
+    }
+
+    /// Returns the active session's today-portion elapsed seconds for a given activity, or 0 if not active.
+    private func activeElapsedSeconds(for activityId: Int64) -> Int {
+        guard let session = appState.currentSession,
+              session.activityId == activityId,
+              appState.isSessionActive else { return 0 }
+        if let preMidnight = activePreMidnightSeconds {
+            return max(0, appState.timerElapsedSeconds - preMidnight)
+        }
+        return appState.timerElapsedSeconds
+    }
+
+    /// Computes the activity total by rounding each session to the minute before summing,
+    /// so the total matches the individually displayed durations.
+    private func roundedTotalSeconds(for activityId: Int64, baseTotalSeconds: Int) -> Int {
+        guard let sessions = todaySessions[activityId] else { return baseTotalSeconds }
+        let completedTotal = sessions.reduce(0) { sum, session in
+            if let id = session.id, let todayPortion = todayPortions[id] {
+                return sum + TimeFormatting.floorToMinute(todayPortion)
+            }
+            return sum + TimeFormatting.floorToMinute(session.durationSeconds ?? 0)
+        }
+        return completedTotal + TimeFormatting.floorToMinute(activeElapsedSeconds(for: activityId))
     }
 
     private func sessionTypeLabel(_ session: Session) -> String {
