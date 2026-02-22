@@ -26,18 +26,23 @@ struct ActivityDetailView: View {
     @State private var editLink: String = ""
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                headerRow
-                if !activity.isSystem {
-                    linksSection
-                    notesSection
-                    tagsSection
+        GeometryReader { geo in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    headerRow
+                    if activity.isSystem {
+                        systemActivityInfo
+                        Spacer(minLength: 0)
+                    } else {
+                        linksSection
+                        notesSection
+                        tagsSection
+                    }
+                    activityFooter
                 }
-                activityFooter
+                .padding(Constants.spacingPage)
+                .frame(maxWidth: .infinity, minHeight: geo.size.height, alignment: .topLeading)
             }
-            .padding(Constants.spacingPage)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .alert("Archive Activity?", isPresented: $showingArchiveConfirm) {
             Button("Cancel", role: .cancel) {}
@@ -225,6 +230,29 @@ struct ActivityDetailView: View {
                 .fixedSize(horizontal: true, vertical: false)
             }
         }
+    }
+
+    // MARK: - System Activity Info
+
+    private var systemActivityInfo: some View {
+        VStack(spacing: Constants.spacingPage) {
+            SteamingCupIcon()
+                .environment(theme)
+
+            VStack(spacing: Constants.spacingCard) {
+                Text("This is a system activity")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                Text("Break is a built-in part of how Rhythm Sessions work. After each focus period, Present uses this activity to track your rest time, keeping the natural flow of focused work followed by recovery.\n\nBecause it's tied to the cycle of a Rhythm Session, it can't be renamed, archived, or deleted.\n\nYou're welcome to use Break on its own with a work session to track open-ended downtime, or with a timebound session if you'd like a countdown for a specific break length.")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: 480)
+            }
+        }
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, Constants.spacingPage)
     }
 
     // MARK: - Links
