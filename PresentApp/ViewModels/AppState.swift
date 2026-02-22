@@ -483,7 +483,7 @@ final class AppState {
         do {
             let breakActivity = try await service.getBreakActivity()
             guard let breakId = breakActivity.id else { return }
-            await startSession(activityId: breakId, type: .rhythm, timerMinutes: breakMins)
+            await startSession(activityId: breakId, type: .timebound, timerMinutes: breakMins)
         } catch {
             showError(error, context: "Could not start break")
         }

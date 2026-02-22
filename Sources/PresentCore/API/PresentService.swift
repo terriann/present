@@ -16,6 +16,7 @@ public enum PresentError: Error, LocalizedError, Sendable {
     case cannotDeleteActiveSession
     case sessionOverlap
     case cannotModifySystemActivity
+    case rhythmNotAllowedForSystemActivity
 
     public var errorDescription: String? {
         switch self {
@@ -33,6 +34,7 @@ public enum PresentError: Error, LocalizedError, Sendable {
         case .cannotDeleteActiveSession: "Active sessions must be stopped before they can be deleted."
         case .sessionOverlap: "Session overlaps with an existing session."
         case .cannotModifySystemActivity: "System activities cannot be modified or deleted."
+        case .rhythmNotAllowedForSystemActivity: "Rhythm sessions cannot be started on system activities. Use a work or timebound session instead."
         }
     }
 }
@@ -71,6 +73,9 @@ public final class PresentService: PresentAPI, Sendable {
             if activity.isArchived {
                 throw PresentError.activityIsArchived(activityId)
             }
+            if activity.isSystem && type == .rhythm {
+                throw PresentError.rhythmNotAllowedForSystemActivity
+            }
 
             let now = Date()
             var session = Session(
@@ -86,19 +91,14 @@ public final class PresentService: PresentAPI, Sendable {
             if type == .rhythm {
                 session.breakMinutes = breakMinutes
 
-                // Break sessions don't advance the rhythm cycle
-                if activity.isSystem {
-                    session.rhythmSessionIndex = nil
-                } else {
-                    let lastRhythm = try Session
-                        .filter(Session.Columns.sessionType == SessionType.rhythm.rawValue)
-                        .filter(Session.Columns.state == SessionState.completed.rawValue)
-                        .order(Session.Columns.id.desc)
-                        .fetchOne(db)
+                let lastRhythm = try Session
+                    .filter(Session.Columns.sessionType == SessionType.rhythm.rawValue)
+                    .filter(Session.Columns.state == SessionState.completed.rawValue)
+                    .order(Session.Columns.id.desc)
+                    .fetchOne(db)
 
-                    let lastIndex = lastRhythm?.rhythmSessionIndex ?? 0
-                    session.rhythmSessionIndex = (lastIndex % 4) + 1
-                }
+                let lastIndex = lastRhythm?.rhythmSessionIndex ?? 0
+                session.rhythmSessionIndex = (lastIndex % 4) + 1
             }
 
             try session.insert(db)

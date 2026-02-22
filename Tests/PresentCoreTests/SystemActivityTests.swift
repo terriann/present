@@ -133,7 +133,7 @@ struct SystemActivityTests {
         _ = try await service.startSession(activityId: userActivity.id!, type: .work)
         _ = try await service.stopSession()
 
-        _ = try await service.startSession(activityId: breakActivity.id!, type: .rhythm)
+        _ = try await service.startSession(activityId: breakActivity.id!, type: .work)
         _ = try await service.stopSession()
 
         let recent = try await service.recentActivities(limit: 10)
@@ -162,19 +162,47 @@ struct SystemActivityTests {
 
     // MARK: - Break Session Behavior
 
-    @Test func startingSessionOnBreakActivityWorks() async throws {
+    @Test func startingWorkSessionOnBreakActivityWorks() async throws {
         let service = try makeService()
         let breakActivity = try await service.getBreakActivity()
 
         let session = try await service.startSession(
             activityId: breakActivity.id!,
-            type: .rhythm,
-            breakMinutes: 5
+            type: .work
         )
 
         #expect(session.activityId == breakActivity.id!)
-        #expect(session.sessionType == .rhythm)
+        #expect(session.sessionType == .work)
         #expect(session.state == .running)
+    }
+
+    @Test func startingTimeboundSessionOnBreakActivityWorks() async throws {
+        let service = try makeService()
+        let breakActivity = try await service.getBreakActivity()
+
+        let session = try await service.startSession(
+            activityId: breakActivity.id!,
+            type: .timebound,
+            timerMinutes: 5
+        )
+
+        #expect(session.activityId == breakActivity.id!)
+        #expect(session.sessionType == .timebound)
+        #expect(session.state == .running)
+    }
+
+    @Test func rhythmSessionDisallowedOnSystemActivity() async throws {
+        let service = try makeService()
+        let breakActivity = try await service.getBreakActivity()
+
+        await #expect(throws: PresentError.self) {
+            try await service.startSession(
+                activityId: breakActivity.id!,
+                type: .rhythm,
+                timerMinutes: 25,
+                breakMinutes: 5
+            )
+        }
     }
 
     @Test func getBreakActivitySelfHealsIfMissing() async throws {
@@ -197,16 +225,22 @@ struct SystemActivityTests {
         #expect(restored.id != nil)
     }
 
-    @Test func breakSessionGetsNilRhythmSessionIndex() async throws {
+    @Test func rhythmSessionDisallowedReturnsCorrectError() async throws {
         let service = try makeService()
         let breakActivity = try await service.getBreakActivity()
 
-        let session = try await service.startSession(
-            activityId: breakActivity.id!,
-            type: .rhythm,
-            breakMinutes: 5
-        )
-
-        #expect(session.rhythmSessionIndex == nil)
+        do {
+            _ = try await service.startSession(
+                activityId: breakActivity.id!,
+                type: .rhythm,
+                timerMinutes: 25
+            )
+            Issue.record("Expected rhythmNotAllowedForSystemActivity error")
+        } catch let error as PresentError {
+            guard case .rhythmNotAllowedForSystemActivity = error else {
+                Issue.record("Expected rhythmNotAllowedForSystemActivity but got \(error)")
+                return
+            }
+        }
     }
 }
