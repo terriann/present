@@ -6,9 +6,18 @@ public struct TimerCompletionContext: Sendable, Equatable {
         case rhythmFocusExpiry(breakMinutes: Int, isLongBreak: Bool)
         case rhythmBreakExpiry(previousActivityId: Int64, previousActivityTitle: String,
                                previousTimerMinutes: Int, previousBreakMinutes: Int)
+        case timeboundBreakExpiry(recentActivityId: Int64?, recentActivityTitle: String?,
+                                  recentTimerMinutes: Int?, recentSessionType: SessionType?)
 
         public var isBreakExpiry: Bool {
-            if case .rhythmBreakExpiry = self { return true }
+            switch self {
+            case .rhythmBreakExpiry, .timeboundBreakExpiry: return true
+            default: return false
+            }
+        }
+
+        public var isTimeboundBreakExpiry: Bool {
+            if case .timeboundBreakExpiry = self { return true }
             return false
         }
 

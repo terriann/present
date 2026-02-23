@@ -438,6 +438,40 @@ public final class PresentService: PresentAPI, Sendable {
         }
     }
 
+    public func lastCompletedNonSystemSession(since: Date) async throws -> (Session, Activity)? {
+        try await dbWriter.read { db in
+            let sql = """
+                SELECT s.*, a.id AS a_id, a.title AS a_title, a.externalId AS a_externalId,
+                       a.link AS a_link, a.notes AS a_notes, a.isArchived AS a_isArchived,
+                       a.isSystem AS a_isSystem, a.createdAt AS a_createdAt, a.updatedAt AS a_updatedAt
+                FROM session s
+                INNER JOIN activity a ON a.id = s.activityId
+                WHERE s.state = ? AND s.endedAt >= ? AND a.isArchived = 0 AND a.isSystem = 0
+                ORDER BY s.endedAt DESC
+                LIMIT 1
+                """
+
+            guard let row = try Row.fetchOne(db, sql: sql, arguments: [
+                SessionState.completed.rawValue, since
+            ]) else {
+                return nil
+            }
+
+            let session = try Session(row: row)
+            let activity = Activity(
+                id: row["a_id"],
+                title: row["a_title"],
+                externalId: row["a_externalId"],
+                link: row["a_link"],
+                notes: row["a_notes"],
+                isArchived: row["a_isArchived"],
+                createdAt: row["a_createdAt"],
+                updatedAt: row["a_updatedAt"]
+            )
+            return (session, activity)
+        }
+    }
+
     public func earliestSessionDate() async throws -> Date? {
         try await dbWriter.read { db in
             try Date.fetchOne(db,

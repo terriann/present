@@ -2,8 +2,8 @@
 
 Design reference for the floating alert system used when timed sessions
 complete. These patterns ensure visual consistency across alert types
-(timebound, rhythm focus, rhythm break) and serve as the blueprint for
-future floating alert windows.
+(timebound, rhythm focus, rhythm break, standalone break) and serve as
+the blueprint for future floating alert windows.
 
 ## Table of Contents
 
@@ -64,6 +64,7 @@ SF Symbols. This keeps the tone calm and avoids visual urgency.
 | Timebound | `timer` (SF Symbol) | `.tertiary` | None |
 | Rhythm Focus | `FocusBrainIcon` | `.tertiary` | None (static) |
 | Rhythm Break | `SteamingCupIcon` | `.tertiary` | Steam wisps |
+| Standalone Break | `SteamingCupIcon` | `.tertiary` | Steam wisps |
 
 **Rhythm icon details:**
 
@@ -146,6 +147,28 @@ on hover to signal this is a more final action. Uses
   `hoverIcon`.
 - **Default label**: "Done for now".
 - **Default icons**: `stop.fill` at rest, `moon.zzz.fill` on hover.
+
+## Alert Type: Standalone Break
+
+When a standalone timebound break completes (not part of a rhythm
+session), the alert shows "Break Complete" with the `SteamingCupIcon`
+header, matching the rhythm break visual style.
+
+**Actions layout:**
+
+- **If a recent non-system session exists** (within 24 hours):
+  A primary `ResumeActivityCard` showing the activity title,
+  with a subtitle indicating the session type and duration
+  (e.g., "Timebound \u{00B7} 25m"). Tapping resumes the
+  same activity with the same session type and timer.
+- **If no recent session exists**: The resume card is omitted.
+  Only the dismiss button appears.
+- **Always**: A `DismissButton` with the default "Done for now"
+  label.
+
+This is modeled by `CompletionType.timeboundBreakExpiry`, which
+carries optional fields for the recent session. The 24-hour
+lookback window prevents surfacing stale sessions from days ago.
 
 ## Icon Transitions
 

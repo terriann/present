@@ -50,6 +50,15 @@ struct FloatingAlertView: View {
                         .font(.timerDisplay)
                         .foregroundStyle(.secondary.opacity(0.5))
                 }
+            } else if context.completionType.isTimeboundBreakExpiry {
+                HStack(spacing: 0) {
+                    Text("\(context.timerMinutes)m")
+                        .font(.timerDisplay)
+                        .foregroundStyle(.secondary)
+                    Text(" / \(context.timerMinutes)m")
+                        .font(.timerDisplay)
+                        .foregroundStyle(.secondary.opacity(0.5))
+                }
             } else if context.completionType.isFocusExpiry {
                 HStack(spacing: 0) {
                     Text("\(context.timerMinutes)m")
@@ -78,7 +87,7 @@ struct FloatingAlertView: View {
             return "timer"
         case .rhythmFocusExpiry:
             return "brain.head.profile"
-        case .rhythmBreakExpiry:
+        case .rhythmBreakExpiry, .timeboundBreakExpiry:
             return "cup.and.saucer"
         }
     }
@@ -89,7 +98,7 @@ struct FloatingAlertView: View {
             return "\(context.activityTitle) Complete"
         case .rhythmFocusExpiry:
             return "Focus Session Complete"
-        case .rhythmBreakExpiry:
+        case .rhythmBreakExpiry, .timeboundBreakExpiry:
             return "Break Complete"
         }
     }
@@ -105,13 +114,15 @@ struct FloatingAlertView: View {
             rhythmFocusActions
         case .rhythmBreakExpiry:
             rhythmBreakActions
+        case .timeboundBreakExpiry:
+            timeboundBreakActions
         }
     }
 
     private var timeboundActions: some View {
         VStack(spacing: Constants.spacingCard) {
             ResumeActivityCard(
-                title: "Restart",
+                title: "Restart \(context.activityTitle)",
                 subtitle: "Timebound \u{00B7} \(context.timerMinutes)m",
                 theme: theme
             ) {
@@ -164,6 +175,38 @@ struct FloatingAlertView: View {
                 appState.endBreakSession()
             }
         }
+    }
+
+    private var timeboundBreakActions: some View {
+        VStack(spacing: Constants.spacingCard) {
+            if case .timeboundBreakExpiry(let recentId, let recentTitle, let recentTimer, let recentType) = context.completionType,
+               let recentId, let recentTitle {
+                let subtitle = timeboundBreakResumeSubtitle(type: recentType, minutes: recentTimer)
+                ResumeActivityCard(
+                    title: "Restart \(recentTitle)",
+                    subtitle: subtitle,
+                    theme: theme
+                ) {
+                    Task { await appState.startNextFocusSession() }
+                }
+            }
+
+            DismissButton(theme: theme) {
+                appState.endBreakSession()
+            }
+        }
+    }
+
+    private func timeboundBreakResumeSubtitle(type: SessionType?, minutes: Int?) -> String {
+        let typeName = switch type {
+        case .rhythm: "Rhythm"
+        case .timebound: "Timebound"
+        case .work, .none: "Work"
+        }
+        if let minutes {
+            return "\(typeName) \u{00B7} \(minutes)m"
+        }
+        return typeName
     }
 
     // MARK: - Resume Card

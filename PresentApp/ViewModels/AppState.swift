@@ -368,9 +368,16 @@ final class AppState {
                     previousBreakMinutes: ctx.breakMinutes
                 )
             } else {
-                // Context irrecoverably lost — skip floating alert.
-                // The notification and sound below still fire.
-                completionType = nil
+                // Standalone timebound break — find most recent non-break session
+                let recent = try? await service.lastCompletedNonSystemSession(
+                    since: Calendar.current.date(byAdding: .hour, value: -24, to: Date()) ?? Date()
+                )
+                completionType = .timeboundBreakExpiry(
+                    recentActivityId: recent?.1.id,
+                    recentActivityTitle: recent?.1.title,
+                    recentTimerMinutes: recent?.0.timerLengthMinutes,
+                    recentSessionType: recent?.0.sessionType
+                )
             }
         } else if session.sessionType == .rhythm, let index = session.rhythmSessionIndex {
             let breakMins = await resolveBreakMinutes(session: session, sessionIndex: index)
@@ -506,6 +513,10 @@ final class AppState {
         case .timeboundExpiry:
             await startSession(activityId: ctx.activityId, type: .timebound,
                                timerMinutes: ctx.timerMinutes)
+        case .timeboundBreakExpiry(let recentId, _, let recentTimer, let recentType):
+            guard let recentId else { return }
+            await startSession(activityId: recentId, type: recentType ?? .timebound,
+                               timerMinutes: recentTimer)
         }
     }
 
