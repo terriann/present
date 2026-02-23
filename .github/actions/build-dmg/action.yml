@@ -1,8 +1,8 @@
 name: Build DMG
 description: >
-  Checks out the repo, selects Xcode 16, installs XcodeGen, and builds
-  an unsigned DMG via Scripts/build-dmg.sh. Used by the beta and stable
-  release workflows.
+  Selects Xcode 16, installs XcodeGen, and builds an unsigned DMG via
+  Scripts/build-dmg.sh. Requires the repo to already be checked out.
+  Used by the beta and stable release workflows.
 
 inputs:
   signing-identity:
@@ -16,11 +16,6 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Checkout
-      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2 • 7.5k ★ 2025 Jan
-      with:
-        persist-credentials: false
-
     - name: Select Xcode 16
       shell: bash
       run: sudo xcode-select -s /Applications/Xcode_16.app
