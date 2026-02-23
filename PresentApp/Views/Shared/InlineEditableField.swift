@@ -38,9 +38,7 @@ struct InlineEditableField: View {
             }
 
             if isEditable && isHovering {
-                Image(systemName: "pencil")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                EditPillButton(action: beginEditing)
             }
         }
         .onHover { hovering in

@@ -11,7 +11,6 @@ struct QuickStartRow: View {
     let onEdit: () -> Void
 
     @State private var isRowHovered = false
-    @State private var isEditHovered = false
 
     var body: some View {
         HStack(spacing: 8) {
@@ -38,18 +37,7 @@ struct QuickStartRow: View {
             }
             .buttonStyle(.plain)
 
-            Button(action: onEdit) {
-                Image(systemName: "pencil")
-                    .font(.body)
-                    .foregroundStyle(isEditHovered ? theme.accent : .secondary)
-                    .padding(5)
-                    .background(isEditHovered ? theme.accent.opacity(0.15) : Color.clear, in: Circle())
-                    .contentShape(Circle())
-            }
-            .buttonStyle(.plain)
-            .onHover { hovering in
-                isEditHovered = hovering
-            }
+            EditPillButton(action: onEdit)
         }
         .padding(.horizontal, Constants.spacingCard)
         .padding(.vertical, 6)
