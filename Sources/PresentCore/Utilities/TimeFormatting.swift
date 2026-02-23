@@ -1,6 +1,13 @@
 import Foundation
 
 public enum TimeFormatting {
+    /// Round seconds down to the nearest whole minute (e.g., 89 → 60, 150 → 120).
+    /// Use this when summing session durations for display — round each session first, then sum,
+    /// so the total matches the individual displayed values.
+    public static func floorToMinute(_ seconds: Int) -> Int {
+        (seconds / 60) * 60
+    }
+
     /// Format seconds as "Xh Ym" (e.g., "2h 15m") or "Xm" for short durations
     public static func formatDuration(seconds: Int) -> String {
         let hours = seconds / 3600

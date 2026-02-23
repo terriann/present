@@ -516,7 +516,7 @@ struct DashboardView: View {
     }
 
     private func formatHours(_ value: Double) -> String {
-        TimeFormatting.formatDuration(seconds: Int(value * 3600))
+        TimeFormatting.formatDuration(seconds: Int((value * 3600).rounded()))
     }
 
     // MARK: - Activity Breakdown

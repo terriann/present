@@ -85,6 +85,7 @@ CLI Commands ──────────────────────�
 - **Round at session level**: The database stores exact seconds, but UI durations are floored to the minute. When summing durations across sessions (activity totals, daily totals), round each session to the minute first using `TimeFormatting.floorToMinute(_:)`, then sum. This ensures the total matches the individually displayed values.
 - **Cross-midnight times**: When a time falls on a different calendar day than the reference context, append the day name in parentheses (e.g., "11:23 PM (Saturday)"). Use `TimeFormatting.formatTime(_:referenceDate:)`.
 - **Rhythm durations**: Use `RhythmOption.displayLabel` for compact format (`25m / 5m`) and `RhythmOption.settingsLabel` for settings/configuration (`25 minute focus / 5 minute break`).
+- **UI vs CLI precision**: The UI rounds each session to the nearest minute before summing (via `TimeFormatting.floorToMinute`), so totals always match the individually displayed values. The CLI returns exact seconds and sums unrounded values. This is intentional — the UI prioritizes readability, the CLI prioritizes precision. Never "fix" the CLI to match the UI rounding or vice versa.
 
 ### Spacing & Layout
 - **Page** (`Constants.spacingPage`, 20pt): Main content areas — ScrollView roots in Dashboard, ActivityDetail, Reports, and sheets.

@@ -4,7 +4,13 @@
 
 > Present — time tracking from the command line.
 
-*Auto-generated on 2026-02-22 16:20 UTC from `present-cli --experimental-dump-help`.*
+*Auto-generated on 2026-02-23 00:19 UTC from `present-cli --experimental-dump-help`.*
+
+## Notes
+
+### Duration precision
+
+The CLI returns durations with second-level precision. When totaling time across sessions, the CLI sums exact seconds — so its totals may differ slightly from the app's UI. The app intentionally rounds each session down to the nearest minute before summing, which keeps displayed totals consistent with the individual durations you see on screen. Neither is wrong; they serve different purposes. The CLI gives you the raw data, the app gives you a clean read.
 
 ## Commands
 

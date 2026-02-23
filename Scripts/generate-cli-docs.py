@@ -325,6 +325,23 @@ def generate_markdown(data):
     lines.append(f"*Auto-generated on {timestamp} from `{root_name} --experimental-dump-help`.*")
     lines.append("")
 
+    # Notes section
+    lines.append("## Notes")
+    lines.append("")
+    lines.append("### Duration precision")
+    lines.append("")
+    lines.append(
+        "The CLI returns durations with second-level precision. "
+        "When totaling time across sessions, the CLI sums exact seconds "
+        "— so its totals may differ slightly from the app's UI. "
+        "The app intentionally rounds each session down to the nearest "
+        "minute before summing, which keeps displayed totals consistent "
+        "with the individual durations you see on screen. Neither is "
+        "wrong; they serve different purposes. The CLI gives you the "
+        "raw data, the app gives you a clean read."
+    )
+    lines.append("")
+
     # Top-level commands (alphabetical)
     subcommands = sort_commands(
         [s for s in command.get("subcommands", []) if not is_help_command(s)]

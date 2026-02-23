@@ -977,7 +977,7 @@ public final class PresentService: PresentAPI, Sendable {
         }
     }
 
-    public func dailySummary(date: Date, includeArchived: Bool) async throws -> DailySummary {
+    public func dailySummary(date: Date, includeArchived: Bool, roundToMinute: Bool) async throws -> DailySummary {
         try await dbWriter.read { db in
             let calendar = Calendar.current
             let startOfDay = calendar.startOfDay(for: date)
@@ -985,27 +985,58 @@ public final class PresentService: PresentAPI, Sendable {
 
             let archiveFilter = includeArchived ? "" : " AND a.isArchived = 0"
 
-            // Segment-based attribution: compute overlap of each segment with [startOfDay, endOfDay)
-            let sql = """
-                SELECT a.*,
-                    COALESCE(SUM(
-                        MAX(0,
-                            CAST(strftime('%s', MIN(ss.endedAt, ?)) AS INTEGER) -
-                            CAST(strftime('%s', MAX(ss.startedAt, ?)) AS INTEGER)
-                        )
-                    ), 0) as totalSecs,
-                    COUNT(DISTINCT s.id) as sessCount
-                FROM activity a
-                INNER JOIN session s ON s.activityId = a.id
-                INNER JOIN session_segment ss ON ss.sessionId = s.id
-                WHERE s.state = ?
-                  AND s.startedAt < ? AND (s.endedAt > ? OR s.endedAt IS NULL)
-                  AND ss.endedAt IS NOT NULL
-                  AND ss.startedAt < ? AND ss.endedAt > ?
-                  \(archiveFilter)
-                GROUP BY a.id
-                ORDER BY totalSecs DESC
-                """
+            let sql: String
+            if roundToMinute {
+                // Floor each session's day-overlap to the minute before summing per activity.
+                // Ensures the activity total matches the sum of individually displayed durations.
+                sql = """
+                    SELECT a.*,
+                        COALESCE(SUM(floored.sessionSecs), 0) as totalSecs,
+                        COUNT(floored.sessionId) as sessCount
+                    FROM activity a
+                    INNER JOIN (
+                        SELECT s.activityId, s.id as sessionId,
+                            (COALESCE(SUM(
+                                MAX(0,
+                                    CAST(strftime('%s', MIN(ss.endedAt, ?)) AS INTEGER) -
+                                    CAST(strftime('%s', MAX(ss.startedAt, ?)) AS INTEGER)
+                                )
+                            ), 0) / 60) * 60 as sessionSecs
+                        FROM session s
+                        INNER JOIN session_segment ss ON ss.sessionId = s.id
+                        WHERE s.state = ?
+                          AND s.startedAt < ? AND (s.endedAt > ? OR s.endedAt IS NULL)
+                          AND ss.endedAt IS NOT NULL
+                          AND ss.startedAt < ? AND ss.endedAt > ?
+                        GROUP BY s.id
+                    ) floored ON floored.activityId = a.id
+                    WHERE 1=1 \(archiveFilter)
+                    GROUP BY a.id
+                    ORDER BY totalSecs DESC
+                    """
+            } else {
+                // Raw seconds — used by CLI and data export.
+                sql = """
+                    SELECT a.*,
+                        COALESCE(SUM(
+                            MAX(0,
+                                CAST(strftime('%s', MIN(ss.endedAt, ?)) AS INTEGER) -
+                                CAST(strftime('%s', MAX(ss.startedAt, ?)) AS INTEGER)
+                            )
+                        ), 0) as totalSecs,
+                        COUNT(DISTINCT s.id) as sessCount
+                    FROM activity a
+                    INNER JOIN session s ON s.activityId = a.id
+                    INNER JOIN session_segment ss ON ss.sessionId = s.id
+                    WHERE s.state = ?
+                      AND s.startedAt < ? AND (s.endedAt > ? OR s.endedAt IS NULL)
+                      AND ss.endedAt IS NOT NULL
+                      AND ss.startedAt < ? AND ss.endedAt > ?
+                      \(archiveFilter)
+                    GROUP BY a.id
+                    ORDER BY totalSecs DESC
+                    """
+            }
 
             let rows = try Row.fetchAll(db, sql: sql, arguments: [
                 endOfDay, startOfDay,
@@ -1090,7 +1121,7 @@ public final class PresentService: PresentAPI, Sendable {
         }
     }
 
-    public func weeklySummary(weekOf: Date, includeArchived: Bool, weekStartDay: Int = 1) async throws -> WeeklySummary {
+    public func weeklySummary(weekOf: Date, includeArchived: Bool, weekStartDay: Int = 1, roundToMinute: Bool = false) async throws -> WeeklySummary {
         var calendar = Calendar.current
         calendar.firstWeekday = weekStartDay
         guard let weekInterval = calendar.dateInterval(of: .weekOfYear, for: weekOf) else {
@@ -1102,7 +1133,7 @@ public final class PresentService: PresentAPI, Sendable {
         var dailyBreakdown: [DailySummary] = []
         var current = startOfWeek
         while current < endOfWeek {
-            let daily = try await dailySummary(date: current, includeArchived: includeArchived)
+            let daily = try await dailySummary(date: current, includeArchived: includeArchived, roundToMinute: roundToMinute)
             dailyBreakdown.append(daily)
             guard let nextDay = calendar.date(byAdding: .day, value: 1, to: current) else { break }
             current = nextDay
@@ -1134,7 +1165,7 @@ public final class PresentService: PresentAPI, Sendable {
         return WeeklySummary(weekOf: startOfWeek, totalSeconds: totalSeconds, sessionCount: totalSessions, dailyBreakdown: dailyBreakdown, activities: activities)
     }
 
-    public func monthlySummary(monthOf: Date, includeArchived: Bool, weekStartDay: Int = 1) async throws -> MonthlySummary {
+    public func monthlySummary(monthOf: Date, includeArchived: Bool, weekStartDay: Int = 1, roundToMinute: Bool = false) async throws -> MonthlySummary {
         var calendar = Calendar.current
         calendar.firstWeekday = weekStartDay
         guard let monthInterval = calendar.dateInterval(of: .month, for: monthOf) else {
@@ -1153,7 +1184,7 @@ public final class PresentService: PresentAPI, Sendable {
             let weekStart = weekInterval.start
             if !seenWeeks.contains(weekStart) {
                 seenWeeks.insert(weekStart)
-                let weekly = try await weeklySummary(weekOf: current, includeArchived: includeArchived, weekStartDay: weekStartDay)
+                let weekly = try await weeklySummary(weekOf: current, includeArchived: includeArchived, weekStartDay: weekStartDay, roundToMinute: roundToMinute)
                 weeklyBreakdown.append(weekly)
             }
             guard let nextWeek = calendar.date(byAdding: .day, value: 7, to: current) else { break }
@@ -1496,7 +1527,7 @@ public final class PresentService: PresentAPI, Sendable {
     // MARK: - Status
 
     public func todaySummary() async throws -> TodaySummary {
-        let daily = try await dailySummary(date: Date(), includeArchived: false)
+        let daily = try await dailySummary(date: Date(), includeArchived: false, roundToMinute: true)
         let current = try await currentSession()
         return TodaySummary(
             totalSeconds: daily.totalSeconds,

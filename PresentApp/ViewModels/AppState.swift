@@ -203,7 +203,7 @@ final class AppState {
             if let weekStartPref = try? await service.getPreference(key: PreferenceKey.weekStartDay) {
                 weekStartDay = PreferenceKey.parseWeekStartDay(weekStartPref)
             }
-            let weekly = try await service.weeklySummary(weekOf: Date(), includeArchived: false, weekStartDay: weekStartDay)
+            let weekly = try await service.weeklySummary(weekOf: Date(), includeArchived: false, weekStartDay: weekStartDay, roundToMinute: true)
             if weekly != weeklySummary { weeklySummary = weekly }
 
             if currentSession == nil {

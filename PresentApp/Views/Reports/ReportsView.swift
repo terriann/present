@@ -1063,7 +1063,7 @@ struct ReportsView: View {
 
             switch selectedPeriod {
             case .daily:
-                let summary = try await appState.service.dailySummary(date: selectedDate, includeArchived: !hideArchived)
+                let summary = try await appState.service.dailySummary(date: selectedDate, includeArchived: !hideArchived, roundToMinute: true)
                 let startOfDay = calendar.startOfDay(for: selectedDate)
                 let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? selectedDate
                 let tags = try await appState.service.tagActivitySummary(from: startOfDay, to: endOfDay, includeArchived: !hideArchived)
@@ -1080,7 +1080,7 @@ struct ReportsView: View {
                 sessionEntries = sessions
 
             case .weekly:
-                let summary = try await appState.service.weeklySummary(weekOf: selectedDate, includeArchived: !hideArchived, weekStartDay: effectiveWeekStartDay)
+                let summary = try await appState.service.weeklySummary(weekOf: selectedDate, includeArchived: !hideArchived, weekStartDay: effectiveWeekStartDay, roundToMinute: true)
                 let wStart = weekStart(for: selectedDate)
                 let weekEnd = calendar.date(byAdding: .day, value: 7, to: wStart) ?? selectedDate
                 let tags = try await appState.service.tagActivitySummary(from: wStart, to: weekEnd, includeArchived: !hideArchived)
@@ -1096,7 +1096,7 @@ struct ReportsView: View {
                 sessionEntries = sessions
 
             case .monthly:
-                let summary = try await appState.service.monthlySummary(monthOf: selectedDate, includeArchived: !hideArchived, weekStartDay: effectiveWeekStartDay)
+                let summary = try await appState.service.monthlySummary(monthOf: selectedDate, includeArchived: !hideArchived, weekStartDay: effectiveWeekStartDay, roundToMinute: true)
                 guard let monthInterval = calendar.dateInterval(of: .month, for: selectedDate) else { return }
                 let tags = try await appState.service.tagActivitySummary(from: monthInterval.start, to: monthInterval.end, includeArchived: !hideArchived)
                 try Task.checkCancellation()

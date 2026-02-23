@@ -44,9 +44,9 @@ public protocol PresentAPI: Sendable {
 
     // Reports
     func activitySummary(from: Date, to: Date, includeArchived: Bool) async throws -> [ActivitySummary]
-    func dailySummary(date: Date, includeArchived: Bool) async throws -> DailySummary
-    func weeklySummary(weekOf: Date, includeArchived: Bool, weekStartDay: Int) async throws -> WeeklySummary
-    func monthlySummary(monthOf: Date, includeArchived: Bool, weekStartDay: Int) async throws -> MonthlySummary
+    func dailySummary(date: Date, includeArchived: Bool, roundToMinute: Bool) async throws -> DailySummary
+    func weeklySummary(weekOf: Date, includeArchived: Bool, weekStartDay: Int, roundToMinute: Bool) async throws -> WeeklySummary
+    func monthlySummary(monthOf: Date, includeArchived: Bool, weekStartDay: Int, roundToMinute: Bool) async throws -> MonthlySummary
     func tagSummary(from: Date, to: Date, includeArchived: Bool) async throws -> [TagSummary]
     func tagActivitySummary(from: Date, to: Date, includeArchived: Bool) async throws -> [TagActivitySummary]
     func exportCSV(from: Date, to: Date, includeArchived: Bool) async throws -> Data
@@ -75,5 +75,17 @@ public protocol PresentAPI: Sendable {
 public extension PresentAPI {
     func listActivities(includeArchived: Bool) async throws -> [Activity] {
         try await listActivities(includeArchived: includeArchived, includeSystem: false)
+    }
+
+    func dailySummary(date: Date, includeArchived: Bool) async throws -> DailySummary {
+        try await dailySummary(date: date, includeArchived: includeArchived, roundToMinute: false)
+    }
+
+    func weeklySummary(weekOf: Date, includeArchived: Bool, weekStartDay: Int) async throws -> WeeklySummary {
+        try await weeklySummary(weekOf: weekOf, includeArchived: includeArchived, weekStartDay: weekStartDay, roundToMinute: false)
+    }
+
+    func monthlySummary(monthOf: Date, includeArchived: Bool, weekStartDay: Int) async throws -> MonthlySummary {
+        try await monthlySummary(monthOf: monthOf, includeArchived: includeArchived, weekStartDay: weekStartDay, roundToMinute: false)
     }
 }
