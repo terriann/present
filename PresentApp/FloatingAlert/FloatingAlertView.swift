@@ -1,6 +1,11 @@
 import SwiftUI
 import PresentCore
 
+// MARK: - Constants
+
+/// Shared hover transition for all floating alert buttons and cards.
+private let alertHoverAnimation: Animation = .easeInOut(duration: 0.3)
+
 struct FloatingAlertView: View {
     let context: TimerCompletionContext
     @Environment(AppState.self) private var appState
@@ -23,6 +28,8 @@ struct FloatingAlertView: View {
         VStack(spacing: 8) {
             if context.completionType.isBreakExpiry {
                 SteamingCupIcon(size: 28)
+            } else if context.completionType.isFocusExpiry {
+                FocusBrainIcon()
             } else {
                 Image(systemName: headerIcon)
                     .font(.title)
@@ -43,13 +50,20 @@ struct FloatingAlertView: View {
                         .font(.timerDisplay)
                         .foregroundStyle(.secondary.opacity(0.5))
                 }
+            } else if context.completionType.isFocusExpiry {
+                HStack(spacing: 0) {
+                    Text("\(context.timerMinutes)m")
+                        .font(.timerDisplay)
+                        .foregroundStyle(.secondary)
+                    Text(" / \(context.timerMinutes)m")
+                        .font(.timerDisplay)
+                        .foregroundStyle(.secondary.opacity(0.5))
+                }
             } else {
                 Text(context.durationFormatted)
                     .font(.timerDisplay)
                     .foregroundStyle(.secondary)
-            }
 
-            if !context.completionType.isBreakExpiry {
                 Text(sessionBadge)
                     .font(.caption)
                     .padding(.horizontal, 8)
@@ -129,26 +143,32 @@ struct FloatingAlertView: View {
     }
 
     private var rhythmFocusActions: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: Constants.spacingCard) {
             if case .rhythmFocusExpiry(let breakMins, _) = context.completionType {
-                Button {
+                ResumeActivityCard(
+                    title: "Start \(breakMins)m Break",
+                    icon: "play.fill",
+                    iconEffect: .replace(hover: "cup.and.saucer.fill"),
+                    theme: theme
+                ) {
                     Task { await appState.startBreakSession() }
-                } label: {
-                    Label("Start \(breakMins)m Break", systemImage: "cup.and.saucer")
-                        .frame(maxWidth: .infinity)
                 }
-                .controlSize(.large)
-                .buttonStyle(.borderedProminent)
+
+                ResumeActivityCard(
+                    title: "Skip Break \u{00B7} \(context.activityTitle)",
+                    subtitle: "Rhythm Session \u{00B7} \(context.timerMinutes)m / \(breakMins)m",
+                    icon: "forward.fill",
+                    iconEffect: .replace(hover: "brain.filled.head.profile", flipHover: true),
+                    muted: true,
+                    theme: theme
+                ) {
+                    Task { await appState.startNextFocusSession() }
+                }
             }
 
-            Button {
-                Task { await appState.startNextFocusSession() }
-            } label: {
-                Label("Skip Break", systemImage: "forward")
-                    .frame(maxWidth: .infinity)
+            DismissButton(label: "End Rhythm Session", theme: theme) {
+                appState.dismissTimerAlert()
             }
-            .controlSize(.large)
-            .buttonStyle(.bordered)
         }
     }
 
@@ -158,7 +178,7 @@ struct FloatingAlertView: View {
                 resumeCard(title: prevTitle, timerMinutes: prevTimer, breakMinutes: prevBreak)
             }
 
-            EndRhythmButton(theme: theme) {
+            DismissButton(theme: theme) {
                 appState.endBreakSession()
             }
         }
@@ -177,14 +197,41 @@ struct FloatingAlertView: View {
     }
 }
 
+// MARK: - Focus Brain Icon
+
+/// Flipped brain.filled.head.profile at tertiary opacity,
+/// matching SteamingCupIcon's visual weight.
+private struct FocusBrainIcon: View {
+    var body: some View {
+        Image(systemName: "brain.filled.head.profile")
+            .font(.title)
+            .foregroundStyle(.tertiary)
+            .scaleEffect(x: -1, y: 1)
+    }
+}
+
 // MARK: - Resume Activity Card
 
-/// Card-style button for resuming the previous focus activity after a break.
-/// Translucent accent tint matching RecentSuggestionRow; icon transforms
-/// from restart arrow to play on hover.
+/// Icon hover effect for ResumeActivityCard.
+enum IconHoverEffect {
+    /// Swap to a different symbol with a replace transition (default).
+    /// Set `flipHover` to mirror the hover icon horizontally.
+    case replace(hover: String, flipHover: Bool = false)
+    /// Nudge the icon rightward — reinforces "skip ahead" / forward motion.
+    case nudge
+    /// Gentle lift with slight scale — suggests settling in, starting something calm.
+    case lift
+}
+
+/// Card-style action button for floating alerts.
+/// Primary style: theme.primary background. Muted style: grey default,
+/// theme.primary on hover (for secondary actions the user might skip).
 struct ResumeActivityCard: View {
     let title: String
-    let subtitle: String
+    var subtitle: String?
+    var icon: String = "arrow.counterclockwise"
+    var iconEffect: IconHoverEffect = .replace(hover: "play.fill")
+    var muted: Bool = false
     let theme: ThemeManager
     let onTap: () -> Void
 
@@ -193,21 +240,24 @@ struct ResumeActivityCard: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: Constants.spacingCompact) {
-                Image(systemName: isHovered ? "play.fill" : "arrow.counterclockwise")
-                    .font(.callout)
-                    .foregroundStyle(.white)
-                    .frame(width: 16, alignment: .center)
-                    .contentTransition(.symbolEffect(.replace))
+                iconView
 
-                VStack(alignment: .leading, spacing: 2) {
+                if let subtitle {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(title)
+                            .font(.callout.weight(.medium))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+
+                        Text(subtitle)
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.85))
+                    }
+                } else {
                     Text(title)
-                        .font(.callout.weight(.medium))
+                        .font(.body.weight(.medium))
                         .foregroundStyle(.white)
                         .lineLimit(1)
-
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundStyle(.white.opacity(0.85))
                 }
 
                 Spacer()
@@ -216,24 +266,62 @@ struct ResumeActivityCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(theme.primary.opacity(isHovered ? 0.65 : 0.45))
+                    .fill(cardFill)
             )
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .onHover { hovering in
-            withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
+            withAdaptiveAnimation(alertHoverAnimation) {
                 isHovered = hovering
             }
         }
+    }
+
+    // MARK: Icon
+
+    @ViewBuilder
+    private var iconView: some View {
+        switch iconEffect {
+        case .replace(let hoverIcon, let flipHover):
+            Image(systemName: isHovered ? hoverIcon : icon)
+                .font(.callout)
+                .foregroundStyle(.white)
+                .scaleEffect(x: (isHovered && flipHover) ? -1 : 1, y: 1)
+                .frame(width: 16, alignment: .center)
+                .contentTransition(.symbolEffect(.replace))
+        case .nudge:
+            Image(systemName: icon)
+                .font(.callout)
+                .foregroundStyle(.white)
+                .frame(width: 16, alignment: .center)
+                .offset(x: isHovered ? 3 : 0)
+        case .lift:
+            Image(systemName: icon)
+                .font(.callout)
+                .foregroundStyle(.white)
+                .frame(width: 16, alignment: .center)
+                .scaleEffect(isHovered ? 1.15 : 1.0)
+                .offset(y: isHovered ? -2 : 0)
+        }
+    }
+
+    private var cardFill: some ShapeStyle {
+        if muted {
+            return AnyShapeStyle(isHovered ? theme.primary.opacity(0.45) : Color.secondary.opacity(0.3))
+        }
+        return AnyShapeStyle(theme.primary.opacity(isHovered ? 0.65 : 0.45))
     }
 }
 
 // MARK: - End Rhythm Button
 
-/// Secondary button for ending the rhythm session entirely.
-/// Grey default with white text; hover reveals alert color on background and icon.
-struct EndRhythmButton: View {
+/// Secondary dismiss button. Grey default with white text; hover reveals alert
+/// color on background and icon.
+struct DismissButton: View {
+    var label: String = "Done for now"
+    var icon: String = "stop.fill"
+    var hoverIcon: String = "moon.zzz.fill"
     let theme: ThemeManager
     let onTap: () -> Void
 
@@ -242,10 +330,11 @@ struct EndRhythmButton: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 6) {
-                Image(systemName: "stop.fill")
+                Image(systemName: isHovered ? hoverIcon : icon)
                     .font(.caption)
                     .foregroundStyle(isHovered ? theme.alert : .white)
-                Text("Done for now")
+                    .contentTransition(.symbolEffect(.replace))
+                Text(label)
                     .foregroundStyle(.white)
             }
             .frame(maxWidth: .infinity)
@@ -258,7 +347,7 @@ struct EndRhythmButton: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering in
-            withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
+            withAdaptiveAnimation(alertHoverAnimation) {
                 isHovered = hovering
             }
         }

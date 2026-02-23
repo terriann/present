@@ -11,6 +11,11 @@ public struct TimerCompletionContext: Sendable, Equatable {
             if case .rhythmBreakExpiry = self { return true }
             return false
         }
+
+        public var isFocusExpiry: Bool {
+            if case .rhythmFocusExpiry = self { return true }
+            return false
+        }
     }
 
     public let completionType: CompletionType
