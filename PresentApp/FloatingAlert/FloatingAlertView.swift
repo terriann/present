@@ -122,14 +122,14 @@ struct FloatingAlertView: View {
     private var timeboundActions: some View {
         VStack(spacing: Constants.spacingCard) {
             ResumeActivityCard(
-                title: "Restart \(context.activityTitle)",
+                title: "Continue \(context.activityTitle)",
                 subtitle: "Timebound \u{00B7} \(context.timerMinutes)m",
                 theme: theme
             ) {
                 Task { await appState.restartTimeboundSession() }
             }
 
-            DismissButton(label: "Dismiss", icon: "moon.fill", hoverIcon: "moon.zzz.fill", theme: theme) {
+            DismissButton(theme: theme) {
                 appState.dismissTimerAlert()
             }
         }
@@ -148,7 +148,7 @@ struct FloatingAlertView: View {
                 }
 
                 ResumeActivityCard(
-                    title: "Skip Break \u{00B7} \(context.activityTitle)",
+                    title: "No break this time \u{00B7} \(context.activityTitle)",
                     subtitle: "Rhythm Session \u{00B7} \(context.timerMinutes)m / \(breakMins)m",
                     icon: "forward.fill",
                     iconEffect: .replace(hover: "brain.filled.head.profile", flipHover: true),
@@ -168,7 +168,7 @@ struct FloatingAlertView: View {
     private var rhythmBreakActions: some View {
         VStack(spacing: Constants.spacingCard) {
             if case .rhythmBreakExpiry(_, let prevTitle, let prevTimer, let prevBreak) = context.completionType {
-                resumeCard(title: prevTitle, timerMinutes: prevTimer, breakMinutes: prevBreak)
+                resumeCard(title: "Resume \(prevTitle)", timerMinutes: prevTimer, breakMinutes: prevBreak)
             }
 
             DismissButton(theme: theme) {
@@ -183,7 +183,7 @@ struct FloatingAlertView: View {
                let recentId, let recentTitle {
                 let subtitle = timeboundBreakResumeSubtitle(type: recentType, minutes: recentTimer)
                 ResumeActivityCard(
-                    title: "Restart \(recentTitle)",
+                    title: "Resume \(recentTitle)",
                     subtitle: subtitle,
                     theme: theme
                 ) {

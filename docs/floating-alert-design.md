@@ -120,7 +120,7 @@ The action the user most likely wants. Uses `ResumeActivityCard`.
   (`.caption` at 0.85 opacity).
 - **Icon**: White, `.callout` font, in a fixed 16pt frame.
 - **Corner radius**: 8pt.
-- **Example**: "Resume \<Activity\>" after a break completes.
+- **Example**: "Resume \<Activity\>" after a break, "Continue \<Activity\>" after a timebound session.
 
 ### Secondary Action Card
 
@@ -131,7 +131,7 @@ with `muted: true`.
 - **Background**: `Color.secondary.opacity(0.3)` at rest,
   transitioning to `theme.primary.opacity(0.45)` on hover.
 - **Text and icon**: Same styling as primary cards (white).
-- **Example**: "Skip Break" when a focus session offers a break.
+- **Example**: "No break this time" when a focus session offers a break.
 
 ### Dismiss Button
 
@@ -147,6 +147,28 @@ on hover to signal this is a more final action. Uses
   `hoverIcon`.
 - **Default label**: "Done for now".
 - **Default icons**: `stop.fill` at rest, `moon.zzz.fill` on hover.
+
+### Button Phrasing by Alert Type
+
+Action verbs follow the conventions in the Voice & Tone section
+of `CLAUDE.md`. The verb signals what just happened and what
+the button will do next.
+
+| Alert | Primary Card | Secondary Card | Dismiss |
+| --- | --- | --- | --- |
+| Timebound expiry | Continue \<Activity\> | -- | Done for now |
+| Rhythm focus expiry | Start Xm Break | No break this time · \<Activity\> | End Rhythm Session |
+| Rhythm break expiry | Resume \<Activity\> | -- | Done for now |
+| Standalone break expiry | Resume \<Activity\> | -- | Done for now |
+
+**Why "Resume" vs "Continue":**
+
+- **Resume** appears after a break. The user was working on
+  this activity before the break interrupted; tapping resumes
+  where they left off.
+- **Continue** appears after a completed timebound session.
+  Nothing was interrupted; tapping starts a fresh session of
+  the same kind.
 
 ## Alert Type: Standalone Break
 
@@ -180,7 +202,7 @@ to a different symbol on hover, reinforcing the action's meaning.
 | --- | --- | --- | --- |
 | Resume focus | `arrow.counterclockwise` | `play.fill` | Restart becomes play |
 | Start break | `play.fill` | `cup.and.saucer.fill` | Play becomes rest |
-| Skip break | `forward.fill` | `brain.filled.head.profile` (flipped) | Skip ahead to focus |
+| No break this time | `forward.fill` | `brain.filled.head.profile` (flipped) | Skip ahead to focus |
 | Done / End | `stop.fill` | `moon.zzz.fill` | Stop becomes rest |
 
 **Prefer filled icons.** Use filled variants (`play.fill`,

@@ -32,6 +32,18 @@ Use affirmative conditions: "Show notifications" rather than "Disable notificati
 
 Apply this voice to all user-facing copy: UI labels, empty states, error messages, notifications, CLI help text, and documentation.
 
+### Action verb conventions
+
+Use consistent verbs for session actions across alerts, buttons, and menus. The verb signals the relationship between what just ended and what happens next.
+
+- **Resume**: The user is returning to an activity after a break. The break interrupted their work; this picks it back up. Example: "Resume Writing" after a rhythm or standalone break completes.
+- **Continue**: The user's session completed normally and they may want another round. No interruption occurred; this starts a fresh session of the same kind. Example: "Continue Writing" after a timebound session expires.
+- **Start**: Beginning something new or unrelated to the previous context. Example: "Start 5m Break" when offering a break after focus.
+
+Avoid "Restart" for completed sessions — it implies the previous session failed rather than finishing successfully. Reserve "Restart" for genuinely interrupted or cancelled sessions if needed.
+
+For dismiss actions, prefer descriptive labels over mechanical ones. Use "Done for now" (warm, acknowledges autonomy) rather than "Dismiss" (cold, UI jargon). Use specific labels like "End Rhythm Session" when the action has a distinct consequence.
+
 ## Architecture
 
 ```
