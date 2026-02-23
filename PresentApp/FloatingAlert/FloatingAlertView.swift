@@ -170,7 +170,7 @@ struct FloatingAlertView: View {
     private func resumeCard(title: String, timerMinutes: Int, breakMinutes: Int) -> some View {
         ResumeActivityCard(
             title: title,
-            subtitle: "Rhythm \u{00B7} \(timerMinutes)m / \(breakMinutes)m break",
+            subtitle: "Rhythm Session \u{00B7} \(timerMinutes)m / \(breakMinutes)m",
             theme: theme
         ) {
             Task { await appState.startNextFocusSession() }
@@ -181,7 +181,7 @@ struct FloatingAlertView: View {
 // MARK: - Resume Activity Card
 
 /// Card-style button for resuming the previous focus activity after a break.
-/// Styled to match QuickStartRow: activity title, session subtitle, hover state.
+/// Styled to match QuickStartRow: activity title, session subtitle, accent background.
 struct ResumeActivityCard: View {
     let title: String
     let subtitle: String
@@ -193,31 +193,28 @@ struct ResumeActivityCard: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: Constants.spacingCompact) {
-                Image(systemName: "play.circle.fill")
+                Image(systemName: "play.circle")
                     .font(.title2)
-                    .foregroundStyle(isHovered ? theme.accent : .secondary)
+                    .foregroundStyle(.white.opacity(isHovered ? 1 : 0.9))
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(.body)
+                        .foregroundStyle(.white)
                         .lineLimit(1)
 
                     Text(subtitle)
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.white.opacity(0.7))
                 }
 
                 Spacer()
-
-                Image(systemName: "arrow.right")
-                    .font(.caption)
-                    .foregroundStyle(isHovered ? AnyShapeStyle(theme.accent.opacity(0.6)) : AnyShapeStyle(.tertiary))
             }
             .padding(Constants.spacingCard)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(isHovered ? theme.accent.opacity(0.1) : Color.primary.opacity(0.05))
+                    .fill(isHovered ? theme.accent.opacity(0.85) : theme.accent)
             )
             .contentShape(Rectangle())
         }
@@ -232,8 +229,8 @@ struct ResumeActivityCard: View {
 
 // MARK: - End Rhythm Button
 
-/// Destructive-style button for ending the rhythm session entirely.
-/// Uses alert color with a subtle hover deepening effect.
+/// Secondary button for ending the rhythm session entirely.
+/// Grey default with white text; hover reveals alert color on background and icon.
 struct EndRhythmButton: View {
     let theme: ThemeManager
     let onTap: () -> Void
@@ -245,14 +242,15 @@ struct EndRhythmButton: View {
             HStack(spacing: 6) {
                 Image(systemName: "stop.fill")
                     .font(.caption)
+                    .foregroundStyle(isHovered ? theme.alert : .white)
                 Text("Done for now")
+                    .foregroundStyle(.white)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
-            .foregroundStyle(theme.alert)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(theme.alert.opacity(isHovered ? 0.2 : 0.12))
+                    .fill(isHovered ? theme.alert.opacity(0.2) : Color.secondary.opacity(0.3))
             )
             .contentShape(Rectangle())
         }
