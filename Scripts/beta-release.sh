@@ -78,6 +78,7 @@ gh release create "$BETA_TAG" \
     "$DMG_PATH" \
     --prerelease \
     --generate-notes \
+    --notes-file "$SCRIPT_DIR/beta-release-header.md" \
     --title "Present $BETA_TAG"
 
 echo ""
