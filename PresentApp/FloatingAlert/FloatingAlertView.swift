@@ -21,24 +21,42 @@ struct FloatingAlertView: View {
 
     private var header: some View {
         VStack(spacing: 8) {
-            Image(systemName: headerIcon)
-                .font(.title)
-                .foregroundStyle(theme.accent)
+            if context.completionType.isBreakExpiry {
+                SteamingCupIcon(size: 28)
+                    .foregroundStyle(theme.accent)
+            } else {
+                Image(systemName: headerIcon)
+                    .font(.title)
+                    .foregroundStyle(theme.accent)
+            }
 
             Text(headerTitle)
                 .font(.headline)
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
 
-            Text(context.durationFormatted)
-                .font(.timerDisplay)
-                .foregroundStyle(.secondary)
+            if case .rhythmBreakExpiry(_, _, _, let breakMins) = context.completionType {
+                HStack(spacing: 0) {
+                    Text("0m")
+                        .font(.timerDisplay)
+                        .foregroundStyle(.secondary)
+                    Text(" / \(breakMins)m")
+                        .font(.timerDisplay)
+                        .foregroundStyle(.secondary.opacity(0.5))
+                }
+            } else {
+                Text(context.durationFormatted)
+                    .font(.timerDisplay)
+                    .foregroundStyle(.secondary)
+            }
 
-            Text(sessionBadge)
-                .font(.caption)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(.quaternary, in: Capsule())
+            if !context.completionType.isBreakExpiry {
+                Text(sessionBadge)
+                    .font(.caption)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(.quaternary, in: Capsule())
+            }
         }
     }
 
@@ -164,7 +182,7 @@ struct FloatingAlertView: View {
 
 /// Card-style button for resuming the previous focus activity after a break.
 /// Styled to match QuickStartRow: activity title, session subtitle, hover state.
-private struct ResumeActivityCard: View {
+struct ResumeActivityCard: View {
     let title: String
     let subtitle: String
     let theme: ThemeManager
@@ -193,7 +211,7 @@ private struct ResumeActivityCard: View {
 
                 Image(systemName: "arrow.right")
                     .font(.caption)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(isHovered ? AnyShapeStyle(theme.accent.opacity(0.6)) : AnyShapeStyle(.tertiary))
             }
             .padding(Constants.spacingCard)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -205,7 +223,9 @@ private struct ResumeActivityCard: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering in
-            isHovered = hovering
+            withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
+                isHovered = hovering
+            }
         }
     }
 }
@@ -213,8 +233,8 @@ private struct ResumeActivityCard: View {
 // MARK: - End Rhythm Button
 
 /// Destructive-style button for ending the rhythm session entirely.
-/// Uses alert color with hover state.
-private struct EndRhythmButton: View {
+/// Uses alert color with a subtle hover deepening effect.
+struct EndRhythmButton: View {
     let theme: ThemeManager
     let onTap: () -> Void
 
@@ -225,20 +245,22 @@ private struct EndRhythmButton: View {
             HStack(spacing: 6) {
                 Image(systemName: "stop.fill")
                     .font(.caption)
-                Text("End Rhythm Session")
+                Text("Done for now")
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
-            .foregroundStyle(isHovered ? .white : theme.alert)
+            .foregroundStyle(theme.alert)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(isHovered ? theme.alert : theme.alert.opacity(0.12))
+                    .fill(theme.alert.opacity(isHovered ? 0.2 : 0.12))
             )
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .onHover { hovering in
-            isHovered = hovering
+            withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
+                isHovered = hovering
+            }
         }
     }
 }

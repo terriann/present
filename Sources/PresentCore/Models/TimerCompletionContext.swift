@@ -6,6 +6,11 @@ public struct TimerCompletionContext: Sendable, Equatable {
         case rhythmFocusExpiry(breakMinutes: Int, isLongBreak: Bool)
         case rhythmBreakExpiry(previousActivityId: Int64, previousActivityTitle: String,
                                previousTimerMinutes: Int, previousBreakMinutes: Int)
+
+        public var isBreakExpiry: Bool {
+            if case .rhythmBreakExpiry = self { return true }
+            return false
+        }
     }
 
     public let completionType: CompletionType

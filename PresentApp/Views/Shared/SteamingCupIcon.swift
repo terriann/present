@@ -5,21 +5,27 @@ import PresentCore
 /// the SF Pro `cup.and.heat.waves` glyph. When Reduce Motion is enabled,
 /// steam shows at a static opacity.
 struct SteamingCupIcon: View {
+    /// Icon size in points. Defaults to 48 for detail views; pass ~28 for inline use.
+    var size: CGFloat = 48
+
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// Scale factor relative to the default 48pt size.
+    private var scale: CGFloat { size / 48 }
 
     var body: some View {
         ZStack(alignment: .bottom) {
             // Steam wisps rising from the cup rim
-            HStack(alignment: .bottom, spacing: 3) {
-                AnimatedSteamWisp(height: 22, reduceMotion: reduceMotion)
-                AnimatedSteamWisp(height: 28, reduceMotion: reduceMotion)
-                AnimatedSteamWisp(height: 22, reduceMotion: reduceMotion)
+            HStack(alignment: .bottom, spacing: 3 * scale) {
+                AnimatedSteamWisp(height: 22 * scale, strokeWidth: 2.5 * scale, reduceMotion: reduceMotion)
+                AnimatedSteamWisp(height: 28 * scale, strokeWidth: 2.5 * scale, reduceMotion: reduceMotion)
+                AnimatedSteamWisp(height: 22 * scale, strokeWidth: 2.5 * scale, reduceMotion: reduceMotion)
             }
-            .offset(y: -40)
+            .offset(y: -40 * scale)
 
             // Cup icon
             Image(systemName: "cup.and.saucer")
-                .font(.system(size: 48))
+                .font(.system(size: size))
                 .foregroundStyle(.tertiary)
         }
     }
@@ -31,6 +37,7 @@ struct SteamingCupIcon: View {
 /// so the three wisps drift in and out of phase organically.
 private struct AnimatedSteamWisp: View {
     let height: CGFloat
+    var strokeWidth: CGFloat = 2.5
     let reduceMotion: Bool
 
     @State private var animating = false
@@ -39,9 +46,9 @@ private struct AnimatedSteamWisp: View {
 
     var body: some View {
         SteamWispPath()
-            .stroke(style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+            .stroke(style: StrokeStyle(lineWidth: strokeWidth, lineCap: .round))
             .foregroundStyle(.secondary)
-            .frame(width: 10, height: height)
+            .frame(width: strokeWidth * 4, height: height)
             .opacity(reduceMotion ? 0.25 : (animating ? 0.45 : 0.1))
             .animation(
                 reduceMotion ? nil : .easeInOut(duration: duration)
