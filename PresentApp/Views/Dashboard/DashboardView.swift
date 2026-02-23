@@ -203,7 +203,7 @@ struct DashboardView: View {
             }
 
             GroupBox {
-                Text("Today")
+                Text("Today at a Glance")
                     .font(.cardTitle)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, Constants.spacingCard)
@@ -329,7 +329,7 @@ struct DashboardView: View {
         let domain = weekdayLabels(weekly)
         let tooltipLabels = weeklyTooltipLabels(weekStartDay: appState.weekStartDay, referenceDate: Date())
 
-        return ChartCard(title: "This Week", subtitle: weekRangeTitle) {
+        return ChartCard(title: "Your Week", subtitle: weekRangeTitle) {
             weeklyBarChart(entries: entries, domain: domain, activities: weekly.activities, tooltipLabels: tooltipLabels)
         }
     }
@@ -771,7 +771,7 @@ private struct ActivityBreakdownCard: View {
     }
 
     var body: some View {
-        ChartCard(title: "Activity Breakdown") {
+        ChartCard(title: "Today's Activities") {
             if displayActivities.isEmpty {
                 ContentUnavailableView(
                     "No Activities",
