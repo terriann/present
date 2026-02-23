@@ -13,25 +13,40 @@ struct DashboardView: View {
     @State private var greetingDate = Date()
 
     /// Shared color mapping so today timeline and weekly chart use the same color per activity.
+    ///
+    /// On-page activities get first pick from the palette to minimize overlap for
+    /// visible data. Remaining non-archived activities are appended so a
+    /// just-started session always has a color slot — even before the weekly
+    /// summary refreshes (which previously caused a Swift Charts crash).
     private var activityColorMap: [String: Color] {
         let palette = ThemeManager.chartColors(for: theme.activePalette)
-        var titles = Set<String>()
+
+        // 1. Activities currently visible on the dashboard get priority colors.
+        var onPage = Set<String>()
         for summary in appState.todayActivities {
-            titles.insert(summary.activity.title)
+            onPage.insert(summary.activity.title)
         }
         if let weekly = appState.weeklySummary {
             for summary in weekly.activities {
-                titles.insert(summary.activity.title)
+                onPage.insert(summary.activity.title)
             }
         }
         // Include active session's activity so cross-midnight sessions get a chart color.
         // Skip system activities (Break) — they don't need chart representation.
         if let current = appState.currentActivity, !current.isSystem {
-            titles.insert(current.title)
+            onPage.insert(current.title)
         }
-        let sorted = titles.sorted()
+        let sortedOnPage = onPage.sorted()
+
+        // 2. All other non-archived, non-system activities fill remaining palette slots.
+        let remaining = appState.allActivities
+            .filter { !$0.isArchived && !$0.isSystem && !onPage.contains($0.title) }
+            .map(\.title)
+            .sorted()
+
+        let allTitles = sortedOnPage + remaining
         var map: [String: Color] = [:]
-        for (index, title) in sorted.enumerated() {
+        for (index, title) in allTitles.enumerated() {
             map[title] = palette[index % palette.count]
         }
         return map
@@ -335,7 +350,13 @@ struct DashboardView: View {
     }
 
     private func weeklyBarChart(entries: [DashboardBarEntry], domain: [String], activities: [ActivitySummary], tooltipLabels: [String: String]) -> some View {
-        let colorDomain = activities.map(\.activity.title).sorted()
+        // Include activity titles from entries too — a just-started session may
+        // inject a bar entry before the weekly summary refreshes.
+        var allTitles = Set(activities.map(\.activity.title))
+        for entry in entries {
+            allTitles.insert(entry.activity)
+        }
+        let colorDomain = allTitles.sorted()
         let colorRange = colorDomain.map { activityColorMap[$0] ?? .secondary }
 
         // Compute y-axis domain
