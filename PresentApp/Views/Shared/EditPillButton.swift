@@ -4,8 +4,7 @@ import PresentCore
 /// A compact edit button that expands into a labeled pill on hover.
 ///
 /// Default state shows a `square.and.pencil` icon in secondary color.
-/// On hover the icon swaps to `square.and.pencil.circle.fill`, an "Edit"
-/// label slides in from the left, and the background becomes an
+/// On hover an "Edit" label slides in from the left and the background becomes an
 /// accent-colored pill. Animations respect Reduce Motion.
 struct EditPillButton: View {
     @Environment(ThemeManager.self) private var theme
@@ -25,14 +24,14 @@ struct EditPillButton: View {
                         .transition(.move(edge: .trailing).combined(with: .opacity))
                 }
 
-                Image(systemName: isHovered
-                    ? "square.and.pencil.circle.fill"
-                    : "square.and.pencil")
+                Image(systemName: "square.and.pencil")
                     .font(.caption)
                     .foregroundStyle(isHovered ? .white : .secondary)
             }
             .padding(.horizontal, isHovered ? 8 : 5)
             .padding(.vertical, 4)
+            .fixedSize()
+            .frame(minHeight: 24)
             .background(
                 isHovered ? theme.accent : Color.clear,
                 in: Capsule()
@@ -44,7 +43,7 @@ struct EditPillButton: View {
             if reduceMotion {
                 isHovered = hovering
             } else {
-                withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
+                withAdaptiveAnimation(.easeInOut(duration: 0.35)) {
                     isHovered = hovering
                 }
             }
