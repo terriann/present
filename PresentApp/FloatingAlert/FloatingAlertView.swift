@@ -23,7 +23,6 @@ struct FloatingAlertView: View {
         VStack(spacing: 8) {
             if context.completionType.isBreakExpiry {
                 SteamingCupIcon(size: 28)
-                    .foregroundStyle(theme.accent)
             } else {
                 Image(systemName: headerIcon)
                     .font(.title)
@@ -181,7 +180,8 @@ struct FloatingAlertView: View {
 // MARK: - Resume Activity Card
 
 /// Card-style button for resuming the previous focus activity after a break.
-/// Styled to match QuickStartRow: activity title, session subtitle, accent background.
+/// Translucent accent tint matching RecentSuggestionRow; icon transforms
+/// from restart arrow to play on hover.
 struct ResumeActivityCard: View {
     let title: String
     let subtitle: String
@@ -193,19 +193,21 @@ struct ResumeActivityCard: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: Constants.spacingCompact) {
-                Image(systemName: "play.circle")
-                    .font(.title2)
-                    .foregroundStyle(.white.opacity(isHovered ? 1 : 0.9))
+                Image(systemName: isHovered ? "play.fill" : "arrow.counterclockwise")
+                    .font(.callout)
+                    .foregroundStyle(.white)
+                    .frame(width: 16, alignment: .center)
+                    .contentTransition(.symbolEffect(.replace))
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .font(.body)
+                        .font(.callout.weight(.medium))
                         .foregroundStyle(.white)
                         .lineLimit(1)
 
                     Text(subtitle)
-                        .font(.subheadline)
-                        .foregroundStyle(.white.opacity(0.7))
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.85))
                 }
 
                 Spacer()
@@ -214,7 +216,7 @@ struct ResumeActivityCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(isHovered ? theme.accent.opacity(0.85) : theme.accent)
+                    .fill(theme.primary.opacity(isHovered ? 0.65 : 0.45))
             )
             .contentShape(Rectangle())
         }
