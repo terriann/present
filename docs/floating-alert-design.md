@@ -61,7 +61,7 @@ SF Symbols. This keeps the tone calm and avoids visual urgency.
 
 | Session Type | Icon | Color | Animation |
 | --- | --- | --- | --- |
-| Timebound | `timer` (SF Symbol) | `theme.accent` | None |
+| Timebound | `timer` (SF Symbol) | `.tertiary` | None |
 | Rhythm Focus | `FocusBrainIcon` | `.tertiary` | None (static) |
 | Rhythm Break | `SteamingCupIcon` | `.tertiary` | Steam wisps |
 
@@ -82,26 +82,14 @@ SF Symbols. This keeps the tone calm and avoids visual urgency.
 - **Title**: `.headline` weight, centered, up to two lines.
   Examples: "Focus Session Complete", "Break Complete",
   "\<Activity Name\> Complete".
-- **Duration display** for rhythm sessions: `Xm / Ym` where
+- **Duration display**: All session types use `Xm / Ym` where
   `Xm` is the elapsed value and `/ Ym` is the total. The total
   portion uses `.secondary.opacity(0.5)` so it reads as
   supplementary context rather than a primary value. Both parts
   use `.timerDisplay` font.
-- **Duration display** for timebound sessions: Single formatted
-  duration string in `.timerDisplay` font at `.secondary`.
 
-### Badge Pills
-
-Badge pills appear only for **timebound sessions** where the
-session type is not already obvious from the icon and title.
-Rhythm sessions omit the badge because the animated icon and
-action cards already communicate the context.
-
-Badge styling:
-
-- `.caption` font
-- Horizontal padding 8pt, vertical padding 3pt
-- `.quaternary` background in a `Capsule` shape
+Badge pills have been removed from all alert types. The icon,
+title, and action cards provide sufficient context.
 
 ## Button Tiers
 

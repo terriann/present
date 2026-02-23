@@ -33,7 +33,7 @@ struct FloatingAlertView: View {
             } else {
                 Image(systemName: headerIcon)
                     .font(.title)
-                    .foregroundStyle(theme.accent)
+                    .foregroundStyle(.tertiary)
             }
 
             Text(headerTitle)
@@ -60,15 +60,14 @@ struct FloatingAlertView: View {
                         .foregroundStyle(.secondary.opacity(0.5))
                 }
             } else {
-                Text(context.durationFormatted)
-                    .font(.timerDisplay)
-                    .foregroundStyle(.secondary)
-
-                Text(sessionBadge)
-                    .font(.caption)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(.quaternary, in: Capsule())
+                HStack(spacing: 0) {
+                    Text("\(context.timerMinutes)m")
+                        .font(.timerDisplay)
+                        .foregroundStyle(.secondary)
+                    Text(" / \(context.timerMinutes)m")
+                        .font(.timerDisplay)
+                        .foregroundStyle(.secondary.opacity(0.5))
+                }
             }
         }
     }
@@ -95,17 +94,6 @@ struct FloatingAlertView: View {
         }
     }
 
-    private var sessionBadge: String {
-        switch context.completionType {
-        case .timeboundExpiry:
-            return "Timebound \(context.timerMinutes)m"
-        case .rhythmFocusExpiry(let breakMins, let isLong):
-            return isLong ? "Rhythm (Long Break: \(breakMins)m)" : "Rhythm (Break: \(breakMins)m)"
-        case .rhythmBreakExpiry:
-            return "Break"
-        }
-    }
-
     // MARK: - Actions
 
     @ViewBuilder
@@ -121,24 +109,18 @@ struct FloatingAlertView: View {
     }
 
     private var timeboundActions: some View {
-        HStack(spacing: 12) {
-            Button {
-                appState.dismissTimerAlert()
-            } label: {
-                Label("Dismiss", systemImage: "xmark")
-                    .frame(maxWidth: .infinity)
-            }
-            .controlSize(.large)
-            .buttonStyle(.bordered)
-
-            Button {
+        VStack(spacing: Constants.spacingCard) {
+            ResumeActivityCard(
+                title: "Restart",
+                subtitle: "Timebound \u{00B7} \(context.timerMinutes)m",
+                theme: theme
+            ) {
                 Task { await appState.restartTimeboundSession() }
-            } label: {
-                Label("Restart", systemImage: "arrow.counterclockwise")
-                    .frame(maxWidth: .infinity)
             }
-            .controlSize(.large)
-            .buttonStyle(.borderedProminent)
+
+            DismissButton(label: "Dismiss", icon: "moon.fill", hoverIcon: "moon.zzz.fill", theme: theme) {
+                appState.dismissTimerAlert()
+            }
         }
     }
 
