@@ -179,8 +179,8 @@ struct FloatingAlertView: View {
 
     private var timeboundBreakActions: some View {
         VStack(spacing: Constants.spacingCard) {
-            if case .timeboundBreakExpiry(let recentId, let recentTitle, let recentTimer, let recentType) = context.completionType,
-               let recentId, let recentTitle {
+            if case .timeboundBreakExpiry(_, let recentTitle, let recentTimer, let recentType) = context.completionType,
+               let recentTitle {
                 let subtitle = timeboundBreakResumeSubtitle(type: recentType, minutes: recentTimer)
                 ResumeActivityCard(
                     title: "Resume \(recentTitle)",
