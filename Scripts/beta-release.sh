@@ -10,7 +10,7 @@ set -euo pipefail
 #   version  Marketing version (e.g. 0.1.0). Reads Info.plist if omitted.
 #
 # Prerequisites:
-#   - On the main branch with a clean working tree
+#   - On the main branch, up to date with origin/main, with a clean working tree
 #   - gh CLI authenticated
 #   - Xcode and xcodegen installed
 
@@ -38,6 +38,19 @@ if ! command -v gh &>/dev/null; then
     exit 1
 fi
 
+# ── Sync with remote ───────────────────────────────────────────────
+
+git fetch --all --tags --quiet
+
+LOCAL_HEAD=$(git rev-parse HEAD)
+REMOTE_HEAD=$(git rev-parse origin/main)
+
+if [[ "$LOCAL_HEAD" != "$REMOTE_HEAD" ]]; then
+    echo "Error: local main ($LOCAL_HEAD) does not match origin/main ($REMOTE_HEAD)."
+    echo "       Run 'git pull' first to ensure you're building the latest code."
+    exit 1
+fi
+
 # ── Resolve version ─────────────────────────────────────────────────
 
 if [[ -n "${1:-}" ]]; then
@@ -48,8 +61,6 @@ fi
 echo "    Version: $VERSION"
 
 # ── Compute beta tag ────────────────────────────────────────────────
-
-git fetch --tags --quiet
 
 BETA_NUM=1
 LAST=$(git tag -l "v${VERSION}-beta.*" | sed 's/.*-beta\.//' | sort -n | tail -1)
