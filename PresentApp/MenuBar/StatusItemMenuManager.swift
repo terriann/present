@@ -104,18 +104,18 @@ final class StatusItemMenuManager: NSObject, @unchecked Sendable {
 
         if isRunning {
             let pauseItem = NSMenuItem(title: "Pause\(suffix)", action: #selector(pauseSession), keyEquivalent: "")
-            pauseItem.image = NSImage(systemSymbolName: "pause.circle.fill", accessibilityDescription: "Pause")
+            pauseItem.image = NSImage(systemSymbolName: "pause.fill", accessibilityDescription: "Pause")
             pauseItem.target = self
             menu.addItem(pauseItem)
         } else {
             let resumeItem = NSMenuItem(title: "Resume\(suffix)", action: #selector(resumeSession), keyEquivalent: "")
-            resumeItem.image = NSImage(systemSymbolName: "play.circle.fill", accessibilityDescription: "Resume")
+            resumeItem.image = NSImage(systemSymbolName: "play.fill", accessibilityDescription: "Resume")
             resumeItem.target = self
             menu.addItem(resumeItem)
         }
 
         let stopItem = NSMenuItem(title: "Stop\(suffix)", action: #selector(stopSession), keyEquivalent: "")
-        stopItem.image = NSImage(systemSymbolName: "stop.circle.fill", accessibilityDescription: "Stop")
+        stopItem.image = NSImage(systemSymbolName: "stop.fill", accessibilityDescription: "Stop")
         stopItem.target = self
         menu.addItem(stopItem)
     }

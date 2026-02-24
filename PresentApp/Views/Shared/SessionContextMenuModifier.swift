@@ -57,7 +57,7 @@ struct SessionContextMenuModifier: ViewModifier {
             Button {
                 Task { await appState.pauseSession() }
             } label: {
-                Label("Pause Session", systemImage: "pause")
+                Label("Pause Session", systemImage: "pause.fill")
             }
         }
 
@@ -65,14 +65,14 @@ struct SessionContextMenuModifier: ViewModifier {
             Button {
                 Task { await appState.resumeSession() }
             } label: {
-                Label("Resume Session", systemImage: "play")
+                Label("Resume Session", systemImage: "play.fill")
             }
         }
 
         Button {
             Task { await appState.stopSession() }
         } label: {
-            Label("Stop Session", systemImage: "stop")
+            Label("Stop Session", systemImage: "stop.fill")
         }
     }
 
