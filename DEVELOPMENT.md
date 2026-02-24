@@ -285,7 +285,7 @@ system controls automatically use the brand blue.
 ## Releasing
 
 See [RELEASE.md](RELEASE.md) for the full release process, including
-versioning, the bump script, beta workflow, and stable release workflow.
+versioning, the bump script, beta release script, and stable release workflow.
 
 ## Data Utilities
 

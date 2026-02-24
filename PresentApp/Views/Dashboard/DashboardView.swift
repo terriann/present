@@ -59,7 +59,7 @@ struct DashboardView: View {
                 dashboardHeader
 
                 // Weekly chart
-                if let weekly = appState.weeklySummary, !weekly.activities.isEmpty {
+                if let weekly = appState.weeklySummary, !weekly.activities.isEmpty || hasActiveTodaySession {
                     weeklyChartCard(weekly)
                 }
 

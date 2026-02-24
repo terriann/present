@@ -29,6 +29,7 @@ struct ReportsView: View {
 
     // Hover state
     @State private var hoveredBarLabel: String?
+    @State private var hoveredBarActivity: String?
     @State private var barHoverLocation: CGPoint = .zero
     @State private var activityAngleSelection: Int?
     @State private var hoveredActivityName: String?
@@ -373,7 +374,21 @@ struct ReportsView: View {
 
         return ChartCard(title: "Time by \(selectedPeriod.timeLabel)") {
             stackedBarChart(entries: entries, domain: domain, tooltipLabels: tooltipLabels)
+            barChartLegend
         }
+    }
+
+    private var barChartLegend: some View {
+        let palette = ThemeManager.chartColors(for: theme.activePalette)
+        let items = activities.enumerated().map { index, summary in
+            (label: summary.activity.title, color: palette[index % palette.count])
+        }
+        return HoverableChartLegend(
+            items: items,
+            hoveredLabel: $hoveredBarActivity
+        )
+        .padding(.horizontal, Constants.spacingCard)
+        .padding(.bottom, Constants.spacingCard)
     }
 
     private var weekendDayLabels: Set<String> {
@@ -403,7 +418,7 @@ struct ReportsView: View {
                     y: .value(yAxisLabel, entry.value)
                 )
                 .foregroundStyle(by: .value("Activity", entry.activity))
-                .opacity(hoveredBarLabel == nil || hoveredBarLabel == entry.label ? 1.0 : 0.4)
+                .opacity(barEntryOpacity(entry: entry))
             }
         }
         .chartForegroundStyleScale(domain: chartColorDomain, range: chartColorRange)
@@ -437,6 +452,8 @@ struct ReportsView: View {
                     Rectangle()
                         .fill(.clear)
                         .contentShape(Rectangle())
+                        .frame(width: frame.width, height: frame.height)
+                        .position(x: frame.midX, y: frame.midY)
                         .onContinuousHover { phase in
                             switch phase {
                             case .active(let location):
@@ -463,9 +480,21 @@ struct ReportsView: View {
                 }
             }
         }
-        .chartLegend(position: .bottom, spacing: 12)
+        .chartLegend(.hidden)
         .frame(height: 250)
         .padding(Constants.spacingCard)
+    }
+
+    private func barEntryOpacity(entry: BarEntry) -> Double {
+        // Legend hover takes priority — isolate a single activity across all hours
+        if let activity = hoveredBarActivity {
+            return entry.activity == activity ? 1.0 : 0.15
+        }
+        // Tooltip hover — highlight a single hour
+        if let label = hoveredBarLabel {
+            return entry.label == label ? 1.0 : 0.4
+        }
+        return 1.0
     }
 
     private func barTooltip(for label: String, entries: [BarEntry], tooltipLabels: [String: String] = [:]) -> some View {
@@ -999,6 +1028,7 @@ struct ReportsView: View {
 
     private func resetHoverState() {
         hoveredBarLabel = nil
+        hoveredBarActivity = nil
         activityAngleSelection = nil
         hoveredActivityName = nil
         legendHoveredActivity = nil

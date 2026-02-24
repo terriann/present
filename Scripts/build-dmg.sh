@@ -4,7 +4,11 @@ set -euo pipefail
 # Build Present.app and CLI, then package into a signed DMG.
 #
 # Usage:
-#   ./Scripts/build-dmg.sh
+#   ./Scripts/build-dmg.sh [version]
+#
+# Arguments:
+#   version  Version suffix for DMG filename (e.g. 0.1.0-beta.1).
+#            Produces Present-0.1.0-beta.1.dmg. Omit for Present.dmg.
 #
 # Prerequisites:
 #   - Xcode 16+ installed
@@ -19,7 +23,11 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 BUILD_DIR="$PROJECT_DIR/build"
 APP_NAME="Present"
-DMG_NAME="Present.dmg"
+if [[ -n "${1:-}" ]]; then
+    DMG_NAME="${APP_NAME}-${1}.dmg"
+else
+    DMG_NAME="${APP_NAME}.dmg"
+fi
 SIGNING_IDENTITY="${SIGNING_IDENTITY:--}"
 
 echo "==> Cleaning build directory..."

@@ -19,7 +19,7 @@ Guide for versioning, building, and publishing Present releases.
 
 Present tracks two version identifiers in `PresentApp/Info.plist`:
 
-- **`CFBundleShortVersionString`** (currently `1.0`) -- The user-facing
+- **`CFBundleShortVersionString`** (currently `0.1.0`) -- The user-facing
   marketing version, following
   [Semantic Versioning](https://semver.org/) (MAJOR.MINOR.PATCH).
 - **`CFBundleVersion`** (currently `1`) -- The internal build number,
@@ -88,46 +88,47 @@ yet) if a beta is planned first.
 
 ### 2. Beta Release
 
-Trigger the beta workflow manually from the GitHub Actions UI
-(`.github/workflows/beta.yml`). An optional version override input is
-available; if omitted, the workflow reads the version from `Info.plist`.
+Run the beta release script locally:
 
-The workflow:
+```bash
+./Scripts/beta-release.sh           # reads version from Info.plist
+./Scripts/beta-release.sh 0.2.0     # or specify a version explicitly
+```
 
-1. Resolves the marketing version (input or `Info.plist`).
-2. Computes the next beta tag by scanning existing tags (e.g.,
-   `v1.1.0-beta.1`, `v1.1.0-beta.2`).
-3. Builds an unsigned DMG via `Scripts/build-dmg.sh`.
-4. Creates a GitHub pre-release with the DMG attached.
+The script:
 
-No tag push is required. The workflow handles tagging internally.
+1. Checks pre-flight conditions (clean working tree, on `main`, `gh`
+   CLI available).
+2. Resolves the marketing version (argument or `Info.plist`).
+3. Computes the next beta tag by scanning existing tags (e.g.,
+   `v0.1.0-beta.1`, `v0.1.0-beta.2`).
+4. Builds a versioned DMG (e.g. `Present-0.1.0-beta.1.dmg`) via
+   `Scripts/build-dmg.sh`.
+5. Creates a GitHub pre-release with the DMG attached via `gh release
+   create`.
 
 ### 3. Stable Release
 
-Push the tag created by the bump script:
-
-```bash
-git push origin vX.Y.Z
-```
-
-The stable release workflow (`.github/workflows/release.yml`) triggers
-automatically on `v*` tag pushes matching `v[0-9]+.[0-9]+.[0-9]+`
-(excludes `-beta` suffixes). It builds the DMG and publishes a GitHub
-release marked as latest.
+Stable releases are not yet automated. When a stable release workflow
+is needed, a new one will be created.
 
 ## Distribution Scripts
 
 Three scripts in `Scripts/` handle building and distributing the app:
 
-- **`build-dmg.sh`** -- Builds a signed DMG. Set `SIGNING_IDENTITY`
-  for real code signing (defaults to ad-hoc).
+- **`beta-release.sh`** -- Builds a DMG and publishes a GitHub
+  pre-release with an auto-incrementing beta tag.
+- **`build-dmg.sh`** -- Builds a signed DMG with an optional version
+  suffix. Set `SIGNING_IDENTITY` for real code signing (defaults to
+  ad-hoc).
 - **`notarize.sh`** -- Submits the DMG for Apple notarization. Requires
   `APPLE_ID`, `TEAM_ID`, and `APP_PASSWORD` environment variables.
 - **`install-cli.sh`** -- Builds and installs the CLI binary locally.
 
 ```bash
 # Build signed DMG (set SIGNING_IDENTITY for real signing)
-./Scripts/build-dmg.sh
+./Scripts/build-dmg.sh                   # produces Present.dmg
+./Scripts/build-dmg.sh 0.1.0-beta.1      # produces Present-0.1.0-beta.1.dmg
 
 # Notarize (requires Apple Developer credentials)
 APPLE_ID=you@example.com TEAM_ID=XXXXX APP_PASSWORD=xxxx ./Scripts/notarize.sh
