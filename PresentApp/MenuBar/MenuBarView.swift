@@ -29,11 +29,11 @@ struct MenuBarView: View {
                 Divider()
 
                 quickStartSection
-
-                Divider()
-
-                bottomBar
             }
+
+            Divider()
+
+            bottomBar
         }
         .frame(width: 320 * zoomScale)
     }
@@ -319,6 +319,24 @@ struct MenuBarView: View {
 
     private var bottomBar: some View {
         HStack {
+            Button {
+                appState.selectedSidebarItem = .dashboard
+                dismiss()
+                NSApplication.shared.setActivationPolicy(.regular)
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(
+                        name: StatusItemMenuManager.openMainWindowNotification,
+                        object: nil
+                    )
+                }
+            } label: {
+                Text("Launch Present")
+                    .font(scaledFont(.caption))
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .help("Launch Present")
+
             Spacer()
 
             Button {

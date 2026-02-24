@@ -14,7 +14,7 @@ import PresentCore
 /// The class is nonisolated with `nonisolated(unsafe)` references, using
 /// `MainActor.assumeIsolated` where actor-isolated access is needed.
 final class StatusItemMenuManager: NSObject, @unchecked Sendable {
-    /// Posted when the user selects "Open Present" from the right-click menu.
+    /// Posted when the user selects "Launch Present" from the right-click menu.
     /// Observed by `MenuBarLabelView` which has access to SwiftUI's `openWindow`.
     static let openMainWindowNotification = Notification.Name("Present.openMainWindow")
 
@@ -83,6 +83,7 @@ final class StatusItemMenuManager: NSObject, @unchecked Sendable {
         }
 
         let openItem = NSMenuItem(title: "Launch Present", action: #selector(openApp), keyEquivalent: "")
+        openItem.image = NSImage(systemSymbolName: "macwindow", accessibilityDescription: "Launch Present")
         openItem.target = self
         menu.addItem(openItem)
 
