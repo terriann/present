@@ -331,7 +331,7 @@ struct MenuBarView: View {
                 }
             } label: {
                 Text("Launch Present")
-                    .font(scaledFont(.caption))
+                    .font(scaledFont(.body))
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
