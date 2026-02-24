@@ -260,7 +260,10 @@ struct ResumeActivityCard: View {
     let theme: ThemeManager
     let onTap: () -> Void
 
+    @Environment(\.colorScheme) private var colorScheme
     @State private var isHovered = false
+
+    private var foreground: Color { colorScheme == .dark ? .white : .primary }
 
     var body: some View {
         Button(action: onTap) {
@@ -271,17 +274,17 @@ struct ResumeActivityCard: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(title)
                             .font(.callout.weight(.medium))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(foreground)
                             .lineLimit(1)
 
                         Text(subtitle)
                             .font(.caption)
-                            .foregroundStyle(.white.opacity(0.85))
+                            .foregroundStyle(foreground.opacity(0.85))
                     }
                 } else {
                     Text(title)
                         .font(.body.weight(.medium))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(foreground)
                         .lineLimit(1)
                 }
 
@@ -311,20 +314,20 @@ struct ResumeActivityCard: View {
         case .replace(let hoverIcon, let flipHover):
             Image(systemName: isHovered ? hoverIcon : icon)
                 .font(.callout)
-                .foregroundStyle(.white)
+                .foregroundStyle(foreground)
                 .scaleEffect(x: (isHovered && flipHover) ? -1 : 1, y: 1)
                 .frame(width: 16, alignment: .center)
                 .contentTransition(.symbolEffect(.replace))
         case .nudge:
             Image(systemName: icon)
                 .font(.callout)
-                .foregroundStyle(.white)
+                .foregroundStyle(foreground)
                 .frame(width: 16, alignment: .center)
                 .offset(x: isHovered ? 3 : 0)
         case .lift:
             Image(systemName: icon)
                 .font(.callout)
-                .foregroundStyle(.white)
+                .foregroundStyle(foreground)
                 .frame(width: 16, alignment: .center)
                 .scaleEffect(isHovered ? 1.15 : 1.0)
                 .offset(y: isHovered ? -2 : 0)
@@ -350,17 +353,20 @@ struct DismissButton: View {
     let theme: ThemeManager
     let onTap: () -> Void
 
+    @Environment(\.colorScheme) private var colorScheme
     @State private var isHovered = false
+
+    private var foreground: Color { colorScheme == .dark ? .white : .primary }
 
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 6) {
                 Image(systemName: isHovered ? hoverIcon : icon)
                     .font(.caption)
-                    .foregroundStyle(isHovered ? theme.alert : .white)
+                    .foregroundStyle(isHovered ? theme.alert : foreground)
                     .contentTransition(.symbolEffect(.replace))
                 Text(label)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(foreground)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
