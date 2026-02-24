@@ -197,6 +197,9 @@ CLI Commands ──────────────────────�
 - **Auto-rotating content** (carousels, timed transitions): disable the rotation entirely when reduce motion is on. Read `@Environment(\.accessibilityReduceMotion)` and guard the timer callback.
 - `.contentTransition(.numericText())` respects reduce motion automatically — no wrapper needed.
 
+## Pull Requests
+- Default PR base branch is `main` unless otherwise specified.
+
 ## Conventional Commits
 
 Use [Conventional Commits](https://www.conventionalcommits.org/) format: `type(scope): description`
