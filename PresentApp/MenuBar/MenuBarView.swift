@@ -6,12 +6,14 @@ struct MenuBarView: View {
     @Environment(ThemeManager.self) private var theme
     @Environment(\.openWindow) private var openWindow
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var searchText = ""
     @State private var selectedSessionType: SessionType = .work
     @State private var selectedRhythmOption: RhythmOption?
     @State private var timeboundMinutes: Int = 25
     @State private var newActivityTitle = ""
     @State private var isLaunchHovered = false
+    @State private var isSettingsHovered = false
 
     private var zoomScale: CGFloat { appState.zoomScale }
 
@@ -363,12 +365,39 @@ struct MenuBarView: View {
                     )
                 }
             } label: {
-                Image(systemName: "gear")
-                    .font(scaledFont(.body))
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 4) {
+                    if isSettingsHovered {
+                        Text("Settings")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(.primary)
+                            .transition(.move(edge: .trailing).combined(with: .opacity))
+                    }
+
+                    Image(systemName: "gear")
+                        .font(scaledFont(.body))
+                        .foregroundStyle(isSettingsHovered ? .primary : .secondary)
+                }
+                .padding(.horizontal, isSettingsHovered ? 8 : 5)
+                .padding(.vertical, 4)
+                .fixedSize()
+                .frame(minHeight: 24)
+                .background(
+                    isSettingsHovered ? Color.primary.opacity(0.12) : Color.clear,
+                    in: Capsule()
+                )
+                .contentShape(Capsule())
             }
             .buttonStyle(.plain)
             .help("Settings")
+            .onHover { hovering in
+                if reduceMotion {
+                    isSettingsHovered = hovering
+                } else {
+                    withAdaptiveAnimation(.easeInOut(duration: 0.35)) {
+                        isSettingsHovered = hovering
+                    }
+                }
+            }
             .padding(.trailing, Constants.spacingCard * zoomScale)
             .padding(.vertical, Constants.spacingCard * zoomScale)
         }
