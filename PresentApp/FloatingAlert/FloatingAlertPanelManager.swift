@@ -35,6 +35,7 @@ final class FloatingAlertPanelManager {
         )
 
         newPanel.isFloatingPanel = true
+        newPanel.hidesOnDeactivate = false
         newPanel.level = .floating
         newPanel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         newPanel.titlebarAppearsTransparent = true
