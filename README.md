@@ -51,7 +51,7 @@ All data is stored locally in SQLite via [GRDB](https://github.com/groue/GRDB.sw
 ### Download (Recommended)
 
 Go to the [GitHub Releases](https://github.com/terriann/present/releases)
-page and download the latest `Present.dmg`. Open it and drag Present to your
+page and download the latest `.dmg` file. Open it and drag Present to your
 Applications folder. The CLI binary (`present-cli`) is included in the DMG
 alongside the app.
 

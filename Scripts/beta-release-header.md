@@ -1,4 +1,4 @@
-> If you're not sure which file to download, grab **Present.dmg** — the other files are source archives you can ignore.
+> If you're not sure which file to download, grab **{{DMG_FILENAME}}** — the other files are source archives you can ignore.
 
 ## Before you open Present
 

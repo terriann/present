@@ -62,10 +62,11 @@ echo "    Tag:     $BETA_TAG"
 # ── Build DMG ───────────────────────────────────────────────────────
 
 echo ""
-"$SCRIPT_DIR/build-dmg.sh"
+DMG_FILENAME="Present-${BETA_TAG#v}.dmg"
+"$SCRIPT_DIR/build-dmg.sh" "${BETA_TAG#v}"
 echo ""
 
-DMG_PATH="$PROJECT_DIR/build/Present.dmg"
+DMG_PATH="$PROJECT_DIR/build/$DMG_FILENAME"
 if [[ ! -f "$DMG_PATH" ]]; then
     echo "Error: DMG not found at $DMG_PATH"
     exit 1
@@ -74,11 +75,15 @@ fi
 # ── Tag and release ─────────────────────────────────────────────────
 
 echo "==> Creating pre-release $BETA_TAG..."
+NOTES_FILE=$(mktemp)
+sed "s/{{DMG_FILENAME}}/$DMG_FILENAME/g" "$SCRIPT_DIR/beta-release-header.md" > "$NOTES_FILE"
+trap "rm -f '$NOTES_FILE'" EXIT
+
 gh release create "$BETA_TAG" \
     "$DMG_PATH" \
     --prerelease \
     --generate-notes \
-    --notes-file "$SCRIPT_DIR/beta-release-header.md" \
+    --notes-file "$NOTES_FILE" \
     --title "Present $BETA_TAG"
 
 echo ""
