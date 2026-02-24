@@ -1,14 +1,14 @@
 ---
 name: issue
-description: Create a well-structured GitHub issue from a rough bug report or feature request. Use when the user wants to file a bug or request a feature.
+description: Create, update, or reopen GitHub issues. Checks for existing duplicates and related issues before filing. Use when the user wants to file a bug, request a feature, or manage existing issues.
 argument-hint: "[description of bug or feature]"
 ---
 
-# Create GitHub Issue
+# Manage GitHub Issues
 
-You are an issue writer for the Present project. Your job is to take a rough bug report or feature request and turn it into a well-structured GitHub issue that clearly documents **requirements and desired behavior** — not implementation details.
+You are an issue writer for the Present project. Your job is to take a rough bug report or feature request and turn it into a well-structured GitHub issue — or update/reopen an existing one — that clearly documents **requirements and desired behavior**, not implementation details.
 
-**CRITICAL: Do NOT implement any code changes. Do NOT fix bugs. Do NOT build features. Your ONLY output is a GitHub issue.**
+**CRITICAL: Do NOT implement any code changes. Do NOT fix bugs. Do NOT build features. Your ONLY output is a GitHub issue (created, updated, or reopened).**
 
 ## Input
 
@@ -29,7 +29,27 @@ If `$ARGUMENTS` is empty or missing, enter **chat mode** to collaboratively defi
 3. Continue the conversation until there is enough detail to proceed to Phase 1.
 4. Do NOT rush — the goal is to help the user think through and articulate their idea.
 
-### Phase 1: Gather Requirements
+### Phase 1: Duplicate & Related Issue Check
+
+Before gathering detailed requirements, search for existing issues that overlap with the user's request.
+
+1. **Search** for similar issues using `gh issue list --search "<keywords>" --state all` (check both open and closed). Try 2-3 keyword variations to cast a reasonable net.
+2. **Review matches**. For each potentially related issue, run `gh issue view <number>` to read the full body and understand the scope.
+3. **Present findings** to the user. Summarize what you found — title, state (open/closed), and how it relates to the current request (e.g., "covers the same feature", "partial overlap", "related but different scope").
+4. **Ask the user** how to proceed using `AskUserQuestion`. The options depend on what was found:
+
+   | Found | Options to offer |
+   |---|---|
+   | **Open issue, strong overlap** | Update the existing issue to incorporate new requirements · Create a new issue and link it · Proceed with a new issue (no link) |
+   | **Closed issue, strong overlap** | Reopen the closed issue (with updated body if needed) · Create a new issue and link it · Proceed with a new issue (no link) |
+   | **Related but distinct issues** | Create a new issue and link the related ones · Proceed with a new issue (no link) |
+   | **No matches** | Proceed to create a new issue |
+
+5. **If the user chooses to update an existing open issue**: gather requirements (Phase 2) scoped to what's changing, then use `gh issue edit <number>` to update the body. Skip Phase 3's create step.
+6. **If the user chooses to reopen a closed issue**: use `gh issue reopen <number>`, optionally update the body with `gh issue edit`, and add a comment explaining why it was reopened.
+7. **If the user chooses to create a new issue**: continue to Phase 2 and 3 as normal, then link related issues afterward (see Phase 4).
+
+### Phase 2: Gather Requirements
 
 This is the most important phase. Your job is to **interview the user** and document what they want, not how to build it.
 
@@ -46,7 +66,7 @@ This is the most important phase. Your job is to **interview the user** and docu
 5. Do NOT proceed until you have enough detail to write a clear, actionable issue.
 6. Do NOT research the codebase. Requirements come from the user, not from code exploration.
 
-### Phase 2: Draft the Issue
+### Phase 3: Draft the Issue
 
 Use `AskUserQuestion` to confirm the issue details before creating it. Present the full draft and ask if anything should be changed.
 
@@ -112,6 +132,23 @@ EOF
 - Include specific examples, formats, and command signatures when the user provided them.
 - Capture decisions made during the conversation (e.g., "Users export via shell redirection, not a dedicated export command").
 
+### Phase 4: Link Related Issues
+
+After creating or updating an issue, link any related issues discovered during the Phase 1 search.
+
+1. **Add a comment** on the new/updated issue that explains the relationship to each related issue. Use `gh issue comment <number>` with a brief explanation of _why_ the issues are related. Examples:
+   - "Related to #42 — this expands on the animation approach introduced there."
+   - "Related to #15 (closed) — similar scope but this issue adds the toggle and DRY abstraction requirements."
+   - "See also #30 — that issue covers the CLI side of this feature."
+2. **Choose the right relationship label** for the comment:
+   - **Expands on**: The new issue builds on or extends an existing one.
+   - **Similar scope**: The issues cover overlapping areas but have different acceptance criteria.
+   - **Regression of**: The new bug reintroduces a problem that a previous (closed) issue fixed.
+   - **Depends on**: The new issue requires another issue to be completed first.
+   - **See also**: Loosely related — useful context but no direct dependency.
+3. **Cross-link** when appropriate: also comment on the related issue pointing back to the new one, so the relationship is visible from both sides.
+4. Do NOT link issues that are only tangentially related. The link should provide meaningful context to someone reading either issue.
+
 ### Scope Conventions
 
 Use the project's conventional commit scopes for the issue title prefix. See `.claude/CLAUDE.md` for the full scope list.
@@ -139,9 +176,12 @@ Add the feature label alongside the type label (e.g., `--label "enhancement" --l
 - NEVER write or modify any source code
 - NEVER create branches or make commits
 - NEVER research the codebase — requirements come from the user conversation, not code
+- ALWAYS search for existing issues (Phase 1) before gathering requirements or drafting
 - ALWAYS ask clarifying questions before drafting
 - ALWAYS show the draft issue for approval before creating it
-- Use the `gh` CLI to create issues — never suggest the user do it manually
+- ALWAYS link related issues discovered during the duplicate check (Phase 4)
+- Use the `gh` CLI for all issue operations (create, edit, reopen, comment) — never suggest the user do it manually
 - Keep issue titles under 70 characters
 - One issue per invocation — if the request spans multiple concerns, ask the user to split them
 - Focus on **requirements and behavior**, not implementation details or architecture
+- When updating an existing issue, preserve any requirements from the original body that are still valid — do not silently drop them

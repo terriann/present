@@ -82,7 +82,7 @@ Once the app is running, you can start tracking time immediately:
 2. **From the CLI:** Run `present-cli session start "My Task"` to begin a work
    session. The activity is created automatically if it does not exist.
 3. **View your day:** Open the main window for a dashboard summary, or run
-   `present-cli report today -f text` in the terminal.
+   `present-cli report -f text` in the terminal.
 
 ## CLI Usage
 
@@ -90,18 +90,18 @@ All commands follow `present-cli <noun> <verb>`. Output defaults to JSON for
 scripting; use `-f text` for human-readable output.
 
 ```text
-present-cli session status            # Current session as JSON (default command)
+present-cli session current            # Current session as JSON (default: status)
 present-cli session start "Task"      # Start a work session (creates activity if needed)
 present-cli session start "Task" --type rhythm --minutes 25
-present-cli session stop              # Stop the current session
-present-cli session pause             # Pause / resume
-present-cli session resume
-present-cli session cancel            # Cancel without logging
+present-cli session current stop      # Stop the current session
+present-cli session current pause     # Pause / resume
+present-cli session current resume
+present-cli session current cancel    # Cancel without logging
 present-cli activity list             # List activities
 present-cli activity note "Some text" # Append note to current activity
-present-cli report today -f text       # Today's summary, human-readable
-present-cli report export --from 2026-02-01 --to 2026-02-15  # Export CSV
-present-cli session status --field state  # Extract a single value: "running"
+present-cli report -f text            # Today's summary, human-readable
+present-cli report --after 2026-02-01 --before 2026-02-15 -f csv  # Export CSV
+present-cli session current status --field state  # Extract a single value: "running"
 ```
 
 **Command groups:** [`session`](docs/cli-reference.md#present-cli-session) |

@@ -624,11 +624,11 @@ struct AboutTab: View {
     @State private var isDetectingCLI = true
 
     private var appVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1"
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.1"
     }
 
     private var buildNumber: String {
-        Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
+        Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "0"
     }
 
     private var cliIsOutdated: Bool {
@@ -651,6 +651,7 @@ struct AboutTab: View {
                 Text("Version \(appVersion) (\(buildNumber))")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
 
                 cliVersionLine
             }
@@ -694,6 +695,7 @@ struct AboutTab: View {
             Text("CLI: v\(Constants.cliVersion)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .textSelection(.enabled)
         }
     }
 
