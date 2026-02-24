@@ -924,6 +924,11 @@ private struct ActivityBreakdownCard: View {
                                     .padding(.horizontal, Constants.spacingCard)
                                     .padding(.leading, 20)
                                     .background(Color.gray.opacity(0.04))
+                                    .contentShape(Rectangle())
+                                    .sessionDeletable(session: session, activityTitle: summary.activity.title) {
+                                        todaySessions[activityId] = nil
+                                        loadSessionsForActivity(activityId)
+                                    }
                                 }
                             }
                             }
