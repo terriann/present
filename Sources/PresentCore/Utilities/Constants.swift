@@ -58,6 +58,17 @@ public enum Constants {
 
     public static let breakActivityTitle = "Break"
 
+    // MARK: - Active Session Pulse
+
+    /// Peak opacity for the active session pulse animation.
+    public static let activePulseHigh: Double = 0.75
+    /// Trough opacity for the active session pulse animation.
+    public static let activePulseLow: Double = 0.3
+    /// Duration (seconds) for each fade direction (high→low or low→high).
+    public static let activePulseDuration: Double = 3.0
+    /// Pause (seconds) at the low point before fading back up.
+    public static let activePulseDelay: Double = 1.0
+
     // MARK: - CLI
 
     public static let cliVersion = "0.1.0"

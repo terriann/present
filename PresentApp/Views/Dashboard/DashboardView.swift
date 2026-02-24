@@ -5,11 +5,14 @@ import PresentCore
 struct DashboardView: View {
     @Environment(AppState.self) private var appState
     @Environment(ThemeManager.self) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var hoveredBarLabel: String?
     @State private var hoveredBarActivity: String?
     @State private var barHoverLocation: CGPoint = .zero
     @State private var quickRestartSuggestions: [(Session, Activity)] = []
     @State private var contentWidth: CGFloat = 600
+    /// Drives the gentle pulse on the active session's bar segment in the weekly chart.
+    @State private var activePulseOpacity: Double = 1.0
     /// Tracks the current date for greeting/date text; updated at period boundaries.
     @State private var greetingDate = Date()
 
@@ -79,7 +82,21 @@ struct DashboardView: View {
         .task(id: appState.isSessionActive) {
             if appState.isSessionActive {
                 quickRestartSuggestions = []
+                // Pulse the active bar segment in the weekly chart (matches today timeline timing)
+                guard !reduceMotion else {
+                    activePulseOpacity = 1.0
+                    return
+                }
+                let midpoint = (Constants.activePulseHigh + Constants.activePulseLow) / 2
+                let amplitude = (Constants.activePulseHigh - Constants.activePulseLow) / 2
+                let period = Constants.activePulseDuration * 2 + Constants.activePulseDelay
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .milliseconds(50))
+                    let t = Date().timeIntervalSinceReferenceDate
+                    activePulseOpacity = midpoint + amplitude * sin(t * 2 * .pi / period)
+                }
             } else {
+                activePulseOpacity = 1.0
                 await loadQuickRestarts()
             }
         }
@@ -490,7 +507,6 @@ struct DashboardView: View {
     }
 
     private func weeklyBarEntryOpacity(entry: DashboardBarEntry) -> Double {
-        if entry.isActive { return 0.6 }
         // Legend hover takes priority — isolate a single activity across all days
         if let activity = hoveredBarActivity {
             return entry.activity == activity ? 1.0 : 0.15
@@ -499,6 +515,8 @@ struct DashboardView: View {
         if let label = hoveredBarLabel {
             return entry.label == label ? 1.0 : 0.4
         }
+        // Active session segment pulses when no hover interaction is active
+        if entry.isActive { return activePulseOpacity }
         return 1.0
     }
 
@@ -639,13 +657,15 @@ private struct DayTimelineView: View {
                             .frame(width: w, height: barHeight)
                             .offset(x: x)
                             .phaseAnimator(
-                                isActive && !reduceMotion ? [0.75, 0.3] : [isActive ? 0.75 : 1.0]
+                                isActive && !reduceMotion
+                                    ? [Constants.activePulseHigh, Constants.activePulseLow]
+                                    : [isActive ? 1.0 : 1.0]
                             ) { content, phase in
                                 content.opacity(dimmed ? 0.2 : phase)
                             } animation: { phase in
-                                phase == 0.3
-                                    ? .easeInOut(duration: 3.0).delay(1.0)
-                                    : .easeInOut(duration: 3.0)
+                                phase == Constants.activePulseLow
+                                    ? .easeInOut(duration: Constants.activePulseDuration).delay(Constants.activePulseDelay)
+                                    : .easeInOut(duration: Constants.activePulseDuration)
                             }
                     }
 
