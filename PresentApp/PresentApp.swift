@@ -1,5 +1,21 @@
+import AppKit
 import SwiftUI
 import PresentCore
+
+// MARK: - Window Activation
+
+extension NSApplication {
+    /// Brings the app to the foreground, above all other windows.
+    ///
+    /// Uses `NSRunningApplication.current.activate(options:)` with
+    /// `.activateIgnoringOtherApps` to ensure the app comes forward even
+    /// when another application currently has focus.
+    /// Call this **before** opening a window (e.g., `openWindow(id:)`)
+    /// so the window appears in front.
+    @MainActor static func bringToFront() {
+        NSRunningApplication.current.activate(options: [.activateIgnoringOtherApps])
+    }
+}
 
 @main
 struct PresentApp: App {
@@ -125,16 +141,12 @@ private struct MenuBarLabelView: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: StatusItemMenuManager.openMainWindowNotification)) { _ in
+            NSApplication.bringToFront()
             openWindow(id: "main")
-            DispatchQueue.main.async {
-                NSApplication.shared.activate()
-            }
         }
         .onReceive(NotificationCenter.default.publisher(for: StatusItemMenuManager.openSettingsNotification)) { _ in
+            NSApplication.bringToFront()
             openSettings()
-            DispatchQueue.main.async {
-                NSApplication.shared.activate()
-            }
         }
     }
 }
