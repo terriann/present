@@ -1146,7 +1146,8 @@ public final class PresentService: PresentAPI, Sendable {
                 let actSecs = hourActivitySeconds[hour]!
                 for (actId, secs) in actSecs.sorted(by: { $0.value > $1.value }) {
                     if let activity = activityById[actId] {
-                        hourlyBreakdown.append(HourlyBucket(hour: hour, activity: activity, totalSeconds: secs))
+                        let finalSecs = roundToMinute ? TimeFormatting.floorToMinute(secs) : secs
+                        hourlyBreakdown.append(HourlyBucket(hour: hour, activity: activity, totalSeconds: finalSecs))
                     }
                 }
             }
@@ -1297,15 +1298,18 @@ public final class PresentService: PresentAPI, Sendable {
         }
     }
 
-    public func tagActivitySummary(from startDate: Date, to endDate: Date, includeArchived: Bool) async throws -> [TagActivitySummary] {
+    public func tagActivitySummary(from startDate: Date, to endDate: Date, includeArchived: Bool, roundToMinute: Bool = false) async throws -> [TagActivitySummary] {
         try await dbWriter.read { db in
             let archiveFilter = includeArchived ? "" : " AND a.isArchived = 0"
+            let durationExpr = roundToMinute
+                ? "(s.durationSeconds / 60) * 60"
+                : "s.durationSeconds"
             let sql = """
                 SELECT COALESCE(t.name, 'Untagged') as tagName,
                        a.id as activityId, a.title as activityTitle,
                        a.externalId, a.link, a.notes, a.isArchived, a.isSystem,
                        a.createdAt, a.updatedAt,
-                       COALESCE(SUM(s.durationSeconds), 0) as totalSecs,
+                       COALESCE(SUM(\(durationExpr)), 0) as totalSecs,
                        COUNT(s.id) as sessCount
                 FROM session s
                 INNER JOIN activity a ON a.id = s.activityId
