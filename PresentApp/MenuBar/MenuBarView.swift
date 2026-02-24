@@ -363,7 +363,7 @@ struct MenuBarView: View {
             .help("Settings")
         }
         .padding(.horizontal, Constants.spacingCard * zoomScale)
-        .padding(.vertical, Constants.spacingCompact * zoomScale)
+        .padding(.vertical, Constants.spacingCard * zoomScale)
     }
 
 }
