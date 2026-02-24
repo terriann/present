@@ -11,6 +11,7 @@ struct MenuBarView: View {
     @State private var selectedRhythmOption: RhythmOption?
     @State private var timeboundMinutes: Int = 25
     @State private var newActivityTitle = ""
+    @State private var isLaunchHovered = false
 
     private var zoomScale: CGFloat { appState.zoomScale }
 
@@ -330,14 +331,21 @@ struct MenuBarView: View {
                     )
                 }
             } label: {
-                Text("Launch Present")
-                    .font(scaledFont(.body))
-                    .foregroundStyle(.secondary)
+                HStack {
+                    Text("Launch Present")
+                        .font(scaledFont(.body))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
+                .padding(.horizontal, Constants.spacingCard * zoomScale)
+                .padding(.vertical, Constants.spacingCard * zoomScale)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .help("Launch Present")
-
-            Spacer()
+            .onHover { hovering in
+                isLaunchHovered = hovering
+            }
 
             Button {
                 dismiss()
@@ -361,9 +369,10 @@ struct MenuBarView: View {
             }
             .buttonStyle(.plain)
             .help("Settings")
+            .padding(.trailing, Constants.spacingCard * zoomScale)
+            .padding(.vertical, Constants.spacingCard * zoomScale)
         }
-        .padding(.horizontal, Constants.spacingCard * zoomScale)
-        .padding(.vertical, Constants.spacingCard * zoomScale)
+        .background(isLaunchHovered ? Color.primary.opacity(0.08) : Color.clear)
     }
 
 }
