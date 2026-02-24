@@ -18,9 +18,12 @@ targets:
       - path: PresentApp
     info:
       path: PresentApp/Info.plist
+      properties:
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.present.app
+        MARKETING_VERSION: "0.1.0-dev"
         INFOPLIST_FILE: PresentApp/Info.plist
         GENERATE_INFOPLIST_FILE: NO
         SWIFT_VERSION: "6.0"

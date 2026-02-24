@@ -25,8 +25,10 @@ BUILD_DIR="$PROJECT_DIR/build"
 APP_NAME="Present"
 if [[ -n "${1:-}" ]]; then
     DMG_NAME="${APP_NAME}-${1}.dmg"
+    VERSION_STRING="$1"
 else
     DMG_NAME="${APP_NAME}.dmg"
+    VERSION_STRING=""
 fi
 SIGNING_IDENTITY="${SIGNING_IDENTITY:--}"
 
@@ -39,13 +41,18 @@ cd "$PROJECT_DIR"
 xcodegen generate
 
 echo "==> Building app (Release)..."
+VERSION_OVERRIDE=()
+if [[ -n "$VERSION_STRING" ]]; then
+    VERSION_OVERRIDE=(MARKETING_VERSION="$VERSION_STRING")
+fi
 xcodebuild build \
     -project Present.xcodeproj \
     -scheme Present \
     -configuration Release \
     -derivedDataPath "$BUILD_DIR/DerivedData" \
     -destination 'platform=macOS' \
-    CODE_SIGN_IDENTITY="$SIGNING_IDENTITY"
+    CODE_SIGN_IDENTITY="$SIGNING_IDENTITY" \
+    "${VERSION_OVERRIDE[@]}"
 
 echo "==> Building CLI (Release)..."
 swift build -c release --product present-cli
