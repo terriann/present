@@ -889,7 +889,7 @@ struct ReportsView: View {
                             .padding(.vertical, Constants.spacingCompact)
                             .background(index.isMultiple(of: 2) ? Color.clear : Color.gray.opacity(0.08))
                             .contentShape(Rectangle())
-                            .sessionDeletable(session: entry.0, activityTitle: entry.1.title) {
+                            .sessionContextMenu(session: entry.0, activityTitle: entry.1.title) {
                                 reloadReport()
                             }
                     }

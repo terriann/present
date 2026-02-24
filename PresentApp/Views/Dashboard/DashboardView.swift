@@ -898,6 +898,8 @@ private struct ActivityBreakdownCard: View {
                                     .padding(.horizontal, Constants.spacingCard)
                                     .padding(.leading, 20)
                                     .background(Color.gray.opacity(0.04))
+                                    .contentShape(Rectangle())
+                                    .sessionContextMenu(session: active, activityTitle: summary.activity.title)
                                 }
 
                                 // Completed/cancelled sessions
@@ -925,7 +927,7 @@ private struct ActivityBreakdownCard: View {
                                     .padding(.leading, 20)
                                     .background(Color.gray.opacity(0.04))
                                     .contentShape(Rectangle())
-                                    .sessionDeletable(session: session, activityTitle: summary.activity.title) {
+                                    .sessionContextMenu(session: session, activityTitle: summary.activity.title) {
                                         todaySessions[activityId] = nil
                                         loadSessionsForActivity(activityId)
                                     }
