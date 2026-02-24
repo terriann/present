@@ -987,19 +987,31 @@ public final class PresentService: PresentAPI, Sendable {
         try await dbWriter.read { db in
             let archiveFilter = includeArchived ? "" : " AND a.isArchived = 0"
             let sql = """
-                SELECT a.*, COALESCE(SUM(s.durationSeconds), 0) as totalSecs, COUNT(s.id) as sessCount
+                SELECT a.*,
+                    COALESCE(SUM(
+                        MAX(0,
+                            CAST(strftime('%s', MIN(ss.endedAt, ?)) AS INTEGER) -
+                            CAST(strftime('%s', MAX(ss.startedAt, ?)) AS INTEGER)
+                        )
+                    ), 0) as totalSecs,
+                    COUNT(DISTINCT s.id) as sessCount
                 FROM activity a
                 INNER JOIN session s ON s.activityId = a.id
+                INNER JOIN session_segment ss ON ss.sessionId = s.id
                 WHERE s.state = ?
-                  AND s.startedAt >= ? AND s.startedAt < ?
+                  AND s.startedAt < ? AND (s.endedAt > ? OR s.endedAt IS NULL)
+                  AND ss.endedAt IS NOT NULL
+                  AND ss.startedAt < ? AND ss.endedAt > ?
                   \(archiveFilter)
                 GROUP BY a.id
                 ORDER BY totalSecs DESC
                 """
 
             let rows = try Row.fetchAll(db, sql: sql, arguments: [
+                endDate, startDate,
                 SessionState.completed.rawValue,
-                startDate, endDate
+                endDate, startDate,
+                endDate, startDate
             ])
 
             return rows.map { row in
@@ -1146,7 +1158,8 @@ public final class PresentService: PresentAPI, Sendable {
                 let actSecs = hourActivitySeconds[hour]!
                 for (actId, secs) in actSecs.sorted(by: { $0.value > $1.value }) {
                     if let activity = activityById[actId] {
-                        hourlyBreakdown.append(HourlyBucket(hour: hour, activity: activity, totalSeconds: secs))
+                        let finalSecs = roundToMinute ? TimeFormatting.floorToMinute(secs) : secs
+                        hourlyBreakdown.append(HourlyBucket(hour: hour, activity: activity, totalSeconds: finalSecs))
                     }
                 }
             }
@@ -1269,22 +1282,32 @@ public final class PresentService: PresentAPI, Sendable {
             let archiveFilter = includeArchived ? "" : " AND a.isArchived = 0"
             let sql = """
                 SELECT COALESCE(t.name, 'Untagged') as tagName,
-                       COALESCE(SUM(s.durationSeconds), 0) as totalSecs,
-                       COUNT(s.id) as sessCount
+                       COALESCE(SUM(
+                           MAX(0,
+                               CAST(strftime('%s', MIN(ss.endedAt, ?)) AS INTEGER) -
+                               CAST(strftime('%s', MAX(ss.startedAt, ?)) AS INTEGER)
+                           )
+                       ), 0) as totalSecs,
+                       COUNT(DISTINCT s.id) as sessCount
                 FROM session s
                 INNER JOIN activity a ON a.id = s.activityId
+                INNER JOIN session_segment ss ON ss.sessionId = s.id
                 LEFT JOIN activity_tag at2 ON at2.activityId = a.id
                 LEFT JOIN tag t ON t.id = at2.tagId
                 WHERE s.state = ?
-                  AND s.startedAt >= ? AND s.startedAt < ?
+                  AND s.startedAt < ? AND (s.endedAt > ? OR s.endedAt IS NULL)
+                  AND ss.endedAt IS NOT NULL
+                  AND ss.startedAt < ? AND ss.endedAt > ?
                   \(archiveFilter)
                 GROUP BY tagName
                 ORDER BY totalSecs DESC
                 """
 
             let rows = try Row.fetchAll(db, sql: sql, arguments: [
+                endDate, startDate,
                 SessionState.completed.rawValue,
-                startDate, endDate
+                endDate, startDate,
+                endDate, startDate
             ])
 
             return rows.map { row in
@@ -1297,30 +1320,77 @@ public final class PresentService: PresentAPI, Sendable {
         }
     }
 
-    public func tagActivitySummary(from startDate: Date, to endDate: Date, includeArchived: Bool) async throws -> [TagActivitySummary] {
+    public func tagActivitySummary(from startDate: Date, to endDate: Date, includeArchived: Bool, roundToMinute: Bool = false) async throws -> [TagActivitySummary] {
         try await dbWriter.read { db in
             let archiveFilter = includeArchived ? "" : " AND a.isArchived = 0"
-            let sql = """
-                SELECT COALESCE(t.name, 'Untagged') as tagName,
-                       a.id as activityId, a.title as activityTitle,
-                       a.externalId, a.link, a.notes, a.isArchived, a.isSystem,
-                       a.createdAt, a.updatedAt,
-                       COALESCE(SUM(s.durationSeconds), 0) as totalSecs,
-                       COUNT(s.id) as sessCount
-                FROM session s
-                INNER JOIN activity a ON a.id = s.activityId
-                LEFT JOIN activity_tag at2 ON at2.activityId = a.id
-                LEFT JOIN tag t ON t.id = at2.tagId
-                WHERE s.state = ?
-                  AND s.startedAt >= ? AND s.startedAt < ?
-                  \(archiveFilter)
-                GROUP BY tagName, a.id
-                ORDER BY tagName, totalSecs DESC
-                """
+
+            let sql: String
+            if roundToMinute {
+                // Floor each session's date-range overlap to the minute before summing.
+                sql = """
+                    SELECT COALESCE(t.name, 'Untagged') as tagName,
+                           a.id as activityId, a.title as activityTitle,
+                           a.externalId, a.link, a.notes, a.isArchived, a.isSystem,
+                           a.createdAt, a.updatedAt,
+                           COALESCE(SUM(floored.sessionSecs), 0) as totalSecs,
+                           COUNT(floored.sessionId) as sessCount
+                    FROM activity a
+                    INNER JOIN (
+                        SELECT s.activityId, s.id as sessionId,
+                            (COALESCE(SUM(
+                                MAX(0,
+                                    CAST(strftime('%s', MIN(ss.endedAt, ?)) AS INTEGER) -
+                                    CAST(strftime('%s', MAX(ss.startedAt, ?)) AS INTEGER)
+                                )
+                            ), 0) / 60) * 60 as sessionSecs
+                        FROM session s
+                        INNER JOIN session_segment ss ON ss.sessionId = s.id
+                        WHERE s.state = ?
+                          AND s.startedAt < ? AND (s.endedAt > ? OR s.endedAt IS NULL)
+                          AND ss.endedAt IS NOT NULL
+                          AND ss.startedAt < ? AND ss.endedAt > ?
+                        GROUP BY s.id
+                    ) floored ON floored.activityId = a.id
+                    LEFT JOIN activity_tag at2 ON at2.activityId = a.id
+                    LEFT JOIN tag t ON t.id = at2.tagId
+                    WHERE 1=1 \(archiveFilter)
+                    GROUP BY tagName, a.id
+                    ORDER BY tagName, totalSecs DESC
+                    """
+            } else {
+                // Raw seconds — calculate segment overlap clamped to date range.
+                sql = """
+                    SELECT COALESCE(t.name, 'Untagged') as tagName,
+                           a.id as activityId, a.title as activityTitle,
+                           a.externalId, a.link, a.notes, a.isArchived, a.isSystem,
+                           a.createdAt, a.updatedAt,
+                           COALESCE(SUM(
+                               MAX(0,
+                                   CAST(strftime('%s', MIN(ss.endedAt, ?)) AS INTEGER) -
+                                   CAST(strftime('%s', MAX(ss.startedAt, ?)) AS INTEGER)
+                               )
+                           ), 0) as totalSecs,
+                           COUNT(DISTINCT s.id) as sessCount
+                    FROM session s
+                    INNER JOIN activity a ON a.id = s.activityId
+                    INNER JOIN session_segment ss ON ss.sessionId = s.id
+                    LEFT JOIN activity_tag at2 ON at2.activityId = a.id
+                    LEFT JOIN tag t ON t.id = at2.tagId
+                    WHERE s.state = ?
+                      AND s.startedAt < ? AND (s.endedAt > ? OR s.endedAt IS NULL)
+                      AND ss.endedAt IS NOT NULL
+                      AND ss.startedAt < ? AND ss.endedAt > ?
+                      \(archiveFilter)
+                    GROUP BY tagName, a.id
+                    ORDER BY tagName, totalSecs DESC
+                    """
+            }
 
             let rows = try Row.fetchAll(db, sql: sql, arguments: [
+                endDate, startDate,
                 SessionState.completed.rawValue,
-                startDate, endDate
+                endDate, startDate,
+                endDate, startDate
             ])
 
             // Group rows by tagName

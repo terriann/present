@@ -254,7 +254,7 @@ Session type descriptions are displayed in the main app window (e.g., when creat
   - Current session status with start/pause/stop (or end for Rhythm/Timebound) controls.
   - Quick-start buttons for the 6 most recent activities.
   - Search field to find any activity.
-  - "Open Present" button to launch the main window.
+  - "Launch Present" button to open the main window.
   - Session type descriptions are **not** shown here — the popover is kept minimal for quick actions.
 
 ### 4.6 Main App Window

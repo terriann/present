@@ -44,6 +44,8 @@ Avoid "Restart" for completed sessions — it implies the previous session faile
 
 For dismiss actions, prefer descriptive labels over mechanical ones. Use "Done for now" (warm, acknowledges autonomy) rather than "Dismiss" (cold, UI jargon). Use specific labels like "End Rhythm Session" when the action has a distinct consequence.
 
+Always say "Launch Present" — never "Open Present." Launch conveys intent and action. Open is generic, passive, and carries connotations of unwrapping something precious. Time is a gift; this app is just a tool.
+
 ## Architecture
 
 ```
@@ -194,6 +196,9 @@ CLI Commands ──────────────────────�
 - Both default `reduced` to `.linear(duration: 0.15)`. Override for longer animations (e.g., `reduced: .linear(duration: 0.6)` for a 2s fadeout).
 - **Auto-rotating content** (carousels, timed transitions): disable the rotation entirely when reduce motion is on. Read `@Environment(\.accessibilityReduceMotion)` and guard the timer callback.
 - `.contentTransition(.numericText())` respects reduce motion automatically — no wrapper needed.
+
+## Pull Requests
+- Default PR base branch is `main` unless otherwise specified.
 
 ## Conventional Commits
 
