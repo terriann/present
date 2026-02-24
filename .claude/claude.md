@@ -44,6 +44,8 @@ Avoid "Restart" for completed sessions — it implies the previous session faile
 
 For dismiss actions, prefer descriptive labels over mechanical ones. Use "Done for now" (warm, acknowledges autonomy) rather than "Dismiss" (cold, UI jargon). Use specific labels like "End Rhythm Session" when the action has a distinct consequence.
 
+Always say "Launch Present" — never "Open Present." Launch conveys intent and action. Open is generic, passive, and carries connotations of unwrapping something precious. Time is a gift; this app is just a tool.
+
 ## Architecture
 
 ```
