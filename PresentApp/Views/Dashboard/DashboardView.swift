@@ -6,6 +6,7 @@ struct DashboardView: View {
     @Environment(AppState.self) private var appState
     @Environment(ThemeManager.self) private var theme
     @State private var hoveredBarLabel: String?
+    @State private var hoveredBarActivity: String?
     @State private var barHoverLocation: CGPoint = .zero
     @State private var quickRestartSuggestions: [(Session, Activity)] = []
     @State private var contentWidth: CGFloat = 600
@@ -344,8 +345,15 @@ struct DashboardView: View {
         let domain = weekdayLabels(weekly)
         let tooltipLabels = weeklyTooltipLabels(weekStartDay: appState.weekStartDay, referenceDate: Date())
 
+        // Build color domain/range for the legend (same logic as weeklyBarChart)
+        var allTitles = Set(weekly.activities.map(\.activity.title))
+        for entry in entries { allTitles.insert(entry.activity) }
+        let colorDomain = allTitles.sorted()
+        let colorRange = colorDomain.map { activityColorMap[$0] ?? .secondary }
+
         return ChartCard(title: "Your Week", subtitle: weekRangeTitle) {
             weeklyBarChart(entries: entries, domain: domain, activities: weekly.activities, tooltipLabels: tooltipLabels)
+            weeklyBarChartLegend(colorDomain: colorDomain, colorRange: colorRange)
         }
     }
 
@@ -387,9 +395,7 @@ struct DashboardView: View {
                     y: .value("Hours", entry.value)
                 )
                 .foregroundStyle(by: .value("Activity", entry.activity))
-                .opacity(entry.isActive
-                    ? 0.6
-                    : (hoveredBarLabel == nil || hoveredBarLabel == entry.label ? 1.0 : 0.4))
+                .opacity(weeklyBarEntryOpacity(entry: entry))
             }
         }
         .chartForegroundStyleScale(domain: colorDomain, range: colorRange)
@@ -414,6 +420,8 @@ struct DashboardView: View {
                     Rectangle()
                         .fill(.clear)
                         .contentShape(Rectangle())
+                        .frame(width: frame.width, height: frame.height)
+                        .position(x: frame.midX, y: frame.midY)
                         .onContinuousHover { phase in
                             switch phase {
                             case .active(let location):
@@ -440,7 +448,7 @@ struct DashboardView: View {
                 }
             }
         }
-        .chartLegend(position: .bottom, spacing: 12)
+        .chartLegend(.hidden)
         .frame(height: 250)
         .padding(Constants.spacingCard)
     }
@@ -479,6 +487,29 @@ struct DashboardView: View {
                 }
             }
         }
+    }
+
+    private func weeklyBarEntryOpacity(entry: DashboardBarEntry) -> Double {
+        if entry.isActive { return 0.6 }
+        // Legend hover takes priority — isolate a single activity across all days
+        if let activity = hoveredBarActivity {
+            return entry.activity == activity ? 1.0 : 0.15
+        }
+        // Tooltip hover — highlight a single day
+        if let label = hoveredBarLabel {
+            return entry.label == label ? 1.0 : 0.4
+        }
+        return 1.0
+    }
+
+    private func weeklyBarChartLegend(colorDomain: [String], colorRange: [Color]) -> some View {
+        let items = zip(colorDomain, colorRange).map { (label: $0, color: $1) }
+        return HoverableChartLegend(
+            items: items,
+            hoveredLabel: $hoveredBarActivity
+        )
+        .padding(.horizontal, Constants.spacingCard)
+        .padding(.bottom, Constants.spacingCard)
     }
 
     // MARK: - Weekly Chart Helpers
