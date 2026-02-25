@@ -15,6 +15,6 @@ struct PresentCLI: AsyncParsableCommand {
             TagCommand.self,
             ReportCommand.self,
             ConfigCommand.self,
-        ]
+        ],
     )
 }
