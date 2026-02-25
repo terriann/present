@@ -15,6 +15,6 @@ struct TagCommand: AsyncParsableCommand {
             TagGetCommand.self,
             TagUpdateCommand.self,
             TagDeleteCommand.self,
-        ],
+        ]
     )
 }

@@ -20,6 +20,6 @@ struct SessionCommand: AsyncParsableCommand {
             SessionListCommand.self,
             SessionDeleteCommand.self,
             SessionCurrentCommand.self,
-        ],
+        ]
     )
 }

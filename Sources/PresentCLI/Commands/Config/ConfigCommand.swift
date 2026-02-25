@@ -12,6 +12,6 @@ struct ConfigCommand: AsyncParsableCommand {
             ConfigListCommand.self,
             ConfigGetCommand.self,
             ConfigSetCommand.self,
-        ],
+        ]
     )
 }
