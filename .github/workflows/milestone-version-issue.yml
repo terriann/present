@@ -71,5 +71,7 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --title "$ISSUE_TITLE" \
             --label "chore" \
+            --label "P0-critical" \
+            --label "size/XS" \
             --milestone "$MILESTONE_TITLE" \
             --body "$BODY"
