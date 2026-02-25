@@ -603,8 +603,9 @@ private struct DayTimelineView: View {
     @Environment(AppState.self) private var appState
     @Environment(ThemeManager.self) private var theme
     @State private var completedSessions: [(Session, Activity)] = []
+    @State private var sessionSegments: [Int64: [SessionSegment]] = [:]
     @State private var hoveredActivityTitle: String? = nil
-    @State private var hoveredSessionPair: (Session, Activity)?
+    @State private var hoveredBlock: TimelineBlock?
     @State private var hoverLocation: CGPoint = .zero
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -634,6 +635,49 @@ private struct DayTimelineView: View {
         return items.sorted { $0.label < $1.label }
     }
 
+    /// A single renderable block on the timeline, representing one contiguous active segment.
+    private struct TimelineBlock: Identifiable {
+        let id: String
+        let start: Date
+        let end: Date? // nil = live (currently running)
+        let session: Session
+        let activity: Activity
+        let isLiveSegment: Bool // only the last open segment of a running session
+    }
+
+    /// Flat list of timeline blocks — one per segment, with gaps where pauses occurred.
+    private var allBlocks: [TimelineBlock] {
+        var blocks: [TimelineBlock] = []
+        for (session, activity) in allSessions {
+            guard let sessionId = session.id else { continue }
+            if let segments = sessionSegments[sessionId], !segments.isEmpty {
+                for (index, segment) in segments.enumerated() {
+                    let isLast = index == segments.count - 1
+                    let isLive = isLast && session.state == .running && segment.endedAt == nil
+                    blocks.append(TimelineBlock(
+                        id: "\(sessionId)-\(index)",
+                        start: segment.startedAt,
+                        end: isLive ? nil : segment.endedAt,
+                        session: session,
+                        activity: activity,
+                        isLiveSegment: isLive
+                    ))
+                }
+            } else {
+                // Fallback: no segments loaded yet, render as single block
+                blocks.append(TimelineBlock(
+                    id: "fallback-\(sessionId)",
+                    start: session.startedAt,
+                    end: session.endedAt,
+                    session: session,
+                    activity: activity,
+                    isLiveSegment: session.state == .running
+                ))
+            }
+        }
+        return blocks
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: Constants.spacingCompact) {
             GeometryReader { geo in
@@ -644,20 +688,20 @@ private struct DayTimelineView: View {
                         .frame(width: geo.size.width + 16, height: barHeight)
                         .offset(x: -8)
 
-                    // Session blocks
-                    ForEach(allSessions, id: \.0.id) { session, activity in
-                        let x = xPos(session, geo.size.width)
-                        let w = blockWidth(session, geo.size.width)
-                        let color = activityColor(activity)
-                        let isActive = session.id == appState.currentSession?.id
-                        let dimmed = hoveredActivityTitle != nil && hoveredActivityTitle != activity.title
+                    // Segment blocks (one per contiguous active period)
+                    ForEach(allBlocks) { block in
+                        let x = segmentXPos(block, geo.size.width)
+                        let w = segmentWidth(block, geo.size.width)
+                        let color = activityColor(block.activity)
+                        let isActive = block.session.id == appState.currentSession?.id
+                        let dimmed = hoveredActivityTitle != nil && hoveredActivityTitle != block.activity.title
 
                         RoundedRectangle(cornerRadius: 2.5)
                             .fill(color.opacity(isActive ? 1.0 : 0.75))
                             .frame(width: w, height: barHeight)
                             .offset(x: x)
                             .phaseAnimator(
-                                isActive && !reduceMotion
+                                block.isLiveSegment && !reduceMotion
                                     ? [Constants.activePulseHigh, Constants.activePulseLow]
                                     : [isActive ? 1.0 : 1.0]
                             ) { content, phase in
@@ -683,20 +727,20 @@ private struct DayTimelineView: View {
                     switch phase {
                     case .active(let point):
                         hoverLocation = point
-                        let match = sessionAt(x: point.x, width: geo.size.width)
-                        hoveredSessionPair = match
-                        hoveredActivityTitle = match?.1.title
+                        let match = blockAt(x: point.x, width: geo.size.width)
+                        hoveredBlock = match
+                        hoveredActivityTitle = match?.activity.title
                     case .ended:
-                        hoveredSessionPair = nil
+                        hoveredBlock = nil
                         hoveredActivityTitle = nil
                     }
                 }
                 .overlay {
-                    if let (session, activity) = hoveredSessionPair {
-                        let midX = xPos(session, geo.size.width)
-                            + blockWidth(session, geo.size.width) / 2
+                    if let block = hoveredBlock {
+                        let midX = segmentXPos(block, geo.size.width)
+                            + segmentWidth(block, geo.size.width) / 2
                         let clampedX = min(max(90, midX), geo.size.width - 90)
-                        timelineTooltip(session: session, activity: activity)
+                        timelineTooltip(session: block.session, activity: block.activity)
                             .fixedSize()
                             .position(x: clampedX, y: -36)
                     }
@@ -728,27 +772,32 @@ private struct DayTimelineView: View {
                 HoverableChartLegend(items: legendItems, hoveredLabel: $hoveredActivityTitle)
             }
         }
-        .task(id: appState.todayActivities.map(\.activity.id)) {
+        .task(id: "\(appState.todayActivities.map(\.activity.id))-\(appState.currentSession?.state.rawValue ?? "")") {
             await loadSessions()
         }
     }
 
     // MARK: - Helpers
 
-    private func xPos(_ session: Session, _ width: CGFloat) -> CGFloat {
-        // Clamp to start of day so cross-midnight sessions begin at x=0
-        let effectiveStart = max(session.startedAt, startOfDay)
+    private func segmentXPos(_ block: TimelineBlock, _ width: CGFloat) -> CGFloat {
+        // Clamp to start of day so cross-midnight segments begin at x=0
+        let effectiveStart = max(block.start, startOfDay)
         let offset = effectiveStart.timeIntervalSince(startOfDay)
         return CGFloat(offset / secondsInDay) * width
     }
 
-    private func blockWidth(_ session: Session, _ width: CGFloat) -> CGFloat {
-        let effectiveStart = max(session.startedAt, startOfDay)
-        let end: Date = session.endedAt ?? session.startedAt.addingTimeInterval(
-            Double(appState.timerElapsedSeconds)
-        )
+    private func segmentWidth(_ block: TimelineBlock, _ width: CGFloat) -> CGFloat {
+        let effectiveStart = max(block.start, startOfDay)
+        let end: Date
+        if let segEnd = block.end {
+            end = segEnd
+        } else {
+            // Live segment: read timerElapsedSeconds to drive per-second re-render
+            _ = appState.timerElapsedSeconds
+            end = Date()
+        }
         let duration = max(1, end.timeIntervalSince(effectiveStart))
-        return max(6, CGFloat(duration / secondsInDay) * width)
+        return max(4, CGFloat(duration / secondsInDay) * width)
     }
 
     private func activityColor(_ activity: Activity) -> Color {
@@ -763,12 +812,12 @@ private struct DayTimelineView: View {
         }
     }
 
-    private func sessionAt(x: CGFloat, width: CGFloat) -> (Session, Activity)? {
-        for (session, activity) in allSessions.reversed() {
-            let sx = xPos(session, width)
-            let sw = blockWidth(session, width)
+    private func blockAt(x: CGFloat, width: CGFloat) -> TimelineBlock? {
+        for block in allBlocks.reversed() {
+            let sx = segmentXPos(block, width)
+            let sw = segmentWidth(block, width)
             if x >= sx && x <= sx + sw {
-                return (session, activity)
+                return block
             }
         }
         return nil
@@ -816,6 +865,13 @@ private struct DayTimelineView: View {
             from: startOfDay, to: endOfDay, type: nil, activityId: nil, includeArchived: false
         ) else { return }
         completedSessions = result
+
+        // Fetch segments for all visible sessions (completed + active)
+        var allIds = result.compactMap { $0.0.id }
+        if let activeId = appState.currentSession?.id, !allIds.contains(activeId) {
+            allIds.append(activeId)
+        }
+        sessionSegments = (try? await appState.service.segmentsForSessions(sessionIds: allIds)) ?? [:]
     }
 }
 

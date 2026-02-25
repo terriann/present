@@ -58,6 +58,7 @@ public protocol PresentAPI: Sendable {
     func listPreferences() async throws -> [(key: String, value: String)]
 
     // Segments
+    func segmentsForSessions(sessionIds: [Int64]) async throws -> [Int64: [SessionSegment]]
     func sessionDayPortions(sessionIds: [Int64], date: Date) async throws -> [Int64: Int]
 
     // Status

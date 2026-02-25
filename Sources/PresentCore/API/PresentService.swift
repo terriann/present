@@ -943,6 +943,17 @@ public final class PresentService: PresentAPI, Sendable {
 
     // MARK: - Segments
 
+    public func segmentsForSessions(sessionIds: [Int64]) async throws -> [Int64: [SessionSegment]] {
+        guard !sessionIds.isEmpty else { return [:] }
+        return try await dbWriter.read { db in
+            let segments = try SessionSegment
+                .filter(sessionIds.contains(SessionSegment.Columns.sessionId))
+                .order(SessionSegment.Columns.startedAt)
+                .fetchAll(db)
+            return Dictionary(grouping: segments, by: \.sessionId)
+        }
+    }
+
     public func sessionDayPortions(sessionIds: [Int64], date: Date) async throws -> [Int64: Int] {
         guard !sessionIds.isEmpty else { return [:] }
         return try await dbWriter.read { db in
