@@ -7,12 +7,18 @@ on:
 # Deny all permissions by default; grant only what's needed per job
 permissions: {}
 
+# Prevent concurrent runs for the same milestone to avoid duplicate issues
+concurrency:
+  group: milestone-version-${{ github.event.milestone.number }}
+  cancel-in-progress: true
+
 jobs:
   create-version-issue:
     name: Create version bump issue
     runs-on: ubuntu-latest
     permissions:
-      issues: write
+      issues: write    # create version bump issue
+      contents: read   # required by gh issue create (defaultBranchRef)
     steps:
       - name: Extract version and create issue
         env:
