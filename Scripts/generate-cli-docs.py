@@ -11,7 +11,6 @@ extended descriptions, and example blocks.
 import json
 import re
 import sys
-from datetime import datetime, timezone
 
 
 def format_name(name_obj):
@@ -310,8 +309,6 @@ def generate_markdown(data):
     root_name = command["commandName"]
     abstract = command.get("abstract", "")
     default_sub = command.get("defaultSubcommand")
-    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-
     lines = []
 
     # Header
@@ -322,7 +319,7 @@ def generate_markdown(data):
     if abstract:
         lines.append(f"> {abstract}")
         lines.append("")
-    lines.append(f"*Auto-generated on {timestamp} from `{root_name} --experimental-dump-help`.*")
+    lines.append(f"*Auto-generated from `{root_name} --experimental-dump-help`.*")
     lines.append("")
 
     # Notes section
