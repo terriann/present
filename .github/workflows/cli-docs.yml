@@ -5,12 +5,16 @@ on:
     paths:
       - 'Sources/PresentCLI/**'
       - 'Scripts/generate-cli-docs.*'
+  pull_request:
+    paths:
+      - 'Sources/PresentCLI/**'
+      - 'Scripts/generate-cli-docs.*'
   workflow_dispatch:
 
 permissions: {}
 
 concurrency:
-  group: cli-docs
+  group: cli-docs-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -18,11 +22,13 @@ jobs:
     name: Regenerate CLI reference
     runs-on: macos-15
     permissions:
-      contents: write   # push regenerated docs back to main
+      contents: write   # push regenerated docs
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
+          # For PRs, check out the head branch so we can push back to it
+          ref: ${{ github.event_name == 'pull_request' && github.head_ref || '' }}
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_16.2.app
