@@ -75,7 +75,7 @@ Then create the issue using `gh issue create` with the appropriate template belo
 #### Bug Report Template
 
 ```
-gh issue create --title "fix(scope): brief description" --label "bug" --body "$(cat <<'EOF'
+gh issue create --title "fix(scope): brief description" --label "type/bug" --body "$(cat <<'EOF'
 ## Bug Report
 
 **Description**
@@ -100,7 +100,7 @@ EOF
 #### Feature Request Template
 
 ```
-gh issue create --title "feat(scope): brief description" --label "enhancement" --body "$(cat <<'EOF'
+gh issue create --title "feat(scope): brief description" --label "type/enhancement" --body "$(cat <<'EOF'
 ## Feature Request
 
 **Description**
@@ -169,7 +169,7 @@ Apply the appropriate `feature/*` label to every issue that relates to a feature
 | `feature/notifications` | System notifications, break suggestions |
 | `feature/timeboxing` | Time box planning |
 
-Add the feature label alongside the type label (e.g., `--label "enhancement" --label "feature/cli"`). An issue can have multiple feature labels if it genuinely spans features.
+Add the feature label alongside the type label (e.g., `--label "type/enhancement" --label "feature/cli"`). An issue can have multiple feature labels if it genuinely spans features.
 
 ## Rules
 
