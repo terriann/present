@@ -12,10 +12,12 @@ struct CLITests {
 
     // MARK: - Service Factory
 
-    @Test func serviceCreation() throws {
+    @Test func serviceCreation() async throws {
         let dbManager = try DatabaseManager(inMemory: true)
         let service = PresentService(databasePool: dbManager.writer)
-        #expect(service != nil)
+        // Verify the service can query the database (break activity is always seeded)
+        let breakActivity = try await service.getBreakActivity()
+        #expect(breakActivity.title == "Break")
     }
 
     // MARK: - CLI Workflow: start → status → stop

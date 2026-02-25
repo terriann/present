@@ -878,9 +878,9 @@ struct PresentServiceTests {
                 .filter(SessionSegment.Columns.sessionId == session.id!)
                 .deleteAll(db)
 
-            var s1 = SessionSegment(sessionId: session.id!, startedAt: seg1Start, endedAt: seg1End)
+            let s1 = SessionSegment(sessionId: session.id!, startedAt: seg1Start, endedAt: seg1End)
             try s1.insert(db)
-            var s2 = SessionSegment(sessionId: session.id!, startedAt: seg2Start, endedAt: seg2End)
+            let s2 = SessionSegment(sessionId: session.id!, startedAt: seg2Start, endedAt: seg2End)
             try s2.insert(db)
 
             // Active time = 300 + 4980 = 5280s

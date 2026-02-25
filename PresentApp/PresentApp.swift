@@ -7,13 +7,12 @@ import PresentCore
 extension NSApplication {
     /// Brings the app to the foreground, above all other windows.
     ///
-    /// Uses `NSRunningApplication.current.activate(options:)` with
-    /// `.activateIgnoringOtherApps` to ensure the app comes forward even
-    /// when another application currently has focus.
+    /// Uses `NSRunningApplication.current.activate()` to ensure the app
+    /// comes forward even when another application currently has focus.
     /// Call this **before** opening a window (e.g., `openWindow(id:)`)
     /// so the window appears in front.
     @MainActor static func bringToFront() {
-        NSRunningApplication.current.activate(options: [.activateIgnoringOtherApps])
+        NSRunningApplication.current.activate()
     }
 }
 

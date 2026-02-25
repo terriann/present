@@ -15,7 +15,7 @@ struct BulkOperationTests {
     /// which always uses Date() for startedAt.
     private func insertBackdatedSession(db: any DatabaseWriter, activityId: Int64, startedAt: Date) async throws {
         try await db.write { db in
-            var session = Session(
+            let session = Session(
                 activityId: activityId,
                 sessionType: .work,
                 startedAt: startedAt,
@@ -31,7 +31,7 @@ struct BulkOperationTests {
     // MARK: - countSessions
 
     @Test func countSessionsTodayReturnsCorrectCount() async throws {
-        let (service, db) = try makeService()
+        let (service, _) = try makeService()
         let activity = try await service.createActivity(CreateActivityInput(title: "Count Test"))
 
         _ = try await service.startSession(activityId: activity.id!, type: .work)
