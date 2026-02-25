@@ -196,6 +196,10 @@ Then assign issues to the milestone:
 gh issue edit <number> --milestone "milestone name"
 ```
 
+### Step 5: Version Bump Issue (Automated)
+
+**Note:** A GitHub Action (`.github/workflows/milestone-version-issue.yml`) automatically creates a `chore(version): bump version to X.Y.Z` issue when a release milestone is created. No manual step needed. Non-version milestones (e.g., `Future`) are skipped automatically.
+
 ---
 
 ## Issue Review Mode (specific issue number)
