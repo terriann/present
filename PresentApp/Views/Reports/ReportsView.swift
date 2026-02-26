@@ -1,5 +1,4 @@
 import SwiftUI
-import Charts
 import PresentCore
 
 struct ReportsView: View {
@@ -21,10 +20,6 @@ struct ReportsView: View {
     @State private var earliestDate: Date?
     @State private var weekStartDay: Int = 1 // Calendar.firstWeekday: 1=Sunday, 2=Monday
     @State private var loadTask: Task<Void, Never>?
-
-    // CLI promo card
-    @State private var currentCommandIndex = 0
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ScrollView {
@@ -77,8 +72,8 @@ struct ReportsView: View {
                     }
                 }
 
-                sessionLogCard
-                cliPromoCard
+                ReportSessionLogCard(sessionEntries: sessionEntries, onReload: reloadReport)
+                ReportCLIPromoCard()
             }
             .padding(Constants.spacingPage)
         }
@@ -363,102 +358,6 @@ struct ReportsView: View {
         }
     }
 
-    // MARK: - Session Log Card
-
-    private var sessionLogCard: some View {
-        ChartCard(title: "Session Log") {
-            if sessionEntries.isEmpty {
-                ContentUnavailableView(
-                    "No Sessions",
-                    systemImage: "list.bullet",
-                    description: Text("No sessions recorded for this period.")
-                )
-                .emptyStateStyle()
-            } else {
-                VStack(spacing: 0) {
-                    ForEach(Array(sessionEntries.enumerated()), id: \.element.0.id) { index, entry in
-                        SessionRow(session: entry.0, activityTitle: entry.1.title)
-                            .padding(.horizontal, Constants.spacingCard)
-                            .padding(.vertical, Constants.spacingCompact)
-                            .background(index.isMultiple(of: 2) ? Color.clear : Color.gray.opacity(0.08))
-                            .contentShape(Rectangle())
-                            .sessionContextMenu(session: entry.0, activityTitle: entry.1.title) {
-                                reloadReport()
-                            }
-                    }
-                }
-            }
-        }
-    }
-
-    // MARK: - CLI Promo Card
-
-    private static let cliCommands: [(command: String, output: String)] = [
-        ("$ present-cli session start \"Deep Work\"", "✓ Session started (Focus: 25m)"),
-        ("$ present-cli report export --period weekly", "✓ Exported to weekly-report.csv"),
-        ("$ present-cli activity list", "  Reading · Writing · Deep Work"),
-        ("$ present-cli session stop", "✓ Session saved — 1h 23m"),
-    ]
-
-    private var cliPromoCard: some View {
-        let pair = Self.cliCommands[currentCommandIndex]
-
-        return GroupBox {
-            VStack(alignment: .leading, spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "terminal")
-                            .foregroundStyle(.secondary)
-                        Text("Power up with ")
-                            .foregroundStyle(.primary)
-                        + Text("present-cli")
-                            .font(.codeBlock)
-                            .foregroundStyle(.primary)
-                    }
-                    .font(.headline)
-
-                    Text("Export reports, manage sessions, and automate your workflow from the terminal.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-
-                HStack(spacing: 16) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(pair.command)
-                            .font(.codeCaption)
-                            .foregroundStyle(.green)
-                        Text(pair.output)
-                            .font(.codeCaption)
-                            .foregroundStyle(.green.opacity(0.7))
-                    }
-                    .id(currentCommandIndex)
-                    .contentTransition(.opacity)
-                    .adaptiveAnimation(.easeInOut(duration: 0.4), reduced: .linear(duration: 0.25), value: currentCommandIndex)
-                    .padding(Constants.spacingCard)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.black.opacity(0.85))
-                    )
-
-                    Button {
-                        appState.navigate(to: .showSettings(.cli))
-                    } label: {
-                        Text("Install CLI")
-                            .fontWeight(.medium)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(theme.accent)
-                }
-            }
-            .padding(Constants.spacingTight)
-        }
-        .onReceive(Timer.publish(every: 3, on: .main, in: .common).autoconnect()) { _ in
-            guard !reduceMotion else { return }
-            currentCommandIndex = (currentCommandIndex + 1) % Self.cliCommands.count
-        }
-    }
-
     // MARK: - Helpers
 
     private func hourLabel(_ hour: Int) -> String {
@@ -590,22 +489,6 @@ struct ReportsView: View {
             // Task was cancelled because user switched periods/dates — ignore
         } catch {
             appState.showError(error, context: "Could not load report")
-        }
-    }
-}
-
-// MARK: - Supporting Types
-
-enum ReportPeriod: String, CaseIterable {
-    case daily = "Daily"
-    case weekly = "Weekly"
-    case monthly = "Monthly"
-
-    var timeLabel: String {
-        switch self {
-        case .daily: "Hour"
-        case .weekly: "Day"
-        case .monthly: "Day"
         }
     }
 }
