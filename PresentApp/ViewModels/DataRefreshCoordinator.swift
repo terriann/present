@@ -84,9 +84,9 @@ final class DataRefreshCoordinator {
     // MARK: - IPC
 
     func startIPCServer() {
-        ipcServer = IPCServer { _ in
-            Task { @MainActor in
-                // Refresh handled by periodic polling
+        ipcServer = IPCServer { [weak self] _ in
+            Task { @MainActor [weak self] in
+                await self?.onRefreshNeeded?()
             }
         }
         try? ipcServer?.start()
