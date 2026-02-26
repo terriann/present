@@ -33,31 +33,20 @@ final class AppState {
     var recentSessionSuggestion: (session: Session, activity: Activity)?
     var rhythmDurationOptions: [RhythmOption] = Constants.defaultRhythmDurationOptions
 
-    // MARK: - Timer
+    // MARK: - Timer (forwarded from TimerManager)
 
-    var timerElapsedSeconds: Int = 0
-    private var timerTask: Task<Void, Never>?
-    private var timerCompletionHandled = false
+    private(set) var timer: TimerManager!
 
-    // MARK: - Completed Timer Linger
-
-    var completedTimerText: String?
-    var isCompletedTimerFading: Bool = false
-    private var completedTimerLingerTask: Task<Void, Never>?
-
-    // MARK: - Timer Completion Alert
-
-    var timerCompletionContext: TimerCompletionContext?
-    /// Saved when starting a break so the break-end alert knows what to resume.
-    /// Also persisted to UserDefaults so it survives crashes/force-quits.
+    var timerElapsedSeconds: Int { timer.timerElapsedSeconds }
+    var completedTimerText: String? { timer.completedTimerText }
+    var isCompletedTimerFading: Bool { timer.isCompletedTimerFading }
+    var timerCompletionContext: TimerCompletionContext? {
+        get { timer.timerCompletionContext }
+        set { timer.timerCompletionContext = newValue }
+    }
     var breakPrecedingContext: (activityId: Int64, title: String, timerMinutes: Int, breakMinutes: Int)? {
-        didSet {
-            if let ctx = breakPrecedingContext {
-                persistBreakContext(ctx)
-            } else {
-                UserDefaults.standard.removeObject(forKey: "breakPrecedingContext")
-            }
-        }
+        get { timer.breakPrecedingContext }
+        set { timer.breakPrecedingContext = newValue }
     }
 
     // MARK: - Zoom (forwarded from ZoomManager)
@@ -110,18 +99,7 @@ final class AppState {
     }
 
     var formattedTimerValue: String {
-        guard let session = currentSession else { return "0:00" }
-
-        // For countdown timers, show remaining time
-        if let timerMinutes = session.timerLengthMinutes,
-           session.sessionType == .rhythm || session.sessionType == .timebound {
-            let totalSeconds = timerMinutes * 60
-            let remaining = max(0, totalSeconds - timerElapsedSeconds)
-            return TimeFormatting.formatTimer(seconds: remaining)
-        }
-
-        // For work sessions, show elapsed time
-        return TimeFormatting.formatTimer(seconds: timerElapsedSeconds)
+        timer.formattedTimerValue
     }
 
     var isSessionActive: Bool {
@@ -143,6 +121,10 @@ final class AppState {
         }
         service = PresentService(databasePool: dbManager.writer)
         zoom = ZoomManager(service: service)
+        timer = TimerManager(service: service)
+        timer.onCountdownCompleted = { [weak self] in
+            await self?.handleTimerCompletion()
+        }
         NotificationManager.shared.requestPermission()
         SoundManager.shared.configure(service: service)
         startObservations()
@@ -163,19 +145,17 @@ final class AppState {
             if let (session, activity) = try await service.currentSession() {
                 currentSession = session
                 currentActivity = activity
-                if session.state == .running, timerTask == nil {
-                    startTimer()
+                timer.currentSession = session
+                if session.state == .running, !timer.isTimerRunning {
+                    timer.startTimer(session: session)
                 } else if session.state == .paused {
-                    // Use fixed dates only — no Date() calls that cause rounding jitter
-                    if let pausedAt = session.lastPausedAt {
-                        let activeTime = Int(pausedAt.timeIntervalSince(session.startedAt)) - session.totalPausedSeconds
-                        timerElapsedSeconds = max(0, activeTime)
-                    }
+                    timer.syncPausedElapsed(session: session)
                 }
             } else {
                 currentSession = nil
                 currentActivity = nil
-                stopTimer()
+                timer.currentSession = nil
+                timer.stopTimer()
             }
 
             let summary = try await service.todaySummary()
@@ -214,7 +194,7 @@ final class AppState {
     // MARK: - Session Actions
 
     func startSession(activityId: Int64, type: SessionType, timerMinutes: Int? = nil, breakMinutes: Int? = nil) async {
-        clearCompletedTimerLinger()
+        timer.clearCompletedTimerLinger()
         timerCompletionContext = nil
         do {
             let session = try await service.startSession(
@@ -225,8 +205,7 @@ final class AppState {
             )
             currentSession = session
             currentActivity = try await service.getActivity(id: activityId)
-            timerCompletionHandled = false
-            startTimer()
+            timer.startTimer(session: session)
             SoundManager.shared.play(.blow)
             await refreshAll()
         } catch {
@@ -238,7 +217,8 @@ final class AppState {
         do {
             let session = try await service.pauseSession()
             currentSession = session
-            stopTimer(resetElapsed: false)
+            timer.currentSession = session
+            timer.stopTimer(resetElapsed: false)
         } catch {
             showError(error, context: "Could not pause session")
         }
@@ -248,7 +228,7 @@ final class AppState {
         do {
             let session = try await service.resumeSession()
             currentSession = session
-            startTimer()
+            timer.startTimer(session: session)
             SoundManager.shared.play(.blow)
         } catch {
             showError(error, context: "Could not resume session")
@@ -256,17 +236,18 @@ final class AppState {
     }
 
     func stopSession() async {
-        let finalText = formattedTimerValue
+        let finalText = timer.formattedTimerValue
 
         do {
             _ = try await service.stopSession()
             currentSession = nil
             currentActivity = nil
-            stopTimer()
+            timer.currentSession = nil
+            timer.stopTimer()
 
             // Start linger unless handleTimerCompletion already did
             if completedTimerText == nil {
-                startCompletedTimerLinger(text: finalText, isCountdown: false)
+                timer.startCompletedTimerLinger(text: finalText, isCountdown: false)
             }
 
             await refreshAll()
@@ -280,7 +261,8 @@ final class AppState {
             try await service.cancelSession()
             currentSession = nil
             currentActivity = nil
-            stopTimer()
+            timer.currentSession = nil
+            timer.stopTimer()
             SoundManager.shared.play(.dip)
             await refreshAll()
         } catch {
@@ -288,49 +270,12 @@ final class AppState {
         }
     }
 
-    // MARK: - Timer
-
-    private func startTimer() {
-        stopTimer()
-        guard let session = currentSession else { return }
-
-        let elapsed = Int(Date().timeIntervalSince(session.startedAt)) - session.totalPausedSeconds
-        timerElapsedSeconds = max(0, elapsed)
-
-        timerTask = Task {
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(1))
-                guard !Task.isCancelled else { break }
-                guard let session = self.currentSession, session.state == .running else { return }
-                let elapsed = Int(Date().timeIntervalSince(session.startedAt)) - session.totalPausedSeconds
-                self.timerElapsedSeconds = max(0, elapsed)
-
-                // Check for countdown timer completion
-                if !self.timerCompletionHandled,
-                   let timerMinutes = session.timerLengthMinutes,
-                   (session.sessionType == .rhythm || session.sessionType == .timebound) {
-                    let totalSeconds = timerMinutes * 60
-                    if self.timerElapsedSeconds >= totalSeconds {
-                        self.timerCompletionHandled = true
-                        await self.handleTimerCompletion()
-                    }
-                }
-            }
-        }
-    }
-
-    private func stopTimer(resetElapsed: Bool = true) {
-        timerTask?.cancel()
-        timerTask = nil
-        if resetElapsed {
-            timerElapsedSeconds = 0
-        }
-    }
+    // MARK: - Timer Completion (coordination)
 
     private func handleTimerCompletion() async {
         guard let activity = currentActivity, let session = currentSession else { return }
 
-        let finalText = formattedTimerValue
+        let finalText = timer.formattedTimerValue
         let isCountdown = session.sessionType == .rhythm || session.sessionType == .timebound
         let timerMinutes = session.timerLengthMinutes ?? 0
 
@@ -338,7 +283,7 @@ final class AppState {
         let completionType: TimerCompletionContext.CompletionType?
         if activity.isSystem {
             // Break session ended — restore from disk if lost (e.g., after crash)
-            restoreBreakContextIfNeeded()
+            timer.restoreBreakContextIfNeeded()
             if let ctx = breakPrecedingContext {
                 completionType = .rhythmBreakExpiry(
                     previousActivityId: ctx.activityId,
@@ -359,8 +304,8 @@ final class AppState {
                 )
             }
         } else if session.sessionType == .rhythm, let index = session.rhythmSessionIndex {
-            let breakMins = await resolveBreakMinutes(session: session, sessionIndex: index)
-            let cycleLength = await resolveCycleLength()
+            let breakMins = await timer.resolveBreakMinutes(session: session, sessionIndex: index)
+            let cycleLength = await timer.resolveCycleLength()
             let isLong = index >= cycleLength
             completionType = .rhythmFocusExpiry(breakMinutes: breakMins, isLongBreak: isLong)
         } else {
@@ -376,7 +321,7 @@ final class AppState {
         SoundManager.shared.play(.shimmer)
 
         // Start linger BEFORE stopSession so it doesn't get overwritten
-        startCompletedTimerLinger(text: finalText, isCountdown: isCountdown)
+        timer.startCompletedTimerLinger(text: finalText, isCountdown: isCountdown)
 
         // Auto-stop the session
         await stopSession()
@@ -391,53 +336,6 @@ final class AppState {
                 timerMinutes: timerMinutes
             )
         }
-    }
-
-    private func resolveBreakMinutes(session: Session, sessionIndex: Int) async -> Int {
-        let cycleLength = await resolveCycleLength()
-        let isLong = sessionIndex >= cycleLength
-
-        if isLong {
-            if let val = try? await service.getPreference(key: PreferenceKey.longBreakMinutes) {
-                return Int(val) ?? Constants.longBreakMinutes
-            }
-            return Constants.longBreakMinutes
-        }
-        return session.breakMinutes ?? Constants.defaultShortBreakMinutes
-    }
-
-    private func resolveCycleLength() async -> Int {
-        if let val = try? await service.getPreference(key: PreferenceKey.rhythmCycleLength) {
-            return Int(val) ?? Constants.rhythmCycleLength
-        }
-        return Constants.rhythmCycleLength
-    }
-
-    // MARK: - Completed Timer Linger
-
-    private func startCompletedTimerLinger(text: String, isCountdown: Bool) {
-        clearCompletedTimerLinger()
-        completedTimerText = text
-
-        isCompletedTimerFading = false
-
-        completedTimerLingerTask = Task {
-            try? await Task.sleep(for: .seconds(Constants.completedTimerLingerSeconds))
-            guard !Task.isCancelled else { return }
-
-            isCompletedTimerFading = true
-            completedTimerText = nil
-
-            clearCompletedTimerLinger()
-        }
-    }
-
-    private func clearCompletedTimerLinger() {
-        completedTimerLingerTask?.cancel()
-        completedTimerLingerTask = nil
-        completedTimerText = nil
-
-        isCompletedTimerFading = false
     }
 
     // MARK: - Timer Completion Alert Actions
@@ -502,32 +400,6 @@ final class AppState {
     func endBreakSession() {
         timerCompletionContext = nil
         breakPrecedingContext = nil
-    }
-
-    // MARK: - Break Context Persistence
-
-    private func persistBreakContext(
-        _ ctx: (activityId: Int64, title: String, timerMinutes: Int, breakMinutes: Int)
-    ) {
-        let dict: [String: Any] = [
-            "activityId": ctx.activityId,
-            "title": ctx.title,
-            "timerMinutes": ctx.timerMinutes,
-            "breakMinutes": ctx.breakMinutes,
-        ]
-        UserDefaults.standard.set(dict, forKey: "breakPrecedingContext")
-    }
-
-    private func restoreBreakContextIfNeeded() {
-        guard breakPrecedingContext == nil else { return }
-        guard let dict = UserDefaults.standard.dictionary(forKey: "breakPrecedingContext"),
-              let activityId = dict["activityId"] as? Int64,
-              let title = dict["title"] as? String,
-              let timerMinutes = dict["timerMinutes"] as? Int,
-              let breakMinutes = dict["breakMinutes"] as? Int else { return }
-        // Set directly to avoid re-persisting via didSet
-        breakPrecedingContext = (activityId: activityId, title: title,
-                                timerMinutes: timerMinutes, breakMinutes: breakMinutes)
     }
 
     // MARK: - Database Observation
