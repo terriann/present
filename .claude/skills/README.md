@@ -34,6 +34,38 @@ on the description.
 > The skill will not write or modify any source code. It only creates
 > GitHub issues.
 
+### `/fix` — Resolve a GitHub Issue
+
+Takes a GitHub issue link or number and drives it to resolution:
+evaluate approaches, plan in phases, implement with tests, and validate
+acceptance criteria.
+
+**What it does:**
+
+1. Fetches and parses the issue (problem, suggested approach, acceptance criteria)
+2. Evaluates 2-3 implementation approaches with pros/cons
+3. Plans phased implementation and enters plan mode for approval
+4. Executes each phase with tests, pausing for review and commit
+5. Validates all acceptance criteria before the final commit
+
+**Usage:**
+
+```text
+/fix https://github.com/terriann/present/issues/42
+/fix #42
+/fix #42 check docs/architecture.md — break into small phases
+```
+
+The argument is a GitHub issue URL or `#number`, optionally followed by
+file references and supplementary instructions. File references are
+reviewed during relevant phases; instructions shape execution throughout.
+
+> [!NOTE]
+> Every phase pauses for review before committing. The final commit
+> uses a GitHub closing keyword so the issue auto-closes on merge.
+
+---
+
 ## Adding a New Skill
 
 Each skill is a directory under `.claude/skills/` containing a
