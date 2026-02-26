@@ -76,6 +76,10 @@ final class AppState {
     var selectedSidebarItem: SidebarItem = .dashboard
     var navigateToActivityId: Int64?
 
+    // MARK: - Session (delegated to SessionManager)
+
+    private(set) var sessionMgr: SessionManager!
+
     // MARK: - Services
 
     private(set) var service: PresentService
@@ -128,6 +132,7 @@ final class AppState {
         timer.onCountdownCompleted = { [weak self] in
             await self?.handleTimerCompletion()
         }
+        sessionMgr = SessionManager(service: service)
         dataRefresh = DataRefreshCoordinator(service: service)
         dataRefresh.onRefreshNeeded = { [weak self] in
             await self?.refreshAll()
@@ -182,14 +187,14 @@ final class AppState {
         timer.clearCompletedTimerLinger()
         timerCompletionContext = nil
         do {
-            let session = try await service.startSession(
+            let (session, activity) = try await sessionMgr.startSession(
                 activityId: activityId,
                 type: type,
                 timerMinutes: timerMinutes,
                 breakMinutes: breakMinutes
             )
             currentSession = session
-            currentActivity = try await service.getActivity(id: activityId)
+            currentActivity = activity
             timer.startTimer(session: session)
             SoundManager.shared.play(.blow)
             await refreshAll()
@@ -200,7 +205,7 @@ final class AppState {
 
     func pauseSession() async {
         do {
-            let session = try await service.pauseSession()
+            let session = try await sessionMgr.pauseSession()
             currentSession = session
             timer.currentSession = session
             timer.stopTimer(resetElapsed: false)
@@ -211,7 +216,7 @@ final class AppState {
 
     func resumeSession() async {
         do {
-            let session = try await service.resumeSession()
+            let session = try await sessionMgr.resumeSession()
             currentSession = session
             timer.startTimer(session: session)
             SoundManager.shared.play(.blow)
@@ -224,7 +229,7 @@ final class AppState {
         let finalText = timer.formattedTimerValue
 
         do {
-            _ = try await service.stopSession()
+            _ = try await sessionMgr.stopSession()
             currentSession = nil
             currentActivity = nil
             timer.currentSession = nil
@@ -243,7 +248,7 @@ final class AppState {
 
     func cancelSession() async {
         do {
-            try await service.cancelSession()
+            try await sessionMgr.cancelSession()
             currentSession = nil
             currentActivity = nil
             timer.currentSession = nil
@@ -350,7 +355,7 @@ final class AppState {
         timerCompletionContext = nil
 
         do {
-            let breakActivity = try await service.getBreakActivity()
+            let breakActivity = try await sessionMgr.getBreakActivity()
             guard let breakId = breakActivity.id else { return }
             await startSession(activityId: breakId, type: .timebound, timerMinutes: breakMins)
         } catch {
