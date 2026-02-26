@@ -12,6 +12,29 @@ public final class ThemeManager {
 
     public var activePalette: ColorPalette = .basic
 
+    // MARK: - Appearance Mode
+
+    public var appearanceMode: AppearanceMode = .system
+
+    /// Returns the `ColorScheme` override for `.preferredColorScheme()`.
+    /// `nil` means follow the system setting.
+    public var preferredColorScheme: ColorScheme? {
+        switch appearanceMode {
+        case .system: return nil
+        case .light: return .light
+        case .dark: return .dark
+        }
+    }
+
+    /// Returns the `NSAppearance` to apply to NSPanel chrome, or `nil` for system default.
+    public var nsAppearance: NSAppearance? {
+        switch appearanceMode {
+        case .system: return nil
+        case .light: return NSAppearance(named: .aqua)
+        case .dark: return NSAppearance(named: .darkAqua)
+        }
+    }
+
     public init() {}
 
     // MARK: - Semantic Tokens

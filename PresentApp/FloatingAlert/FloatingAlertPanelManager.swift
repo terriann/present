@@ -13,6 +13,12 @@ final class FloatingAlertPanelManager {
         self.themeManager = themeManager
     }
 
+    /// Updates the panel's NSAppearance to match the current theme setting.
+    /// Call when the appearance mode preference changes while a panel is visible.
+    func updatePanelAppearance() {
+        panel?.appearance = themeManager.nsAppearance
+    }
+
     func showAlert(context: TimerCompletionContext) {
         dismissAlert()
 
@@ -20,6 +26,7 @@ final class FloatingAlertPanelManager {
             .environment(appState)
             .environment(themeManager)
             .tint(themeManager.accent)
+            .preferredColorScheme(themeManager.preferredColorScheme)
 
         let hostingView = NSHostingView(rootView: contentView)
         hostingView.setFrameSize(hostingView.fittingSize)
@@ -46,6 +53,7 @@ final class FloatingAlertPanelManager {
         newPanel.isOpaque = false
 
         newPanel.contentView = hostingView
+        newPanel.appearance = themeManager.nsAppearance
 
         // Center on the main screen
         if let screen = NSScreen.main {

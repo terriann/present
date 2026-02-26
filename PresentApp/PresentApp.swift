@@ -24,13 +24,14 @@ struct PresentApp: App {
 
     var body: some Scene {
         let _ = startStatusItemMenu()
-        let _ = loadPalette()
+        let _ = loadThemeSettings()
 
         MenuBarExtra {
             MenuBarView()
                 .environment(appState)
                 .environment(themeManager)
                 .tint(themeManager.accent)
+                .preferredColorScheme(themeManager.preferredColorScheme)
                 .modifier(ErrorAlertModifier(appState: appState, scene: .menuBar))
         } label: {
             MenuBarLabelView()
@@ -43,6 +44,7 @@ struct PresentApp: App {
                 .environment(appState)
                 .environment(themeManager)
                 .tint(themeManager.accent)
+                .preferredColorScheme(themeManager.preferredColorScheme)
                 .modifier(ErrorAlertModifier(appState: appState, scene: .mainWindow))
                 .onAppear {
                     appDelegate.appState = appState
@@ -59,6 +61,9 @@ struct PresentApp: App {
                     } else {
                         appDelegate.floatingAlertManager?.dismissAlert()
                     }
+                }
+                .onChange(of: themeManager.appearanceMode) {
+                    appDelegate.floatingAlertManager?.updatePanelAppearance()
                 }
                 .onDisappear { appState.showDockIcon(false) }
         }
@@ -83,15 +88,20 @@ struct PresentApp: App {
                 .environment(appState)
                 .environment(themeManager)
                 .tint(themeManager.accent)
+                .preferredColorScheme(themeManager.preferredColorScheme)
                 .modifier(ErrorAlertModifier(appState: appState, scene: .settings))
         }
     }
 
-    private func loadPalette() {
+    private func loadThemeSettings() {
         Task {
             if let value = try? await appState.service.getPreference(key: PreferenceKey.colorPalette),
                let palette = ColorPalette(rawValue: value) {
                 themeManager.activePalette = palette
+            }
+            if let value = try? await appState.service.getPreference(key: PreferenceKey.appearanceMode),
+               let mode = AppearanceMode(rawValue: value) {
+                themeManager.appearanceMode = mode
             }
         }
     }

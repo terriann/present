@@ -69,6 +69,7 @@ struct GeneralSettingsTab: View {
     @Environment(ThemeManager.self) private var theme
     @State private var baseUrl = ""
     @State private var weekStartDay = "sunday"
+    @State private var appearanceMode: AppearanceMode = .system
 
     // MARK: - Data Management State
 
@@ -97,6 +98,23 @@ struct GeneralSettingsTab: View {
             }
 
             Section("Appearance") {
+                Picker("Mode", selection: $appearanceMode) {
+                    ForEach(AppearanceMode.allCases, id: \.self) { mode in
+                        Text(mode.displayName).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .onAppear { loadAppearanceMode() }
+                .onChange(of: appearanceMode) {
+                    theme.appearanceMode = appearanceMode
+                    Task {
+                        try? await appState.service.setPreference(
+                            key: PreferenceKey.appearanceMode,
+                            value: appearanceMode.rawValue
+                        )
+                    }
+                }
+
                 ForEach(ColorPalette.allCases, id: \.self) { palette in
                     PaletteRow(
                         palette: palette,
@@ -212,6 +230,15 @@ struct GeneralSettingsTab: View {
     private func loadWeekStartDay() {
         Task {
             weekStartDay = try await appState.service.getPreference(key: PreferenceKey.weekStartDay) ?? "sunday"
+        }
+    }
+
+    private func loadAppearanceMode() {
+        Task {
+            if let value = try? await appState.service.getPreference(key: PreferenceKey.appearanceMode),
+               let mode = AppearanceMode(rawValue: value) {
+                appearanceMode = mode
+            }
         }
     }
 
