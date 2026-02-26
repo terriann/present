@@ -60,43 +60,18 @@ final class AppState {
         }
     }
 
-    // MARK: - Zoom
+    // MARK: - Zoom (forwarded from ZoomManager)
 
-    var zoomScale: CGFloat = 1.0
+    private(set) var zoom: ZoomManager!
 
-    static let defaultZoomIndex = 3
-    static let zoomScales: [CGFloat] = [0.85, 0.9, 0.95, 1.0, 1.1, 1.2, 1.35, 1.5, 1.75]
+    var zoomScale: CGFloat { zoom.zoomScale }
+    var canZoomIn: Bool { zoom.canZoomIn }
+    var canZoomOut: Bool { zoom.canZoomOut }
+    var isDefaultZoom: Bool { zoom.isDefaultZoom }
 
-    private var zoomIndex: Int {
-        Self.zoomScales.firstIndex(of: zoomScale) ?? Self.defaultZoomIndex
-    }
-
-    var canZoomIn: Bool { zoomIndex < Self.zoomScales.count - 1 }
-    var canZoomOut: Bool { zoomIndex > 0 }
-    var isDefaultZoom: Bool { zoomScale == 1.0 }
-
-    func zoomIn() {
-        guard canZoomIn else { return }
-        zoomScale = Self.zoomScales[zoomIndex + 1]
-        saveZoomLevel()
-    }
-
-    func zoomOut() {
-        guard canZoomOut else { return }
-        zoomScale = Self.zoomScales[zoomIndex - 1]
-        saveZoomLevel()
-    }
-
-    func resetZoom() {
-        zoomScale = 1.0
-        saveZoomLevel()
-    }
-
-    private func saveZoomLevel() {
-        Task {
-            try? await service.setPreference(key: PreferenceKey.zoomLevel, value: String(zoomIndex))
-        }
-    }
+    func zoomIn() { zoom.zoomIn() }
+    func zoomOut() { zoom.zoomOut() }
+    func resetZoom() { zoom.resetZoom() }
 
     // MARK: - Error Feedback
 
@@ -167,6 +142,7 @@ final class AppState {
             fatalError("Failed to initialize database: \(error)")
         }
         service = PresentService(databasePool: dbManager.writer)
+        zoom = ZoomManager(service: service)
         NotificationManager.shared.requestPermission()
         SoundManager.shared.configure(service: service)
         startObservations()
@@ -224,11 +200,7 @@ final class AppState {
             allActivities = try await service.listActivities(includeArchived: true, includeSystem: true)
             allTags = try await service.listTags()
 
-            if let zoomStr = try? await service.getPreference(key: PreferenceKey.zoomLevel),
-               let index = Int(zoomStr),
-               index >= 0, index < Self.zoomScales.count {
-                zoomScale = Self.zoomScales[index]
-            }
+            await zoom.loadFromPreferences()
 
             if let optionsStr = try? await service.getPreference(key: PreferenceKey.rhythmDurationOptions) {
                 let parsed: [RhythmOption] = PreferenceKey.parseRhythmOptions(optionsStr)
