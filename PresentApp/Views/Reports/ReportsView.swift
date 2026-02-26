@@ -15,6 +15,7 @@ struct ReportsView: View {
     @State private var monthlySummaryData: MonthlySummary?
     @State private var tagActivitySummaries: [TagActivitySummary] = []
     @State private var sessionEntries: [(Session, Activity)] = []
+    @State private var sessionSegments: [Int64: [SessionSegment]] = [:]
 
     // Navigation state
     @State private var earliestDate: Date?
@@ -272,6 +273,10 @@ struct ReportsView: View {
         return activities.indices.map { palette[$0 % palette.count] }
     }
 
+    private var activityColorMap: [String: Color] {
+        Dictionary(uniqueKeysWithValues: zip(chartColorDomain, chartColorRange))
+    }
+
     // MARK: - Bar Entry Data
 
     private var barEntries: [BarEntry] {
@@ -411,6 +416,7 @@ struct ReportsView: View {
         sessionCount = 0
         tagActivitySummaries = []
         sessionEntries = []
+        sessionSegments = [:]
         loadTask = Task { await loadReport() }
     }
 
@@ -446,6 +452,9 @@ struct ReportsView: View {
                 // Batch all state updates together to avoid mid-render inconsistencies
                 let sessions = try await appState.service.listSessions(from: startOfDay, to: endOfDay, type: nil, activityId: nil, includeArchived: !hideArchived)
                 try Task.checkCancellation()
+                let sessionIds = sessions.compactMap { $0.0.id }
+                let segments = try await appState.service.segmentsForSessions(sessionIds: sessionIds)
+                try Task.checkCancellation()
                 weekStartDay = effectiveWeekStartDay
                 dailySummaryData = summary
                 activities = summary.activities
@@ -453,6 +462,7 @@ struct ReportsView: View {
                 sessionCount = summary.sessionCount
                 tagActivitySummaries = tags
                 sessionEntries = sessions
+                sessionSegments = segments
 
             case .weekly:
                 let summary = try await appState.service.weeklySummary(weekOf: selectedDate, includeArchived: !hideArchived, weekStartDay: effectiveWeekStartDay, roundToMinute: true)
