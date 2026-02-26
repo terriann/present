@@ -320,8 +320,9 @@ struct DashboardView: View {
                         Task { await appState.startSession(activityId: session.activityId, type: session.sessionType, timerMinutes: session.timerLengthMinutes, breakMinutes: session.breakMinutes) }
                     },
                     onEdit: {
-                        appState.navigateToActivityId = activity.id
-                        appState.selectedSidebarItem = .activities
+                        if let id = activity.id {
+                            appState.navigate(to: .showActivity(id))
+                        }
                     }
                 )
             }

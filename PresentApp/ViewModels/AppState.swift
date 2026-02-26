@@ -60,6 +60,34 @@ final class AppState {
 
     var selectedSidebarItem: SidebarItem = .dashboard
     var navigateToActivityId: Int64?
+    var pendingNavigation: NavigationAction?
+    var pendingSettingsTab: SettingsTab?
+
+    /// Centralized navigation entry point.
+    ///
+    /// Sets the relevant sidebar/activity state and queues a `pendingNavigation`
+    /// action that `MenuBarLabelView` consumes via `onChange` to open windows.
+    func navigate(to action: NavigationAction) {
+        switch action {
+        case .launchMainWindow:
+            pendingNavigation = .launchMainWindow
+
+        case .showDashboard:
+            selectedSidebarItem = .dashboard
+            pendingNavigation = .launchMainWindow
+
+        case .showActivity(let id):
+            navigateToActivityId = id
+            selectedSidebarItem = .activities
+            pendingNavigation = .launchMainWindow
+
+        case .showSettings(let tab):
+            if let tab {
+                pendingSettingsTab = tab
+            }
+            pendingNavigation = .showSettings(tab)
+        }
+    }
 
     // MARK: - Session (delegated to SessionManager)
 

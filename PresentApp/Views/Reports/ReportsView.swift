@@ -24,7 +24,6 @@ struct ReportsView: View {
 
     // CLI promo card
     @State private var currentCommandIndex = 0
-    @Environment(\.openSettings) private var openSettings
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     // Hover state
@@ -949,10 +948,7 @@ struct ReportsView: View {
                     )
 
                     Button {
-                        openSettings()
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            NotificationCenter.default.post(name: SettingsView.openCLITabNotification, object: nil)
-                        }
+                        appState.navigate(to: .showSettings(.cli))
                     } label: {
                         Text("Install CLI")
                             .fontWeight(.medium)

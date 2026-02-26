@@ -125,8 +125,9 @@ private struct ErrorAlertModifier: ViewModifier {
     }
 }
 
-/// Menu bar icon + timer label. Always visible, so it can observe notifications
-/// from `StatusItemMenuManager` and bridge them to SwiftUI environment actions.
+/// Menu bar icon + timer label. Always visible, so it can observe
+/// `pendingNavigation` changes on `AppState` and bridge them to SwiftUI
+/// environment actions (`openWindow`, `openSettings`).
 private struct MenuBarLabelView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.openWindow) private var openWindow
@@ -140,13 +141,24 @@ private struct MenuBarLabelView: View {
                     .monospacedDigit()
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: StatusItemMenuManager.openMainWindowNotification)) { _ in
-            NSApplication.bringToFront()
-            openWindow(id: "main")
-        }
-        .onReceive(NotificationCenter.default.publisher(for: StatusItemMenuManager.openSettingsNotification)) { _ in
-            NSApplication.bringToFront()
-            openSettings()
+        .onChange(of: appState.pendingNavigation) { _, action in
+            guard let action else { return }
+            appState.pendingNavigation = nil
+
+            switch action {
+            case .launchMainWindow, .showDashboard, .showActivity:
+                appState.showDockIcon(true)
+                NSApplication.bringToFront()
+                openWindow(id: "main")
+
+            case .showSettings:
+                appState.showDockIcon(true)
+                NSApplication.bringToFront()
+                openWindow(id: "main")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    openSettings()
+                }
+            }
         }
     }
 }

@@ -11,6 +11,7 @@ see [database.md](database.md).
   - [Coordinator Pattern](#coordinator-pattern)
   - [File Reference](#file-reference)
   - [Data Flow](#data-flow)
+  - [Navigation](#navigation)
   - [Design Rules](#design-rules)
   - [Forwarding Shims](#forwarding-shims)
   - [Callbacks](#callbacks)
@@ -30,7 +31,11 @@ Views → @Environment(AppState.self) → AppState (coordinator)
                                          ├── ZoomManager
                                          ├── TimerManager
                                          ├── DataRefreshCoordinator
-                                         └── SessionManager
+                                         ├── SessionManager
+                                         └── navigate(to:) → pendingNavigation
+                                                              ↓ onChange
+                                                           MenuBarLabelView
+                                                           (openWindow / openSettings)
 ```
 
 `AppState` is the only object injected into the SwiftUI environment.
@@ -74,6 +79,10 @@ All files live in `PresentApp/ViewModels/`:
 - **`AppError.swift`** — `ErrorScene` enum and `AppError` struct
   for scoped error alerts.
 - **`SidebarItem.swift`** — Navigation enum for the sidebar.
+- **`SettingsTab.swift`** — Settings tab enum, shared between
+  `SettingsView` and `NavigationAction`.
+- **`NavigationAction.swift`** — Centralized navigation action
+  enum consumed by `AppState.navigate(to:)`.
 
 ### Data Flow
 
@@ -106,6 +115,44 @@ detects countdown expiry and invokes a callback on AppState:
    3d.                   calls stopSession()
    3e.                   sets timerCompletionContext for floating alert
 ```
+
+### Navigation
+
+All cross-context navigation (menu bar → main window, any view → settings)
+flows through `AppState.navigate(to:)`. This replaces the previous
+`NotificationCenter`-based pattern with a single, observable property.
+
+**`NavigationAction`** (`NavigationAction.swift`) defines the possible
+navigation targets:
+
+| Action | Effect |
+| ------ | ------ |
+| `.launchMainWindow` | Show dock icon, bring main window forward |
+| `.showDashboard` | Set sidebar to dashboard, open main window |
+| `.showActivity(id)` | Set sidebar to activities, set `navigateToActivityId`, open main window |
+| `.showSettings(tab?)` | Open main window, then open settings (optionally selecting a tab) |
+
+**How it works:**
+
+```text
+1. Caller invokes        appState.navigate(to: .showSettings(.cli))
+2. AppState sets         pendingSettingsTab = .cli
+3. AppState sets         pendingNavigation = .showSettings(.cli)
+4. MenuBarLabelView      onChange fires → shows dock icon, opens window,
+                         opens settings after 0.3s delay
+5. SettingsView          onChange fires → sets selectedTab = .cli,
+                         clears pendingSettingsTab
+```
+
+`MenuBarLabelView` is the bridge between `AppState` (observable) and
+SwiftUI environment actions (`openWindow`, `openSettings`). It observes
+`pendingNavigation`, clears it immediately, then executes the
+corresponding SwiftUI action.
+
+**Same-context navigation** (sidebar tab switching within the main window)
+still uses direct property assignment (`appState.selectedSidebarItem = .activities`).
+This is intentional — routing in-window navigation through `navigate(to:)`
+would add unnecessary overhead.
 
 ### Design Rules
 
