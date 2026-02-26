@@ -64,21 +64,25 @@ All label colors use the project's **Blue-Green base with Orange accent** palett
 **Priority labels** (accent scale — calm to urgent):
 | Label | Color | Description |
 |---|---|---|
-| `P0-critical` | `#FF8A3D` | Blocking — drop everything |
-| `P1-high` | `#1F5F63` | Important — next up |
-| `P2-medium` | `#5DBFC4` | Normal priority |
-| `P3-low` | `#A7DCCF` | Nice to have, backlog |
+| `priority/P0-critical` | `#FF8A3D` | Blocking — drop everything |
+| `priority/P1-high` | `#1F5F63` | Important — next up |
+| `priority/P2-medium` | `#5DBFC4` | Normal priority |
+| `priority/P3-low` | `#A7DCCF` | Nice to have, backlog |
 
-**Issue type labels** (replace GitHub defaults with palette colors):
+**Type labels** (issue kind):
 | Label | Color | Description |
 |---|---|---|
-| `bug` | `#FF8A3D` | Something isn't working |
-| `enhancement` | `#1F5F63` | New feature or request |
-| `documentation` | `#5DBFC4` | Documentation only |
-| `duplicate` | `#EAF7F6` | Already exists |
-| `invalid` | `#EAF7F6` | Not applicable |
-| `wontfix` | `#EAF7F6` | Will not be addressed |
-| `chore` | `#EAF7F6` | Maintenance, tooling, and infrastructure tasks |
+| `type/bug` | `#FF8A3D` | Something isn't working |
+| `type/enhancement` | `#1F5F63` | New feature or request |
+| `type/documentation` | `#5DBFC4` | Documentation only |
+| `type/chore` | `#EAF7F6` | Maintenance, tooling, and infrastructure tasks |
+
+**Resolution labels** (closure reason):
+| Label | Color | Description |
+|---|---|---|
+| `resolution/duplicate` | `#EAF7F6` | Already exists |
+| `resolution/invalid` | `#EAF7F6` | Not applicable |
+| `resolution/wontfix` | `#EAF7F6` | Will not be addressed |
 
 **Feature labels** (teal — mid-range):
 | Label | Color | Description |
@@ -92,6 +96,14 @@ All label colors use the project's **Blue-Green base with Orange accent** palett
 | `feature/cli` | `#5DBFC4` | CLI commands, output formats |
 | `feature/notifications` | `#5DBFC4` | System notifications, break suggestions |
 | `feature/timeboxing` | `#5DBFC4` | Time box planning |
+
+**Quality labels** (green — aligned with code-reviewer.md categories):
+| Label | Color | Description |
+|---|---|---|
+| `quality/security` | `#FBCA04` | Security hardening, input validation, permissions |
+| `quality/reliability` | `#FBCA04` | Error handling, data integrity, concurrency |
+| `quality/testing` | `#FBCA04` | Test coverage gaps, test framework issues |
+| `quality/refactor` | `#FBCA04` | DRY violations, architecture, code structure |
 
 **Design labels** (purple — aligned with design-reviewer.md categories):
 | Label | Color | Description |
@@ -127,14 +139,14 @@ gh label create "label-name" --color "hex" --description "description"
 
 For each open issue, recommend:
 - **Size**: XS / S / M / L / XL — based on scope, number of files likely touched, and architectural layers involved.
-- **Priority**: P0-P3 — based on user impact, alignment with V1 spec, and dependencies.
+- **Priority**: priority/P0 – priority/P3 — based on user impact, alignment with V1 spec, and dependencies.
 
 Present as a markdown table:
 
 ```
 | # | Title | Size | Priority | Rationale |
 |---|---|---|---|---|
-| 1 | ... | S | P2-medium | ... |
+| 1 | ... | S | priority/P2-medium | ... |
 ```
 
 ### Step 4: Apply Labels (with approval)
@@ -144,7 +156,7 @@ Use `AskUserQuestion` to confirm the recommendations. Allow the user to adjust i
 After approval, apply labels:
 
 ```bash
-gh issue edit <number> --add-label "size/S" --add-label "P2-medium"
+gh issue edit <number> --add-label "size/S" --add-label "priority/P2-medium"
 ```
 
 ---
@@ -178,7 +190,7 @@ Present a milestone proposal:
 - If a milestone has more than 8-10 issues, recommend splitting it.
 - If nice-to-haves are mixed with essentials, call it out.
 - If an issue is vague or too large, recommend breaking it down first.
-- P1-high (and above) bugs should default into the next milestone. High-priority bugs degrade the daily experience and should ship before new features when possible.
+- priority/P1-high (and above) bugs should default into the next milestone. High-priority bugs degrade the daily experience and should ship before new features when possible.
 
 ### Step 4: Create Milestone (with approval)
 
@@ -196,6 +208,10 @@ Then assign issues to the milestone:
 gh issue edit <number> --milestone "milestone name"
 ```
 
+### Step 5: Version Bump Issue (Automated)
+
+**Note:** A GitHub Action (`.github/workflows/milestone-version-issue.yml`) automatically creates a `chore(version): bump version to X.Y.Z` issue when a release milestone is created. No manual step needed. Non-version milestones (e.g., `Future`) are skipped automatically.
+
 ---
 
 ## Issue Review Mode (specific issue number)
@@ -205,7 +221,7 @@ When the user references a specific issue number:
 1. Fetch the issue: `gh issue view <number> --json number,title,labels,body,milestone,assignees`
 2. Read relevant codebase files referenced in the issue body.
 3. Recommend **size** and **priority** labels with rationale.
-4. Recommend milestone assignment if appropriate (P1+ bugs belong in the next milestone).
+4. Recommend milestone assignment if appropriate (priority/P1-high+ bugs belong in the next milestone).
 5. Use `AskUserQuestion` to confirm before applying labels or milestone changes.
 
 ---

@@ -7,7 +7,10 @@ struct DatabaseManagerTests {
 
     @Test func inMemoryInit() throws {
         let dbManager = try DatabaseManager(inMemory: true)
-        #expect(dbManager.writer != nil)
+        try dbManager.writer.read { db in
+            let count = try Int.fetchOne(db, sql: "SELECT count(*) FROM sqlite_master")
+            #expect((count ?? 0) > 0) // database is initialized with tables
+        }
     }
 
     @Test func defaultPreferences() throws {

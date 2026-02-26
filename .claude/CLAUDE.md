@@ -219,7 +219,7 @@ Use [Conventional Commits](https://www.conventionalcommits.org/) format: `type(s
 | `ci` | CI/CD pipeline and GitHub Actions changes |
 | `chore` | Maintenance that doesn't fit above (gitignore, config files, tooling setup) |
 
-**Key distinction**: UI layout fixes, visual corrections, and alignment issues are `fix`, not `chore`. If something looks wrong or behaves incorrectly, it's a `fix`.
+**Key distinction**: UI layout fixes, visual corrections, and alignment issues are `fix`, not `chore`. If something looks wrong or behaves incorrectly, it's a `fix`. Note: the `chore` commit type maps to the `type/chore` GitHub label.
 
 **When unsure** whether a change is `feat` or `fix`, ask before committing.
 
@@ -279,3 +279,15 @@ The PM agent handles issue creation (via the `/issue` skill), triage, labeling, 
 ### Milestones
 
 - **Future** — Placeholder milestone for far-future ideas and explorations. Not tied to a release. Assign issues here to keep the backlog filtered to actionable work. Do not use for anything with a concrete timeline.
+
+## Code Review & Codebase Audits
+
+**Always delegate codebase audits, code quality reviews, and architecture assessments to the code-reviewer agent** (`.claude/agents/code-reviewer.md`).
+
+This applies when the user:
+- Asks for a codebase audit or code review
+- Wants to check for DRY violations, force unwraps, or security concerns
+- Asks to "review the code", "audit the codebase", or "check code quality"
+- Wants a pre-release quality check
+
+The code-reviewer agent explores the codebase, produces categorized findings, and delegates issue filing to the PM agent. It does not implement fixes.

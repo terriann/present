@@ -1,0 +1,77 @@
+name: Auto-create Version Bump Issue
+
+on:
+  milestone:
+    types: [created, edited]
+
+# Deny all permissions by default; grant only what's needed per job
+permissions: {}
+
+# Prevent concurrent runs for the same milestone to avoid duplicate issues
+concurrency:
+  group: milestone-version-${{ github.event.milestone.number }}
+  cancel-in-progress: true
+
+jobs:
+  create-version-issue:
+    name: Create version bump issue
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write    # create version bump issue
+      contents: read   # required by gh issue create (defaultBranchRef)
+    steps:
+      - name: Extract version and create issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MILESTONE_TITLE: ${{ github.event.milestone.title }}
+        run: |
+          # Extract version from milestone title (e.g., "v0.2 — Session Polish" → "0.2")
+          VERSION=$(echo "$MILESTONE_TITLE" | grep -oE 'v?[0-9]+\.[0-9]+(\.[0-9]+)?' | head -1 | sed 's/^v//')
+
+          if [ -z "$VERSION" ]; then
+            echo "No version found in milestone title '$MILESTONE_TITLE' — skipping."
+            exit 0
+          fi
+
+          # Normalize 2-part versions to 3-part (e.g., "0.2" → "0.2.0")
+          if echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+$'; then
+            VERSION="${VERSION}.0"
+          fi
+
+          ISSUE_TITLE="chore(version): bump version to $VERSION"
+
+          # Check for existing issue (open or closed) to avoid duplicates
+          EXISTING=$(gh issue list \
+            --repo "$GITHUB_REPOSITORY" \
+            --search "\"$ISSUE_TITLE\" in:title" \
+            --state all \
+            --json number,title \
+            --jq ".[] | select(.title == \"$ISSUE_TITLE\") | .number")
+
+          if [ -n "$EXISTING" ]; then
+            echo "Issue already exists: #$EXISTING — skipping."
+            exit 0
+          fi
+
+          echo "Creating version bump issue for $VERSION"
+
+          BODY="## Version Bump
+
+          Update all version references to \`$VERSION\` for this milestone's release.
+
+          ### Checklist
+
+          - [ ] \`MARKETING_VERSION\` in \`project.yml\`
+          - [ ] \`cliVersion\` in \`Sources/PresentCore/Utilities/Constants.swift\`
+          - [ ] Regenerate \`docs/cli-reference.md\` (\`bash Scripts/generate-cli-docs.sh\`)
+          - [ ] Rebuild app in Xcode to verify version in About tab
+          - [ ] Reinstall CLI binary (\`swift build -c release && cp .build/release/present-cli /usr/local/bin/present-cli\`)"
+
+          gh issue create \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$ISSUE_TITLE" \
+            --label "type/chore" \
+            --label "priority/P0-critical" \
+            --label "size/XS" \
+            --milestone "$MILESTONE_TITLE" \
+            --body "$BODY"

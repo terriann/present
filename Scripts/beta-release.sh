@@ -56,7 +56,14 @@ fi
 if [[ -n "${1:-}" ]]; then
     VERSION="$1"
 else
-    VERSION=$(plutil -extract CFBundleShortVersionString raw PresentApp/Info.plist)
+    # Read MARKETING_VERSION from project.yml and strip any pre-release suffix
+    # (e.g. "0.1.0-dev" → "0.1.0"). Info.plist has the unexpanded Xcode variable.
+    RAW_VERSION=$(grep 'MARKETING_VERSION:' project.yml | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+    VERSION="${RAW_VERSION%%-*}"
+    if [[ -z "$VERSION" ]]; then
+        echo "Error: could not read MARKETING_VERSION from project.yml"
+        exit 1
+    fi
 fi
 echo "    Version: $VERSION"
 

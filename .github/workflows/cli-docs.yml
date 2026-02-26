@@ -5,24 +5,45 @@ on:
     paths:
       - 'Sources/PresentCLI/**'
       - 'Scripts/generate-cli-docs.*'
+  pull_request:
+    paths:
+      - 'Sources/PresentCLI/**'
+      - 'Scripts/generate-cli-docs.*'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: cli-docs-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   generate:
+    name: Regenerate CLI reference
     runs-on: macos-15
+    permissions:
+      contents: write   # push regenerated docs
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          # For PRs, check out the head branch so we can push back to it
+          ref: ${{ github.event_name == 'pull_request' && github.head_ref || '' }}
 
       - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_16.app
+        run: sudo xcode-select -s /Applications/Xcode_16.3.app
 
       - name: Generate CLI docs
         run: ./Scripts/generate-cli-docs.sh
 
       - name: Commit if changed
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git diff --quiet docs/cli-reference.md && exit 0
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git add docs/cli-reference.md
           git commit -m "docs(cli): regenerate CLI reference"
           git push
