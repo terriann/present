@@ -221,7 +221,7 @@ struct GeneralSettingsTab: View {
             SoundManager.shared.play(.dip)
             await appState.refreshAll()
         } catch {
-            appState.showError(error, context: "Could not delete sessions")
+            appState.showError(error, context: "Could not delete sessions", scene: .settings)
         }
     }
 

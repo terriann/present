@@ -3,10 +3,17 @@ import PresentCore
 import GRDB
 import Combine
 
+enum ErrorScene {
+    case mainWindow
+    case menuBar
+    case settings
+}
+
 struct AppError: Identifiable {
     let id = UUID()
     let title: String
     let message: String
+    let scene: ErrorScene
 }
 
 @MainActor @Observable
@@ -576,11 +583,12 @@ final class AppState {
 
     // MARK: - Error Feedback
 
-    func showError(_ error: Error, context: String? = nil) {
+    func showError(_ error: Error, context: String? = nil, scene: ErrorScene = .mainWindow) {
         let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         presentedError = AppError(
             title: context ?? "Something went wrong",
-            message: message
+            message: message,
+            scene: scene
         )
     }
 
