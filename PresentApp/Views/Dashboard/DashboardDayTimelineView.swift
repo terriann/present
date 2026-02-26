@@ -2,7 +2,7 @@ import SwiftUI
 import Charts
 import PresentCore
 
-struct DayTimelineView: View {
+struct DashboardDayTimelineView: View {
     let activityColorMap: [String: Color]
     @Environment(AppState.self) private var appState
     @Environment(ThemeManager.self) private var theme

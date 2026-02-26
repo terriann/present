@@ -1,7 +1,7 @@
 import SwiftUI
 import PresentCore
 
-struct ActivityBreakdownCard: View {
+struct DashboardActivityBreakdownCard: View {
     let activityColorMap: [String: Color]
     @Environment(AppState.self) private var appState
     @Environment(ThemeManager.self) private var theme

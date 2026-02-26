@@ -2,7 +2,7 @@ import SwiftUI
 import Charts
 import PresentCore
 
-struct WeeklyChartCard: View {
+struct DashboardWeeklyChartCard: View {
     let activityColorMap: [String: Color]
     let weekly: WeeklySummary
     let hasActiveTodaySession: Bool

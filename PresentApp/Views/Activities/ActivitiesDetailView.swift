@@ -1,7 +1,7 @@
 import SwiftUI
 import PresentCore
 
-struct ActivityDetailView: View {
+struct ActivitiesDetailView: View {
     @Environment(AppState.self) private var appState
     @Environment(ThemeManager.self) private var theme
     @State private var activity: Activity

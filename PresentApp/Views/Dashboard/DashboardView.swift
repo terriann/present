@@ -58,7 +58,7 @@ struct DashboardView: View {
 
                 // Weekly chart
                 if let weekly = appState.weeklySummary, !weekly.activities.isEmpty || hasActiveTodaySession {
-                    WeeklyChartCard(
+                    DashboardWeeklyChartCard(
                         activityColorMap: activityColorMap,
                         weekly: weekly,
                         hasActiveTodaySession: hasActiveTodaySession,
@@ -251,7 +251,7 @@ struct DashboardView: View {
                         )
                     }
 
-                    DayTimelineView(activityColorMap: activityColorMap)
+                    DashboardDayTimelineView(activityColorMap: activityColorMap)
                         .frame(maxWidth: .infinity)
                 }
                 .padding(Constants.spacingCard)
@@ -337,6 +337,6 @@ struct DashboardView: View {
     // MARK: - Activity Breakdown
 
     private var activityBreakdownCard: some View {
-        ActivityBreakdownCard(activityColorMap: activityColorMap)
+        DashboardActivityBreakdownCard(activityColorMap: activityColorMap)
     }
 }
