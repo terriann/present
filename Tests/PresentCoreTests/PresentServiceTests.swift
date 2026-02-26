@@ -224,6 +224,53 @@ struct PresentServiceTests {
         #expect(tags.count == 0)
     }
 
+    // MARK: - Find or Create Tag
+
+    @Test func findOrCreateTagCreatesNew() async throws {
+        let service = try makeService()
+        let tag = try await service.findOrCreateTag(name: "Design")
+        #expect(tag.id != nil)
+        #expect(tag.name == "Design")
+
+        let tags = try await service.listTags()
+        #expect(tags.count == 1)
+    }
+
+    @Test func findOrCreateTagReturnsExisting() async throws {
+        let service = try makeService()
+        let original = try await service.createTag(name: "urgent")
+        let found = try await service.findOrCreateTag(name: "urgent")
+        #expect(found.id == original.id)
+        #expect(found.name == "urgent")
+
+        let tags = try await service.listTags()
+        #expect(tags.count == 1)
+    }
+
+    @Test func findOrCreateTagCaseInsensitive() async throws {
+        let service = try makeService()
+        let original = try await service.createTag(name: "work")
+        let found = try await service.findOrCreateTag(name: "Work")
+        #expect(found.id == original.id)
+
+        let tags = try await service.listTags()
+        #expect(tags.count == 1)
+    }
+
+    @Test func findOrCreateTagPreservesOriginalCasing() async throws {
+        let service = try makeService()
+        let original = try await service.createTag(name: "Frontend")
+        let found = try await service.findOrCreateTag(name: "frontend")
+        #expect(found.name == "Frontend")
+    }
+
+    @Test func findOrCreateTagEmptyNameFails() async throws {
+        let service = try makeService()
+        await #expect(throws: PresentError.self) {
+            try await service.findOrCreateTag(name: "   ")
+        }
+    }
+
     // MARK: - Preferences
 
     @Test func preferences() async throws {

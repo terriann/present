@@ -31,7 +31,7 @@ struct PresentApp: App {
                 .environment(appState)
                 .environment(themeManager)
                 .tint(themeManager.accent)
-                .modifier(ErrorAlertModifier(appState: appState))
+                .modifier(ErrorAlertModifier(appState: appState, scene: .menuBar))
         } label: {
             MenuBarLabelView()
                 .environment(appState)
@@ -43,7 +43,7 @@ struct PresentApp: App {
                 .environment(appState)
                 .environment(themeManager)
                 .tint(themeManager.accent)
-                .modifier(ErrorAlertModifier(appState: appState))
+                .modifier(ErrorAlertModifier(appState: appState, scene: .mainWindow))
                 .onAppear {
                     appDelegate.appState = appState
                     if appDelegate.floatingAlertManager == nil {
@@ -83,7 +83,7 @@ struct PresentApp: App {
                 .environment(appState)
                 .environment(themeManager)
                 .tint(themeManager.accent)
-                .modifier(ErrorAlertModifier(appState: appState))
+                .modifier(ErrorAlertModifier(appState: appState, scene: .settings))
         }
     }
 
@@ -108,12 +108,13 @@ struct PresentApp: App {
 
 private struct ErrorAlertModifier: ViewModifier {
     @Bindable var appState: AppState
+    let scene: ErrorScene
 
     func body(content: Content) -> some View {
         content.alert(
             appState.presentedError?.title ?? "Error",
             isPresented: Binding(
-                get: { appState.presentedError != nil },
+                get: { appState.presentedError?.scene == scene },
                 set: { if !$0 { appState.presentedError = nil } }
             )
         ) {
