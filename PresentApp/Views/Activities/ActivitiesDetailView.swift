@@ -92,18 +92,11 @@ struct ActivitiesDetailView: View {
         .task {
             await loadDetails()
             timeboundMinutes = (try? await appState.service.getPreference(key: PreferenceKey.defaultTimeboundMinutes)).flatMap(Int.init) ?? Constants.defaultTimeboundMinutes
-            if selectedRhythmOption == nil || !appState.rhythmDurationOptions.contains(where: { $0 == selectedRhythmOption }) {
-                selectedRhythmOption = appState.rhythmDurationOptions.first
-            }
             if activity.isSystem && selectedSessionType == .rhythm {
                 selectedSessionType = .work
             }
         }
-        .onChange(of: appState.rhythmDurationOptions) {
-            if selectedRhythmOption == nil || !appState.rhythmDurationOptions.contains(where: { $0 == selectedRhythmOption }) {
-                selectedRhythmOption = appState.rhythmDurationOptions.first
-            }
-        }
+        .syncRhythmSelection($selectedRhythmOption)
     }
 
     private var isEditable: Bool { !activity.isArchived && !activity.isSystem }
