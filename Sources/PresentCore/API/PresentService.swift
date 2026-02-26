@@ -809,6 +809,23 @@ public final class PresentService: PresentAPI, Sendable {
         }
     }
 
+    public func findOrCreateTag(name: String) async throws -> Tag {
+        let trimmed = try Validation.sanitize(name, fieldName: "Tag name", maxLength: Constants.maxTagNameLength)
+
+        return try await dbWriter.write { db in
+            if let existing = try Tag
+                .filter(Tag.Columns.name.collating(.nocase) == trimmed)
+                .fetchOne(db) {
+                return existing
+            }
+
+            var tag = Tag(name: trimmed)
+            try tag.insert(db)
+            tag.id = db.lastInsertedRowID
+            return tag
+        }
+    }
+
     public func getTag(id: Int64) async throws -> Tag {
         try await dbWriter.read { db in
             guard let tag = try Tag.fetchOne(db, key: id) else {

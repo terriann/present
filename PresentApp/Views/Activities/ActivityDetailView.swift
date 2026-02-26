@@ -680,12 +680,12 @@ struct TagPicker: View {
                     guard !newTagName.trimmingCharacters(in: .whitespaces).isEmpty else { return }
                     Task {
                         do {
-                            let tag = try await appState.service.createTag(name: newTagName)
+                            let tag = try await appState.service.findOrCreateTag(name: newTagName)
                             newTagName = ""
                             onAdd(tag)
                             await appState.refreshAll()
                         } catch {
-                            appState.showError(error, context: "Could not create tag")
+                            appState.showError(error, context: "Could not add tag")
                         }
                     }
                 }

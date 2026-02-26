@@ -33,6 +33,7 @@ public protocol PresentAPI: Sendable {
 
     // Tags
     func createTag(name: String) async throws -> Tag
+    func findOrCreateTag(name: String) async throws -> Tag
     func getTag(id: Int64) async throws -> Tag
     func updateTag(id: Int64, name: String) async throws -> Tag
     func deleteTag(id: Int64) async throws
