@@ -82,6 +82,7 @@ CLI Commands ──────────────────────�
 - Use SF Symbols for icons. `.monospacedDigit()` for timer displays.
 - Standard section order: properties, body, MARK subviews, MARK helpers.
 - All tabs and panes align content to the top — use `.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)`. Empty states (`ContentUnavailableView`) must also be top-aligned, never vertically centered.
+- **File naming**: Feature-scoped view files use their directory as a prefix (`Dashboard/DashboardWeeklyChartCard.swift`, `Activities/ActivitiesDetailView.swift`, `Reports/ReportStackedBarChart.swift`). Generic shared components in `Shared/` skip the prefix (`SpinningClockIcon.swift`, `ChartTooltip.swift`).
 
 ### Typography
 - Semantic font tokens are defined in `PresentApp/Views/Shared/Typography.swift` as `Font` static properties.
@@ -287,7 +288,7 @@ The PM agent handles issue creation (via the `/issue` skill), triage, labeling, 
 
 This applies when the user:
 - Asks for a codebase audit or code review
-- Wants to check for DRY violations, force unwraps, or security concerns
+- Wants to check for SOLID, SoC, or DRY violations, force unwraps, or security concerns
 - Asks to "review the code", "audit the codebase", or "check code quality"
 - Wants a pre-release quality check
 
