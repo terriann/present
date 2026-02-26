@@ -356,8 +356,8 @@ public final class PresentService: PresentAPI, Sendable {
                 """
 
             let rows = try Row.fetchAll(db, sql: sql, arguments: StatementArguments(arguments))
-            return rows.map { row in
-                let session = try! Session(row: row)
+            return try rows.map { row in
+                let session = try Session(row: row)
                 let activity = Activity(
                     id: row["a_id"],
                     title: row["a_title"],
@@ -1042,8 +1042,8 @@ public final class PresentService: PresentAPI, Sendable {
                 endDate, startDate
             ])
 
-            return rows.map { row in
-                let activity = try! Activity(row: row)
+            return try rows.map { row in
+                let activity = try Activity(row: row)
                 let secs: Int = row["totalSecs"]
                 let count: Int = row["sessCount"]
                 return ActivitySummary(activity: activity, totalSeconds: secs, sessionCount: count)
