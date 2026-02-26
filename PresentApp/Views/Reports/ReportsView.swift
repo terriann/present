@@ -30,6 +30,14 @@ struct ReportsView: View {
                 summaryBar
 
                 if !activities.isEmpty {
+                    if selectedPeriod == .daily {
+                        ReportDayTimelineCard(
+                            sessionEntries: sessionEntries,
+                            sessionSegments: sessionSegments,
+                            activityColorMap: activityColorMap,
+                            referenceDate: Calendar.current.startOfDay(for: selectedDate)
+                        )
+                    }
                     ReportStackedBarChart(
                         entries: barEntries,
                         domain: xAxisDomain,
