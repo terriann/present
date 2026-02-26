@@ -7,20 +7,13 @@ import PresentCore
 /// class monitors for right-click events on the status bar window and displays
 /// an `NSMenu` with session controls and app actions.
 ///
-/// Window/settings opening uses `NotificationCenter` and `NSApp.sendAction` to
-/// avoid fragile closure wiring between AppKit and SwiftUI contexts.
+/// Window and settings navigation uses `appState.navigate(to:)` which queues
+/// a `NavigationAction` consumed by `MenuBarLabelView` via `onChange`.
 ///
 /// All methods run on the main thread (event monitors, NSMenuItem actions).
 /// The class is nonisolated with `nonisolated(unsafe)` references, using
 /// `MainActor.assumeIsolated` where actor-isolated access is needed.
 final class StatusItemMenuManager: NSObject, @unchecked Sendable {
-    /// Posted when the user selects "Launch Present" from the right-click menu.
-    /// Observed by `MenuBarLabelView` which has access to SwiftUI's `openWindow`.
-    static let openMainWindowNotification = Notification.Name("Present.openMainWindow")
-
-    /// Posted when the user selects "Settings…" from the right-click menu.
-    /// Observed by `MenuBarLabelView` which has access to SwiftUI's `openSettings`.
-    static let openSettingsNotification = Notification.Name("Present.openSettings")
 
     // Safe: only accessed from main thread (event monitors and NSMenuItem actions)
     nonisolated(unsafe) private weak var appState: AppState?
@@ -165,25 +158,14 @@ final class StatusItemMenuManager: NSObject, @unchecked Sendable {
     }
 
     @objc private func openApp() {
-        _ = MainActor.assumeIsolated {
-            NSApplication.shared.setActivationPolicy(.regular)
-        }
-        // Defer to next run loop so activation policy takes effect before SwiftUI opens the window.
-        DispatchQueue.main.async {
-            NotificationCenter.default.post(name: Self.openMainWindowNotification, object: nil)
+        MainActor.assumeIsolated {
+            appState?.navigate(to: .launchMainWindow)
         }
     }
 
     @objc private func openSettings() {
-        _ = MainActor.assumeIsolated {
-            NSApplication.shared.setActivationPolicy(.regular)
-        }
-        // Open main window first (settings needs an active window), then settings after a delay.
-        DispatchQueue.main.async {
-            NotificationCenter.default.post(name: Self.openMainWindowNotification, object: nil)
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            NotificationCenter.default.post(name: Self.openSettingsNotification, object: nil)
+        MainActor.assumeIsolated {
+            appState?.navigate(to: .showSettings(nil))
         }
     }
 

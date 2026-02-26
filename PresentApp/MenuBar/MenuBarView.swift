@@ -232,14 +232,8 @@ struct MenuBarView: View {
                         }
                     }, onEdit: {
                         dismiss()
-                        appState.navigateToActivityId = activity.id
-                        appState.selectedSidebarItem = .activities
-                        NSApplication.shared.setActivationPolicy(.regular)
-                        DispatchQueue.main.async {
-                            NotificationCenter.default.post(
-                                name: StatusItemMenuManager.openMainWindowNotification,
-                                object: nil
-                            )
+                        if let id = activity.id {
+                            appState.navigate(to: .showActivity(id))
                         }
                     })
                 }
@@ -268,18 +262,11 @@ struct MenuBarView: View {
             .padding(.vertical, Constants.spacingCompact * zoomScale)
         }
         .onAppear {
-            if selectedRhythmOption == nil || !appState.rhythmDurationOptions.contains(where: { $0 == selectedRhythmOption }) {
-                selectedRhythmOption = appState.rhythmDurationOptions.first
-            }
             Task {
                 timeboundMinutes = (try? await appState.service.getPreference(key: PreferenceKey.defaultTimeboundMinutes)).flatMap(Int.init) ?? Constants.defaultTimeboundMinutes
             }
         }
-        .onChange(of: appState.rhythmDurationOptions) {
-            if selectedRhythmOption == nil || !appState.rhythmDurationOptions.contains(where: { $0 == selectedRhythmOption }) {
-                selectedRhythmOption = appState.rhythmDurationOptions.first
-            }
-        }
+        .syncRhythmSelection($selectedRhythmOption)
     }
 
     private func startSessionForType(activity: Activity) async {
@@ -323,15 +310,8 @@ struct MenuBarView: View {
     private var bottomBar: some View {
         HStack {
             Button {
-                appState.selectedSidebarItem = .dashboard
                 dismiss()
-                NSApplication.shared.setActivationPolicy(.regular)
-                DispatchQueue.main.async {
-                    NotificationCenter.default.post(
-                        name: StatusItemMenuManager.openMainWindowNotification,
-                        object: nil
-                    )
-                }
+                appState.navigate(to: .showDashboard)
             } label: {
                 HStack {
                     Text("Launch Present")
@@ -351,19 +331,7 @@ struct MenuBarView: View {
 
             Button {
                 dismiss()
-                NSApplication.shared.setActivationPolicy(.regular)
-                DispatchQueue.main.async {
-                    NotificationCenter.default.post(
-                        name: StatusItemMenuManager.openMainWindowNotification,
-                        object: nil
-                    )
-                }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    NotificationCenter.default.post(
-                        name: StatusItemMenuManager.openSettingsNotification,
-                        object: nil
-                    )
-                }
+                appState.navigate(to: .showSettings(nil))
             } label: {
                 HStack(spacing: 4) {
                     if isSettingsHovered {

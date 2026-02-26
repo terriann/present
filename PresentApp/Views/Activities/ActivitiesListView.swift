@@ -82,7 +82,7 @@ struct ActivitiesListView: View {
 
                     // Detail view
                     if let activity = selectedActivity {
-                        ActivityDetailView(activity: activity)
+                        ActivitiesDetailView(activity: activity)
                             .id(activity.id)
                             .environment(appState)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -100,7 +100,7 @@ struct ActivitiesListView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .navigationTitle("Activities")
         .sheet(isPresented: $showingCreateSheet) {
-            ActivityFormSheet(mode: .create)
+            ActivitiesFormSheet(mode: .create)
         }
         .task {
             await appState.refreshAll()

@@ -6,32 +6,6 @@ struct SettingsView: View {
     @Environment(ThemeManager.self) private var theme
     @State private var selectedTab = SettingsTab.general
 
-    static let openCLITabNotification = Notification.Name("openCLITab")
-
-    enum SettingsTab: String, CaseIterable {
-        case general, cli, sessions, notifications, about
-
-        var label: String {
-            switch self {
-            case .general: "General"
-            case .cli: "CLI"
-            case .sessions: "Sessions"
-            case .notifications: "Notifications"
-            case .about: "About"
-            }
-        }
-
-        var icon: String {
-            switch self {
-            case .general: "gear"
-            case .cli: "terminal"
-            case .sessions: "timer"
-            case .notifications: "bell"
-            case .about: "info.circle"
-            }
-        }
-    }
-
     var body: some View {
         VStack(spacing: 0) {
             // Custom tab bar
@@ -82,8 +56,10 @@ struct SettingsView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(minWidth: 500, maxWidth: 500, minHeight: 520)
-        .onReceive(NotificationCenter.default.publisher(for: Self.openCLITabNotification)) { _ in
-            selectedTab = .cli
+        .onChange(of: appState.pendingSettingsTab) { _, tab in
+            guard let tab else { return }
+            selectedTab = tab
+            appState.pendingSettingsTab = nil
         }
     }
 }
@@ -201,7 +177,7 @@ struct GeneralSettingsTab: View {
                     .foregroundStyle(.secondary)
                 Spacer()
                 Button("Open CLI Setup") {
-                    NotificationCenter.default.post(name: SettingsView.openCLITabNotification, object: nil)
+                    appState.pendingSettingsTab = .cli
                 }
                 .font(.caption)
                 .foregroundStyle(theme.accent)
@@ -619,6 +595,7 @@ struct SessionSettingsTab: View {
 }
 
 struct AboutTab: View {
+    @Environment(AppState.self) private var appState
     @Environment(ThemeManager.self) private var theme
     @State private var installedCLIVersion: String?
     @State private var isDetectingCLI = true
@@ -684,7 +661,7 @@ struct AboutTab: View {
     private var cliVersionLine: some View {
         if !isDetectingCLI && cliIsOutdated {
             Button {
-                NotificationCenter.default.post(name: SettingsView.openCLITabNotification, object: nil)
+                appState.pendingSettingsTab = .cli
             } label: {
                 Text("CLI: v\(Constants.cliVersion) — Update Available")
                     .font(.caption)
