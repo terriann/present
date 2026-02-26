@@ -18,20 +18,25 @@ struct AppError: Identifiable {
 
 @MainActor @Observable
 final class AppState {
-    // MARK: - Published State
+    // MARK: - Session State
 
     var currentSession: Session?
     var currentActivity: Activity?
-    var todayTotalSeconds: Int = 0
-    var todaySessionCount: Int = 0
-    var todayActivities: [ActivitySummary] = []
-    var weeklySummary: WeeklySummary?
-    var weekStartDay: Int = 1
-    var recentActivities: [Activity] = []
-    var allActivities: [Activity] = []
-    var allTags: [Tag] = []
-    var recentSessionSuggestion: (session: Session, activity: Activity)?
-    var rhythmDurationOptions: [RhythmOption] = Constants.defaultRhythmDurationOptions
+
+    // MARK: - Data (forwarded from DataRefreshCoordinator)
+
+    private(set) var dataRefresh: DataRefreshCoordinator!
+
+    var todayTotalSeconds: Int { dataRefresh.todayTotalSeconds }
+    var todaySessionCount: Int { dataRefresh.todaySessionCount }
+    var todayActivities: [ActivitySummary] { dataRefresh.todayActivities }
+    var weeklySummary: WeeklySummary? { dataRefresh.weeklySummary }
+    var weekStartDay: Int { dataRefresh.weekStartDay }
+    var recentActivities: [Activity] { dataRefresh.recentActivities }
+    var allActivities: [Activity] { dataRefresh.allActivities }
+    var allTags: [Tag] { dataRefresh.allTags }
+    var recentSessionSuggestion: (session: Session, activity: Activity)? { dataRefresh.recentSessionSuggestion }
+    var rhythmDurationOptions: [RhythmOption] { dataRefresh.rhythmDurationOptions }
 
     // MARK: - Timer (forwarded from TimerManager)
 
@@ -75,8 +80,6 @@ final class AppState {
 
     private(set) var service: PresentService
     private let dbManager: DatabaseManager
-    private var ipcServer: IPCServer?
-    private var observationTask: Task<Void, Never>?
 
     // MARK: - Computed Properties
 
@@ -125,10 +128,14 @@ final class AppState {
         timer.onCountdownCompleted = { [weak self] in
             await self?.handleTimerCompletion()
         }
+        dataRefresh = DataRefreshCoordinator(service: service)
+        dataRefresh.onRefreshNeeded = { [weak self] in
+            await self?.refreshAll()
+        }
         NotificationManager.shared.requestPermission()
         SoundManager.shared.configure(service: service)
-        startObservations()
-        startIPCServer()
+        dataRefresh.startObservations()
+        dataRefresh.startIPCServer()
         loadInitialData()
     }
 
@@ -142,6 +149,7 @@ final class AppState {
 
     func refreshAll() async {
         do {
+            // 1. Sync session state
             if let (session, activity) = try await service.currentSession() {
                 currentSession = session
                 currentActivity = activity
@@ -158,34 +166,11 @@ final class AppState {
                 timer.stopTimer()
             }
 
-            let summary = try await service.todaySummary()
-            todayTotalSeconds = summary.totalSeconds
-            todaySessionCount = summary.sessionCount
-            todayActivities = summary.activities
+            // 2. Refresh data properties
+            try await dataRefresh.refreshData(hasActiveSession: currentSession != nil)
 
-            if let weekStartPref = try? await service.getPreference(key: PreferenceKey.weekStartDay) {
-                weekStartDay = PreferenceKey.parseWeekStartDay(weekStartPref)
-            }
-            let weekly = try await service.weeklySummary(weekOf: Date(), includeArchived: false, weekStartDay: weekStartDay, roundToMinute: true)
-            if weekly != weeklySummary { weeklySummary = weekly }
-
-            if currentSession == nil {
-                let since = Date().addingTimeInterval(-3 * 60 * 60)
-                recentSessionSuggestion = try await service.lastCompletedSession(since: since)
-            } else {
-                recentSessionSuggestion = nil
-            }
-
-            recentActivities = try await service.recentActivities(limit: 6)
-            allActivities = try await service.listActivities(includeArchived: true, includeSystem: true)
-            allTags = try await service.listTags()
-
+            // 3. Refresh preferences
             await zoom.loadFromPreferences()
-
-            if let optionsStr = try? await service.getPreference(key: PreferenceKey.rhythmDurationOptions) {
-                let parsed: [RhythmOption] = PreferenceKey.parseRhythmOptions(optionsStr)
-                rhythmDurationOptions = parsed.isEmpty ? Constants.defaultRhythmDurationOptions : parsed
-            }
         } catch {
             print("Error refreshing data: \(error)")
         }
@@ -400,29 +385,6 @@ final class AppState {
     func endBreakSession() {
         timerCompletionContext = nil
         breakPrecedingContext = nil
-    }
-
-    // MARK: - Database Observation
-
-    private func startObservations() {
-        observationTask = Task {
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(2))
-                guard !Task.isCancelled else { break }
-                await refreshAll()
-            }
-        }
-    }
-
-    // MARK: - IPC
-
-    private func startIPCServer() {
-        ipcServer = IPCServer { [weak self] _ in
-            Task { @MainActor [weak self] in
-                await self?.refreshAll()
-            }
-        }
-        try? ipcServer?.start()
     }
 
     // MARK: - Error Feedback
