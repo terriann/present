@@ -15,6 +15,7 @@ struct SessionContextMenuModifier: ViewModifier {
 
     @State private var showingDeleteConfirm = false
     @State private var showingEditSheet = false
+    @State private var showingConvertSheet = false
 
     private var isActive: Bool {
         session.state == .running || session.state == .paused
@@ -47,6 +48,9 @@ struct SessionContextMenuModifier: ViewModifier {
                     session: session,
                     activityTitle: activityTitle
                 )
+            }
+            .sheet(isPresented: $showingConvertSheet) {
+                ConvertToTimeboundSheet()
             }
             .alert("Delete Session?", isPresented: $showingDeleteConfirm) {
                 Button("Delete", role: .destructive) {
@@ -83,6 +87,23 @@ struct SessionContextMenuModifier: ViewModifier {
                 Label("Resume Session", systemImage: "play.fill")
             }
         }
+
+        // Conversion options (not available for rhythm)
+        if session.sessionType == .work {
+            Button {
+                showingConvertSheet = true
+            } label: {
+                Label("Convert to Timebound...", systemImage: "timer")
+            }
+        } else if session.sessionType == .timebound {
+            Button {
+                Task { await appState.convertSession(ConvertSessionInput(targetType: .work)) }
+            } label: {
+                Label("Convert to Work Session", systemImage: "infinity")
+            }
+        }
+
+        Divider()
 
         Button {
             Task { await appState.stopSession() }

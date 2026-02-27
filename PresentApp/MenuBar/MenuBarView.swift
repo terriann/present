@@ -18,6 +18,8 @@ struct MenuBarView: View {
     @State private var isSortAlphaHovered = false
     @State private var isLaunchHovered = false
     @State private var isSettingsHovered = false
+    @State private var showConvertPicker = false
+    @State private var convertMinutes: Int = 25
 
     private var zoomScale: CGFloat { appState.zoomScale }
 
@@ -78,9 +80,54 @@ struct MenuBarView: View {
                         .font(scaledFont(.headline, weight: .semibold))
                         .lineLimit(1)
 
-                    Text(SessionTypeConfig.config(for: session.sessionType).displayName)
-                        .font(scaledFont(.caption))
-                        .foregroundStyle(.secondary)
+                    if session.sessionType == .rhythm {
+                        Text(SessionTypeConfig.config(for: session.sessionType).displayName)
+                            .font(scaledFont(.caption))
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Button {
+                            if session.sessionType == .timebound {
+                                Task { await appState.convertSession(ConvertSessionInput(targetType: .work)) }
+                            } else {
+                                withAdaptiveAnimation(.easeInOut(duration: 0.15)) {
+                                    showConvertPicker.toggle()
+                                }
+                            }
+                        } label: {
+                            HStack(spacing: 2) {
+                                Text(SessionTypeConfig.config(for: session.sessionType).displayName)
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 7 * zoomScale, weight: .semibold))
+                            }
+                            .font(scaledFont(.caption))
+                            .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .help(session.sessionType == .work ? "Convert to timebound" : "Convert to work session")
+                    }
+
+                    if showConvertPicker, session.sessionType == .work {
+                        HStack(spacing: 4 * zoomScale) {
+                            TextField("", value: $convertMinutes, format: .number)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 48 * zoomScale)
+                                .font(scaledFont(.caption))
+                            Text("min")
+                                .font(scaledFont(.caption))
+                                .foregroundStyle(.secondary)
+                            Button("Convert") {
+                                showConvertPicker = false
+                                Task {
+                                    await appState.convertSession(
+                                        ConvertSessionInput(targetType: .timebound, timerMinutes: convertMinutes)
+                                    )
+                                }
+                            }
+                            .font(scaledFont(.caption, weight: .medium))
+                            .buttonStyle(.plain)
+                            .foregroundStyle(theme.accent)
+                        }
+                    }
                 }
 
                 // Ticket badge
@@ -175,12 +222,16 @@ struct MenuBarView: View {
                                 selectedSessionType = type
                             }
                         } label: {
-                            Text(SessionTypeConfig.config(for: type).displayName)
-                                .font(scaledFont(.caption, weight: isSelected ? .semibold : .regular))
-                                .padding(.horizontal, 10 * zoomScale)
-                                .padding(.vertical, 5 * zoomScale)
-                                .background(isSelected ? theme.accent.opacity(0.15) : Color.clear, in: Capsule())
-                                .foregroundStyle(isSelected ? theme.accent : .secondary)
+                            Label {
+                                Text(SessionTypeConfig.config(for: type).displayName)
+                            } icon: {
+                                Image(systemName: sessionTypeIcon(for: type))
+                            }
+                            .font(scaledFont(.caption, weight: isSelected ? .semibold : .regular))
+                            .padding(.horizontal, 10 * zoomScale)
+                            .padding(.vertical, 6 * zoomScale)
+                            .background(isSelected ? theme.accent.opacity(0.15) : Color.clear, in: Capsule())
+                            .foregroundStyle(isSelected ? theme.accent : .secondary)
                         }
                         .buttonStyle(.plain)
                     }
@@ -361,7 +412,9 @@ struct MenuBarView: View {
         }
         .onAppear {
             Task {
-                timeboundMinutes = (try? await appState.service.getPreference(key: PreferenceKey.defaultTimeboundMinutes)).flatMap(Int.init) ?? Constants.defaultTimeboundMinutes
+                let defaultMinutes = (try? await appState.service.getPreference(key: PreferenceKey.defaultTimeboundMinutes)).flatMap(Int.init) ?? Constants.defaultTimeboundMinutes
+                timeboundMinutes = defaultMinutes
+                convertMinutes = defaultMinutes
                 activitySort = (try? await appState.service.getPreference(key: PreferenceKey.menuBarActivitySort)) ?? "recent"
             }
         }
@@ -448,6 +501,14 @@ struct MenuBarView: View {
                 selectedIndex = nil
                 await startSessionForType(activity: newActivity)
             }
+        }
+    }
+
+    private func sessionTypeIcon(for type: SessionType) -> String {
+        switch type {
+        case .work: "infinity"
+        case .timebound: "timer"
+        case .rhythm: "arrow.triangle.2.circlepath"
         }
     }
 
