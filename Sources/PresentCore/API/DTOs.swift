@@ -53,6 +53,8 @@ public struct CreateBackdatedSessionInput: Sendable {
     public var endedAt: Date
     public var timerLengthMinutes: Int?
     public var breakMinutes: Int?
+    public var note: String?
+    public var link: String?
 
     public init(
         activityId: Int64,
@@ -60,7 +62,9 @@ public struct CreateBackdatedSessionInput: Sendable {
         startedAt: Date,
         endedAt: Date,
         timerLengthMinutes: Int? = nil,
-        breakMinutes: Int? = nil
+        breakMinutes: Int? = nil,
+        note: String? = nil,
+        link: String? = nil
     ) {
         self.activityId = activityId
         self.sessionType = sessionType
@@ -68,6 +72,20 @@ public struct CreateBackdatedSessionInput: Sendable {
         self.endedAt = endedAt
         self.timerLengthMinutes = timerLengthMinutes
         self.breakMinutes = breakMinutes
+        self.note = note
+        self.link = link
+    }
+}
+
+public struct UpdateSessionInput: Sendable {
+    /// New note text. `nil` = no change, empty string = clear.
+    public var note: String?
+    /// New link URL. `nil` = no change, empty string = clear.
+    public var link: String?
+
+    public init(note: String? = nil, link: String? = nil) {
+        self.note = note
+        self.link = link
     }
 }
 

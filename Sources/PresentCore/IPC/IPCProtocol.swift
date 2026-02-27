@@ -6,6 +6,7 @@ public enum IPCMessage: Codable, Sendable {
     case sessionResumed
     case sessionStopped
     case sessionCancelled
+    case sessionUpdated
     case activityUpdated
     case dataChanged
 

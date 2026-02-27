@@ -183,6 +183,21 @@ public final class DatabaseManager: Sendable {
             )
         }
 
+        migrator.registerMigration("v8-add-session-notes-and-link") { db in
+            try db.alter(table: "session") { t in
+                t.add(column: "note", .text)
+                t.add(column: "link", .text)
+                t.add(column: "ticketId", .text)
+            }
+
+            try db.create(virtualTable: "session_fts", using: FTS5()) { t in
+                t.tokenizer = .porter()
+                t.synchronize(withTable: "session")
+                t.column("note")
+                t.column("ticketId")
+            }
+        }
+
         try migrator.migrate(writer)
     }
 }

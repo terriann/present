@@ -49,13 +49,21 @@ public final class PresentService: PresentAPI, Sendable {
 
     // MARK: - Sessions
 
-    public func startSession(activityId: Int64, type: SessionType, timerMinutes: Int? = nil, breakMinutes: Int? = nil) async throws -> Session {
+    public func startSession(activityId: Int64, type: SessionType, timerMinutes: Int? = nil, breakMinutes: Int? = nil, note: String? = nil, link: String? = nil) async throws -> Session {
         if let timerMinutes {
             try Validation.validateRange(timerMinutes, range: Constants.sessionMinutesRange, fieldName: "Timer duration")
         }
         if let breakMinutes {
             try Validation.validateRange(breakMinutes, range: Constants.breakDurationRange, fieldName: "Break duration")
         }
+        let sanitizedNote = try Validation.sanitizeOptional(note, fieldName: "Note", maxLength: Constants.maxSessionNoteLength)
+        let sanitizedLink: String? = if let link, !link.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            try Validation.sanitize(link, fieldName: "Link", maxLength: Constants.maxSessionLinkLength)
+        } else {
+            nil
+        }
+        if let sanitizedLink { try Validation.validateLink(sanitizedLink) }
+        let ticketId = sanitizedLink.flatMap { TicketExtractor.extractTicketId(from: $0) }
 
         return try await dbWriter.write { db in
             // Check no active session
@@ -86,6 +94,11 @@ public final class PresentService: PresentAPI, Sendable {
                 state: .running,
                 createdAt: now
             )
+
+            // Attach note and link
+            session.note = sanitizedNote
+            session.link = sanitizedLink
+            session.ticketId = ticketId
 
             // For rhythm sessions, store break duration and determine the session index
             if type == .rhythm {
@@ -129,6 +142,14 @@ public final class PresentService: PresentAPI, Sendable {
         if let breakMinutes = input.breakMinutes {
             try Validation.validateRange(breakMinutes, range: Constants.breakDurationRange, fieldName: "Break duration")
         }
+        let sanitizedNote = try Validation.sanitizeOptional(input.note, fieldName: "Note", maxLength: Constants.maxSessionNoteLength)
+        let sanitizedLink: String? = if let link = input.link, !link.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            try Validation.sanitize(link, fieldName: "Link", maxLength: Constants.maxSessionLinkLength)
+        } else {
+            nil
+        }
+        if let sanitizedLink { try Validation.validateLink(sanitizedLink) }
+        let ticketId = sanitizedLink.flatMap { TicketExtractor.extractTicketId(from: $0) }
 
         return try await dbWriter.write { db in
             // Validate activity exists and is not archived
@@ -178,6 +199,9 @@ public final class PresentService: PresentAPI, Sendable {
                 timerLengthMinutes: input.timerLengthMinutes,
                 state: .completed,
                 breakMinutes: input.breakMinutes,
+                note: sanitizedNote,
+                link: sanitizedLink,
+                ticketId: ticketId,
                 createdAt: now
             )
 
@@ -188,6 +212,52 @@ public final class PresentService: PresentAPI, Sendable {
             let segment = SessionSegment(sessionId: session.id!, startedAt: input.startedAt, endedAt: input.endedAt)
             try segment.insert(db)
 
+            return session
+        }
+    }
+
+    public func updateSession(id: Int64, _ input: UpdateSessionInput) async throws -> Session {
+        // Pre-validate and build an immutable set of changes for the write block
+        let noteChange: (apply: Bool, value: String?)
+        if let note = input.note {
+            if note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                noteChange = (true, nil)
+            } else {
+                let sanitized = try Validation.sanitize(note, fieldName: "Note", maxLength: Constants.maxSessionNoteLength)
+                noteChange = (true, sanitized)
+            }
+        } else {
+            noteChange = (false, nil)
+        }
+
+        let linkChange: (apply: Bool, link: String?, ticketId: String?)
+        if let link = input.link {
+            if link.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                linkChange = (true, nil, nil)
+            } else {
+                let sanitized = try Validation.sanitize(link, fieldName: "Link", maxLength: Constants.maxSessionLinkLength)
+                try Validation.validateLink(sanitized)
+                let extracted = TicketExtractor.extractTicketId(from: sanitized)
+                linkChange = (true, sanitized, extracted)
+            }
+        } else {
+            linkChange = (false, nil, nil)
+        }
+
+        return try await dbWriter.write { db in
+            guard var session = try Session.fetchOne(db, key: id) else {
+                throw PresentError.sessionNotFound
+            }
+
+            if noteChange.apply {
+                session.note = noteChange.value
+            }
+            if linkChange.apply {
+                session.link = linkChange.link
+                session.ticketId = linkChange.ticketId
+            }
+
+            try session.update(db)
             return session
         }
     }

@@ -42,6 +42,12 @@ final class SessionManager {
         try await service.cancelSession()
     }
 
+    // MARK: - Session Update
+
+    func updateSession(id: Int64, _ input: UpdateSessionInput) async throws -> Session {
+        try await service.updateSession(id: id, input)
+    }
+
     // MARK: - Break Activity
 
     func getBreakActivity() async throws -> Activity {

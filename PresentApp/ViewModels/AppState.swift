@@ -274,6 +274,14 @@ final class AppState {
         }
     }
 
+    func updateSession(id: Int64, _ input: UpdateSessionInput) async throws {
+        let updated = try await sessionMgr.updateSession(id: id, input)
+        if updated.id == currentSession?.id {
+            currentSession = updated
+        }
+        await refreshAll()
+    }
+
     // MARK: - Timer Completion (coordination)
 
     private func handleTimerCompletion() async {

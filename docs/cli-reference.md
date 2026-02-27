@@ -46,6 +46,7 @@ The CLI returns durations with second-level precision. When totaling time across
   - [`session get`](#present-cli-session-get-id)
   - [`session list`](#present-cli-session-list)
   - [`session start`](#present-cli-session-start-activity-name)
+  - [`session update`](#present-cli-session-update-id)
 - [`tag`](#present-cli-tag)
   - [`tag add`](#present-cli-tag-add-name)
   - [`tag delete`](#present-cli-tag-delete-id)
@@ -778,6 +779,7 @@ Use `session start` to begin a new session, `session current` to interact with t
 | [`get`](#present-cli-session-get-id) | Show session details. |
 | [`list`](#present-cli-session-list) | List sessions with filters. |
 | [`start`](#present-cli-session-start-activity-name) | Start a session for an activity. |
+| [`update`](#present-cli-session-update-id) | Update a session's note or link. |
 
 #### `present-cli session add <activity-id>`
 
@@ -808,6 +810,12 @@ Timestamps use ISO8601 format (e.g., 2026-01-15T09:30:00). Both start and end ti
 
 `[--break-minutes=<break-minutes>]`
 : Break duration in minutes (for rhythm).
+
+`[--note=<note>]`
+: Session note (free text).
+
+`[--link=<link>]`
+: Link URL (ticket ID extracted automatically).
 
 **Flags**
 
@@ -1167,6 +1175,12 @@ Rhythm sessions use configured duration options. Use --minutes to select a speci
 `[--break-minutes=<break-minutes>]`
 : Break duration in minutes (overrides rhythm option default).
 
+`[--note=<note>]`
+: Session note (free text).
+
+`[--link=<link>]`
+: Link URL (ticket ID extracted automatically).
+
 **Flags**
 
 `[--version]`
@@ -1186,6 +1200,64 @@ $ present-cli session start "Meeting" --type timebound --minutes 60
 
 # Get just the session ID after starting
 $ present-cli session start "My Project" --field id
+```
+
+**Global Options**
+
+`[-f, --format=<format>]`
+: Output format: json, text, csv. Default: `json`.
+
+`[--field=<field>]`
+: Extract a single field value from the response.
+
+#### `present-cli session update <id>`
+
+Update a session's note or link.
+
+Updates the note and/or link on an existing session. Works on both active and completed sessions.
+
+When a recognized project management URL is provided as a link, Present extracts a ticket ID automatically (Linear, Jira, GitHub, GitLab, Shortcut).
+
+Use --clear-note or --clear-link to remove a previously set value.
+
+**Arguments**
+
+`<id>`
+: Session ID. *(required)*
+
+**Options**
+
+`[--note=<note>]`
+: Session note (free text).
+
+`[--link=<link>]`
+: Link URL (ticket ID extracted automatically).
+
+**Flags**
+
+`[--clear-note]`
+: Clear the session note.
+
+`[--clear-link]`
+: Clear the session link and ticket ID.
+
+`[--version]`
+: Show the version.
+
+**Examples**
+
+```bash
+# Add a note to a session
+$ present-cli session update 42 --note "Reviewed PR feedback"
+
+# Add a ticket link
+$ present-cli session update 42 --link "https://linear.app/team/issue/LIN-123"
+
+# Clear the note
+$ present-cli session update 42 --clear-note
+
+# Update both at once
+$ present-cli session update 42 --note "Sprint planning" --link "https://org.atlassian.net/browse/PROJ-99"
 ```
 
 **Global Options**
