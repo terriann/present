@@ -280,12 +280,8 @@ struct DashboardView: View {
                                 .foregroundStyle(.secondary)
                         } else {
                             Button {
-                                if session.sessionType == .timebound {
-                                    Task { await appState.convertSession(ConvertSessionInput(targetType: .work)) }
-                                } else {
-                                    withAdaptiveAnimation(.easeInOut(duration: 0.15)) {
-                                        showConvertPicker.toggle()
-                                    }
+                                withAdaptiveAnimation(.easeInOut(duration: 0.15)) {
+                                    showConvertPicker.toggle()
                                 }
                             } label: {
                                 HStack(spacing: 2) {
@@ -297,7 +293,6 @@ struct DashboardView: View {
                                 .foregroundStyle(.secondary)
                             }
                             .buttonStyle(.plain)
-                            .help(session.sessionType == .work ? "Convert to timebound" : "Convert to work session")
                         }
 
                         if showConvertPicker, session.sessionType == .work {
@@ -309,7 +304,7 @@ struct DashboardView: View {
                                 Text("min")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
-                                Button("Convert") {
+                                Button("Convert to Timebound") {
                                     showConvertPicker = false
                                     Task {
                                         await appState.convertSession(
@@ -321,6 +316,16 @@ struct DashboardView: View {
                                 .buttonStyle(.plain)
                                 .foregroundStyle(theme.accent)
                             }
+                        }
+
+                        if showConvertPicker, session.sessionType == .timebound {
+                            Button("Convert to Work Session") {
+                                showConvertPicker = false
+                                Task { await appState.convertSession(ConvertSessionInput(targetType: .work)) }
+                            }
+                            .font(.caption.weight(.medium))
+                            .buttonStyle(.plain)
+                            .foregroundStyle(theme.accent)
                         }
                     }
                 }
