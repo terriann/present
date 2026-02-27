@@ -11,7 +11,6 @@ struct MenuBarView: View {
     @State private var selectedSessionType: SessionType = .work
     @State private var selectedRhythmOption: RhythmOption?
     @State private var timeboundMinutes: Int = 25
-    @State private var newActivityTitle = ""
     @State private var activitySort: String = "recent"
     @State private var isSortRecentHovered = false
     @State private var isSortAlphaHovered = false
@@ -200,7 +199,7 @@ struct MenuBarView: View {
                 Image(systemName: "magnifyingglass")
                     .font(scaledFont(.body))
                     .foregroundStyle(.secondary)
-                TextField("Search activities...", text: $searchText)
+                TextField("Search or create...", text: $searchText)
                     .textFieldStyle(.plain)
                     .font(scaledFont(.body))
                 if !searchText.isEmpty {
@@ -242,8 +241,13 @@ struct MenuBarView: View {
 
             // Activity list (scrollable)
             let activities = filteredActivities
-            if activities.isEmpty {
-                Text(searchText.isEmpty ? "No activities" : "No matching activities")
+            let trimmedSearch = searchText.trimmingCharacters(in: .whitespaces)
+            let showCreateRow = !trimmedSearch.isEmpty && !activities.contains(where: {
+                $0.title.caseInsensitiveCompare(trimmedSearch) == .orderedSame
+            })
+
+            if activities.isEmpty && trimmedSearch.isEmpty {
+                Text("No activities yet")
                     .font(scaledFont(.caption))
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, Constants.spacingCard * zoomScale)
@@ -263,32 +267,14 @@ struct MenuBarView: View {
                                 }
                             })
                         }
+
+                        if showCreateRow {
+                            createActivityRow(title: trimmedSearch)
+                        }
                     }
                 }
                 .frame(height: 200 * zoomScale)
             }
-
-            // Quick-create activity (pinned below scroll area)
-            HStack(spacing: 8 * zoomScale) {
-                Image(systemName: "plus")
-                    .font(scaledFont(.caption))
-                    .foregroundStyle(.secondary)
-                TextField("New activity...", text: $newActivityTitle)
-                    .textFieldStyle(.plain)
-                    .font(scaledFont(.body))
-                    .onSubmit {
-                        guard !newActivityTitle.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-                        Task {
-                            guard let newActivity = try? await appState.service.createActivity(
-                                CreateActivityInput(title: newActivityTitle.trimmingCharacters(in: .whitespaces))
-                            ) else { return }
-                            newActivityTitle = ""
-                            await startSessionForType(activity: newActivity)
-                        }
-                    }
-            }
-            .padding(.horizontal, Constants.spacingCard * zoomScale)
-            .padding(.vertical, Constants.spacingCompact * zoomScale)
         }
         .onAppear {
             Task {
@@ -336,6 +322,19 @@ struct MenuBarView: View {
             return source
         }
         return source.filter { $0.title.localizedCaseInsensitiveContains(searchText) }
+    }
+
+    @ViewBuilder
+    private func createActivityRow(title: String) -> some View {
+        CreateActivityButton(title: title, theme: theme, scaledFont: scaledFont) {
+            Task {
+                guard let newActivity = try? await appState.service.createActivity(
+                    CreateActivityInput(title: title)
+                ) else { return }
+                searchText = ""
+                await startSessionForType(activity: newActivity)
+            }
+        }
     }
 
     private func setActivitySort(_ sort: String) {
@@ -412,6 +411,40 @@ struct MenuBarView: View {
         .background(isLaunchHovered ? Color.primary.opacity(0.08) : Color.clear)
     }
 
+}
+
+// MARK: - Create Activity Button
+
+private struct CreateActivityButton: View {
+    let title: String
+    let theme: ThemeManager
+    let scaledFont: (Font.TextStyle, Font.Weight) -> Font
+    let action: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: isHovered ? "plus.circle.fill" : "plus.circle")
+                    .foregroundStyle(theme.accent)
+                Text("Create \"\(title)\"")
+                    .font(scaledFont(.body, .regular))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                Spacer()
+            }
+            .padding(.horizontal, Constants.spacingCard)
+            .padding(.vertical, 6)
+            .background(Color.primary.opacity(isHovered ? 0.05 : 0))
+            .clipShape(RoundedRectangle(cornerRadius: 4))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            isHovered = hovering
+        }
+    }
 }
 
 // MARK: - Clear Search Button
