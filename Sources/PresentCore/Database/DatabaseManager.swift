@@ -198,6 +198,12 @@ public final class DatabaseManager: Sendable {
             }
         }
 
+        migrator.registerMigration("v9-add-countdown-base-seconds") { db in
+            try db.alter(table: "session") { t in
+                t.add(column: "countdownBaseSeconds", .integer).notNull().defaults(to: 0)
+            }
+        }
+
         try migrator.migrate(writer)
     }
 }

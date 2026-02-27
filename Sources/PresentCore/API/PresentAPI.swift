@@ -15,6 +15,7 @@ public protocol PresentAPI: Sendable {
     func lastCompletedNonSystemSession(since: Date) async throws -> (Session, Activity)?
     func earliestSessionDate() async throws -> Date?
     func updateSession(id: Int64, _ input: UpdateSessionInput) async throws -> Session
+    func convertSessionType(_ input: ConvertSessionInput) async throws -> Session
     func deleteSession(id: Int64) async throws
 
     // Activities

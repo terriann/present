@@ -17,6 +17,7 @@ public enum PresentError: Error, LocalizedError, Sendable {
     case sessionOverlap
     case cannotModifySystemActivity
     case rhythmNotAllowedForSystemActivity
+    case cannotConvertRhythm
 
     public var errorDescription: String? {
         switch self {
@@ -35,6 +36,7 @@ public enum PresentError: Error, LocalizedError, Sendable {
         case .sessionOverlap: "Session overlaps with an existing session."
         case .cannotModifySystemActivity: "System activities cannot be modified or deleted."
         case .rhythmNotAllowedForSystemActivity: "Rhythm sessions cannot be started on system activities. Use a work or timebound session instead."
+        case .cannotConvertRhythm: "Rhythm sessions cannot be converted to other types."
         }
     }
 }
@@ -255,6 +257,73 @@ public final class PresentService: PresentAPI, Sendable {
             if linkChange.apply {
                 session.link = linkChange.link
                 session.ticketId = linkChange.ticketId
+            }
+
+            try session.update(db)
+            return session
+        }
+    }
+
+    public func convertSessionType(_ input: ConvertSessionInput) async throws -> Session {
+        if input.targetType == .timebound, let minutes = input.timerMinutes {
+            try Validation.validateRange(minutes, range: Constants.sessionMinutesRange, fieldName: "Timer duration")
+        }
+
+        return try await dbWriter.write { db in
+            // Find active session (running or paused)
+            guard var session = try Session
+                .filter(Session.Columns.state == SessionState.running.rawValue || Session.Columns.state == SessionState.paused.rawValue)
+                .fetchOne(db) else {
+                throw PresentError.noActiveSession
+            }
+
+            // Rhythm sessions cannot be converted
+            if session.sessionType == .rhythm {
+                throw PresentError.cannotConvertRhythm
+            }
+            if input.targetType == .rhythm {
+                throw PresentError.cannotConvertRhythm
+            }
+
+            // Target type must differ from current
+            guard input.targetType != session.sessionType else {
+                throw PresentError.invalidInput("Session is already \(SessionTypeConfig.config(for: session.sessionType).displayName.lowercased()).")
+            }
+
+            // Compute elapsed seconds from segments
+            let closedSegments = try SessionSegment
+                .filter(SessionSegment.Columns.sessionId == session.id!)
+                .filter(SessionSegment.Columns.endedAt != nil)
+                .fetchAll(db)
+            var elapsedSeconds = closedSegments.reduce(0) { sum, seg in
+                guard let end = seg.endedAt else { return sum }
+                return sum + Int(end.timeIntervalSince(seg.startedAt))
+            }
+
+            // Add open segment time if running
+            if session.state == .running,
+               let openSegment = try SessionSegment
+                .filter(SessionSegment.Columns.sessionId == session.id!)
+                .filter(SessionSegment.Columns.endedAt == nil)
+                .fetchOne(db) {
+                elapsedSeconds += Int(Date().timeIntervalSince(openSegment.startedAt))
+            }
+
+            // Apply conversion
+            session.sessionType = input.targetType
+
+            switch input.targetType {
+            case .timebound:
+                guard let minutes = input.timerMinutes, minutes > 0 else {
+                    throw PresentError.invalidInput("Timer duration is required when converting to timebound.")
+                }
+                session.timerLengthMinutes = minutes
+                session.countdownBaseSeconds = elapsedSeconds
+            case .work:
+                // Keep timerLengthMinutes as historical artifact
+                session.countdownBaseSeconds = 0
+            case .rhythm:
+                break // Already guarded above
             }
 
             try session.update(db)

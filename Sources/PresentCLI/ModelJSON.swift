@@ -101,6 +101,9 @@ extension Session {
         if let ticketId {
             dict["ticketId"] = ticketId
         }
+        if countdownBaseSeconds > 0 {
+            dict["countdownBaseSeconds"] = countdownBaseSeconds
+        }
         return dict
     }
 
@@ -134,6 +137,9 @@ extension Session {
         }
         if let ticketId {
             fields["ticketId"] = ticketId
+        }
+        if countdownBaseSeconds > 0 {
+            fields["countdownBaseSeconds"] = "\(countdownBaseSeconds)"
         }
         return fields
     }

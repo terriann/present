@@ -17,6 +17,7 @@ public struct Session: Codable, Sendable, Identifiable, Equatable {
     public var note: String?
     public var link: String?
     public var ticketId: String?
+    public var countdownBaseSeconds: Int
     public var createdAt: Date
 
     public init(
@@ -35,6 +36,7 @@ public struct Session: Codable, Sendable, Identifiable, Equatable {
         note: String? = nil,
         link: String? = nil,
         ticketId: String? = nil,
+        countdownBaseSeconds: Int = 0,
         createdAt: Date = Date()
     ) {
         self.id = id
@@ -52,6 +54,7 @@ public struct Session: Codable, Sendable, Identifiable, Equatable {
         self.note = note
         self.link = link
         self.ticketId = ticketId
+        self.countdownBaseSeconds = countdownBaseSeconds
         self.createdAt = createdAt
     }
 }
@@ -75,6 +78,7 @@ extension Session: FetchableRecord, PersistableRecord {
         static let note = Column(CodingKeys.note)
         static let link = Column(CodingKeys.link)
         static let ticketId = Column(CodingKeys.ticketId)
+        static let countdownBaseSeconds = Column(CodingKeys.countdownBaseSeconds)
         static let createdAt = Column(CodingKeys.createdAt)
     }
 

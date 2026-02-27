@@ -89,6 +89,17 @@ public struct UpdateSessionInput: Sendable {
     }
 }
 
+public struct ConvertSessionInput: Sendable {
+    public let targetType: SessionType
+    /// Required when converting to timebound. Ignored for work.
+    public let timerMinutes: Int?
+
+    public init(targetType: SessionType, timerMinutes: Int? = nil) {
+        self.targetType = targetType
+        self.timerMinutes = timerMinutes
+    }
+}
+
 // MARK: - Result Types
 
 public enum ArchiveResult: Sendable, Equatable {
