@@ -48,6 +48,12 @@ final class SessionManager {
         try await service.updateSession(id: id, input)
     }
 
+    // MARK: - Session Conversion
+
+    func convertSessionType(_ input: ConvertSessionInput) async throws -> Session {
+        try await service.convertSessionType(input)
+    }
+
     // MARK: - Break Activity
 
     func getBreakActivity() async throws -> Activity {

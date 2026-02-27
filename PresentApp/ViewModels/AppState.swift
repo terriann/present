@@ -282,6 +282,19 @@ final class AppState {
         await refreshAll()
     }
 
+    func convertSession(_ input: ConvertSessionInput) async {
+        do {
+            let session = try await sessionMgr.convertSessionType(input)
+            currentSession = session
+            timer.currentSession = session
+            timer.resetCompletionHandled()
+            IPCClient().send(.sessionConverted)
+            await refreshAll()
+        } catch {
+            showError(error, context: "Could not convert session")
+        }
+    }
+
     // MARK: - Timer Completion (coordination)
 
     private func handleTimerCompletion() async {

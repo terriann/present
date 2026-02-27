@@ -56,7 +56,8 @@ final class TimerManager {
         if let timerMinutes = session.timerLengthMinutes,
            session.sessionType == .rhythm || session.sessionType == .timebound {
             let totalSeconds = timerMinutes * 60
-            let remaining = max(0, totalSeconds - timerElapsedSeconds)
+            let base = session.countdownBaseSeconds
+            let remaining = max(0, totalSeconds - (timerElapsedSeconds - base))
             return TimeFormatting.formatTimer(seconds: remaining)
         }
 
@@ -93,7 +94,8 @@ final class TimerManager {
                    let timerMinutes = session.timerLengthMinutes,
                    (session.sessionType == .rhythm || session.sessionType == .timebound) {
                     let totalSeconds = timerMinutes * 60
-                    if self.timerElapsedSeconds >= totalSeconds {
+                    let base = session.countdownBaseSeconds
+                    if self.timerElapsedSeconds - base >= totalSeconds {
                         self.timerCompletionHandled = true
                         await self.onCountdownCompleted?()
                     }
@@ -120,6 +122,11 @@ final class TimerManager {
 
     var isTimerRunning: Bool {
         timerTask != nil
+    }
+
+    /// Reset the countdown completion flag so a converted session can trigger completion.
+    func resetCompletionHandled() {
+        timerCompletionHandled = false
     }
 
     // MARK: - Completed Timer Linger
