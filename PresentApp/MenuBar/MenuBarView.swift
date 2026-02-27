@@ -6,6 +6,7 @@ struct MenuBarView: View {
     @Environment(ThemeManager.self) private var theme
     @Environment(\.openWindow) private var openWindow
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var searchText = ""
     @State private var selectedSessionType: SessionType = .work
@@ -80,6 +81,36 @@ struct MenuBarView: View {
                     Text(SessionTypeConfig.config(for: session.sessionType).displayName)
                         .font(scaledFont(.caption))
                         .foregroundStyle(.secondary)
+                }
+
+                // Ticket badge
+                if let ticketId = session.ticketId, let link = session.link, let url = URL(string: link) {
+                    Button {
+                        openURL(url)
+                    } label: {
+                        Text(ticketId)
+                            .font(scaledFont(.caption))
+                            .padding(.horizontal, 6 * zoomScale)
+                            .padding(.vertical, 2 * zoomScale)
+                            .background(theme.accent.opacity(0.12), in: Capsule())
+                            .foregroundStyle(theme.accent)
+                    }
+                    .buttonStyle(.plain)
+                    .help(link)
+                } else if let link = session.link, let url = URL(string: link) {
+                    Button {
+                        openURL(url)
+                    } label: {
+                        Text(url.host ?? link)
+                            .font(scaledFont(.caption))
+                            .lineLimit(1)
+                            .padding(.horizontal, 6 * zoomScale)
+                            .padding(.vertical, 2 * zoomScale)
+                            .background(theme.accent.opacity(0.12), in: Capsule())
+                            .foregroundStyle(theme.accent)
+                    }
+                    .buttonStyle(.plain)
+                    .help(link)
                 }
 
                 Text(appState.formattedTimerValue)

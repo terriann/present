@@ -14,6 +14,7 @@ struct SessionContextMenuModifier: ViewModifier {
     var onDelete: (() -> Void)?
 
     @State private var showingDeleteConfirm = false
+    @State private var showingEditSheet = false
 
     private var isActive: Bool {
         session.state == .running || session.state == .paused
@@ -27,11 +28,25 @@ struct SessionContextMenuModifier: ViewModifier {
                     Divider()
                 }
 
+                Button {
+                    showingEditSheet = true
+                } label: {
+                    Label("Edit Note & Link...", systemImage: "square.and.pencil")
+                }
+
+                Divider()
+
                 Button(role: .destructive) {
                     showingDeleteConfirm = true
                 } label: {
                     Label("Delete Session...", systemImage: "trash")
                 }
+            }
+            .sheet(isPresented: $showingEditSheet) {
+                SessionEditSheet(
+                    session: session,
+                    activityTitle: activityTitle
+                )
             }
             .alert("Delete Session?", isPresented: $showingDeleteConfirm) {
                 Button("Delete", role: .destructive) {
