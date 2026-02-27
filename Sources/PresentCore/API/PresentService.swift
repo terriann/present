@@ -737,6 +737,23 @@ public final class PresentService: PresentAPI, Sendable {
         }
     }
 
+    public func listActivitiesForPopover() async throws -> [Activity] {
+        try await dbWriter.read { db in
+            let sql = """
+                SELECT a.*
+                FROM activity a
+                LEFT JOIN (
+                    SELECT activityId, MAX(startedAt) AS lastStarted
+                    FROM session
+                    GROUP BY activityId
+                ) s ON s.activityId = a.id
+                WHERE a.isArchived = 0
+                ORDER BY s.lastStarted DESC NULLS LAST, a.title ASC
+                """
+            return try Activity.fetchAll(db, sql: sql)
+        }
+    }
+
     public func getBreakActivity() async throws -> Activity {
         try await dbWriter.write { db in
             if let activity = try Activity

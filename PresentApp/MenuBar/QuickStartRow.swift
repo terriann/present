@@ -20,9 +20,17 @@ struct QuickStartRow: View {
                         .foregroundStyle(isRowHovered ? theme.accent : .secondary)
 
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(activity.title)
-                            .font(.body)
-                            .lineLimit(1)
+                        HStack(spacing: 4) {
+                            Text(activity.title)
+                                .font(.body)
+                                .lineLimit(1)
+
+                            if activity.isSystem {
+                                Text("System")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
 
                         if let subtitle {
                             Text(subtitle)

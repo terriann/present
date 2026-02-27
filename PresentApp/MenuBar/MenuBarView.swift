@@ -12,6 +12,9 @@ struct MenuBarView: View {
     @State private var selectedRhythmOption: RhythmOption?
     @State private var timeboundMinutes: Int = 25
     @State private var newActivityTitle = ""
+    @State private var activitySort: String = "recent"
+    @State private var isSortRecentHovered = false
+    @State private var isSortAlphaHovered = false
     @State private var isLaunchHovered = false
     @State private var isSettingsHovered = false
 
@@ -192,7 +195,7 @@ struct MenuBarView: View {
             .padding(.horizontal, Constants.spacingCard * zoomScale)
             .padding(.top, Constants.spacingCompact * zoomScale)
 
-            // Search
+            // Search + sort controls
             HStack {
                 Image(systemName: "magnifyingglass")
                     .font(scaledFont(.body))
@@ -205,41 +208,67 @@ struct MenuBarView: View {
                         searchText = ""
                     }
                 }
+
+                Button {
+                    setActivitySort("recent")
+                } label: {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .font(scaledFont(.caption))
+                        .foregroundStyle(activitySort == "recent" ? theme.accent : .secondary)
+                        .padding(6 * zoomScale)
+                        .background(isSortRecentHovered ? Color.primary.opacity(0.08) : Color.clear, in: RoundedRectangle(cornerRadius: 4))
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help("Sort by recent")
+                .onHover { hovering in isSortRecentHovered = hovering }
+
+                Button {
+                    setActivitySort("alphabetical")
+                } label: {
+                    Image(systemName: "textformat.abc")
+                        .font(scaledFont(.caption))
+                        .foregroundStyle(activitySort == "alphabetical" ? theme.accent : .secondary)
+                        .padding(6 * zoomScale)
+                        .background(isSortAlphaHovered ? Color.primary.opacity(0.08) : Color.clear, in: RoundedRectangle(cornerRadius: 4))
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help("Sort alphabetically")
+                .onHover { hovering in isSortAlphaHovered = hovering }
             }
             .padding(.horizontal, Constants.spacingCard * zoomScale)
             .padding(.vertical, Constants.spacingCompact * zoomScale)
 
-            // Activity list heading
-            Text(searchText.isEmpty ? "Recent Activities" : "Search Results")
-                .font(scaledFont(.caption))
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, Constants.spacingCard * zoomScale)
-                .padding(.top, Constants.spacingTight * zoomScale)
-
-            // Activity list
+            // Activity list (scrollable)
             let activities = filteredActivities
-            if activities.isEmpty && !searchText.isEmpty {
-                Text("No matching activities")
+            if activities.isEmpty {
+                Text(searchText.isEmpty ? "No activities" : "No matching activities")
                     .font(scaledFont(.caption))
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, Constants.spacingCard * zoomScale)
                     .padding(.vertical, Constants.spacingTight * zoomScale)
             } else {
-                ForEach(activities) { activity in
-                    QuickStartRow(activity: activity, onTap: {
-                        Task {
-                            await startSessionForType(activity: activity)
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(activities) { activity in
+                            QuickStartRow(activity: activity, onTap: {
+                                Task {
+                                    await startSessionForType(activity: activity)
+                                }
+                            }, onEdit: {
+                                dismiss()
+                                if let id = activity.id {
+                                    appState.navigate(to: .showActivity(id))
+                                }
+                            })
                         }
-                    }, onEdit: {
-                        dismiss()
-                        if let id = activity.id {
-                            appState.navigate(to: .showActivity(id))
-                        }
-                    })
+                    }
                 }
+                .frame(height: 200 * zoomScale)
             }
 
-            // Quick-create activity
+            // Quick-create activity (pinned below scroll area)
             HStack(spacing: 8 * zoomScale) {
                 Image(systemName: "plus")
                     .font(scaledFont(.caption))
@@ -264,6 +293,7 @@ struct MenuBarView: View {
         .onAppear {
             Task {
                 timeboundMinutes = (try? await appState.service.getPreference(key: PreferenceKey.defaultTimeboundMinutes)).flatMap(Int.init) ?? Constants.defaultTimeboundMinutes
+                activitySort = (try? await appState.service.getPreference(key: PreferenceKey.menuBarActivitySort)) ?? "recent"
             }
         }
         .syncRhythmSelection($selectedRhythmOption)
@@ -298,11 +328,21 @@ struct MenuBarView: View {
     }
 
     private var filteredActivities: [Activity] {
-        let source = searchText.isEmpty ? appState.recentActivities : appState.allActivities
+        var source = appState.popoverActivities
+        if activitySort == "alphabetical" {
+            source.sort { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+        }
         if searchText.isEmpty {
             return source
         }
         return source.filter { $0.title.localizedCaseInsensitiveContains(searchText) }
+    }
+
+    private func setActivitySort(_ sort: String) {
+        activitySort = sort
+        Task {
+            try? await appState.service.setPreference(key: PreferenceKey.menuBarActivitySort, value: sort)
+        }
     }
 
     // MARK: - Bottom Bar

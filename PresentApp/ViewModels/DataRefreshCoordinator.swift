@@ -12,6 +12,7 @@ final class DataRefreshCoordinator {
     var weekStartDay: Int = 1
     var recentActivities: [Activity] = []
     var allActivities: [Activity] = []
+    var popoverActivities: [Activity] = []
     var allTags: [Tag] = []
     var recentSessionSuggestion: (session: Session, activity: Activity)?
     var rhythmDurationOptions: [RhythmOption] = Constants.defaultRhythmDurationOptions
@@ -60,6 +61,7 @@ final class DataRefreshCoordinator {
         }
 
         recentActivities = try await service.recentActivities(limit: 6)
+        popoverActivities = try await service.listActivitiesForPopover()
         allActivities = try await service.listActivities(includeArchived: true, includeSystem: true)
         allTags = try await service.listTags()
 

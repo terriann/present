@@ -18,6 +18,7 @@ final class AppState {
     var weeklySummary: WeeklySummary? { dataRefresh.weeklySummary }
     var weekStartDay: Int { dataRefresh.weekStartDay }
     var recentActivities: [Activity] { dataRefresh.recentActivities }
+    var popoverActivities: [Activity] { dataRefresh.popoverActivities }
     var allActivities: [Activity] { dataRefresh.allActivities }
     var allTags: [Tag] { dataRefresh.allTags }
     var recentSessionSuggestion: (session: Session, activity: Activity)? { dataRefresh.recentSessionSuggestion }
