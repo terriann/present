@@ -33,15 +33,17 @@ public enum TimeFormatting {
         }
     }
 
-    /// Format a date for display (e.g., "Today", "Yesterday", or "Feb 14, 2026")
-    public static func formatDate(_ date: Date) -> String {
-        let calendar = Calendar.current
+    /// Format a date for display (e.g., "Today", "Yesterday", or "Feb 14, 2026").
+    /// Pass a custom `calendar` to control timezone interpretation (defaults to `.current`).
+    public static func formatDate(_ date: Date, calendar: Calendar = .current) -> String {
         if calendar.isDateInToday(date) {
             return "Today"
         } else if calendar.isDateInYesterday(date) {
             return "Yesterday"
         } else {
             let formatter = DateFormatter()
+            formatter.calendar = calendar
+            formatter.timeZone = calendar.timeZone
             formatter.dateStyle = .medium
             formatter.timeStyle = .none
             return formatter.string(from: date)
@@ -58,22 +60,34 @@ public enum TimeFormatting {
 
     /// Format a time with a day label when it falls on a different calendar day than `referenceDate`.
     /// Returns e.g. "11:23 PM" for same-day or "10:08 AM (Saturday)" for a different day.
-    public static func formatTime(_ date: Date, referenceDate: Date) -> String {
-        let time = formatTime(date)
-        let calendar = Calendar.current
+    /// Pass a custom `calendar` to control timezone interpretation (defaults to `.current`).
+    public static func formatTime(_ date: Date, referenceDate: Date, calendar: Calendar = .current) -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = calendar
+        formatter.timeZone = calendar.timeZone
+        formatter.dateStyle = .none
+        formatter.timeStyle = .short
+        let time = formatter.string(from: date)
+
         if !calendar.isDate(date, inSameDayAs: referenceDate) {
             let dayFormatter = DateFormatter()
+            dayFormatter.calendar = calendar
+            dayFormatter.timeZone = calendar.timeZone
             dayFormatter.dateFormat = "EEEE"
             return "\(time) (\(dayFormatter.string(from: date)))"
         }
         return time
     }
 
-    /// Format a week date range (e.g., "February 17 – February 23, 2026" or "December 30, 2025 – January 5, 2026")
-    public static func formatWeekRange(start: Date, end: Date) -> String {
-        let calendar = Calendar.current
+    /// Format a week date range (e.g., "February 17 – February 23, 2026" or "December 30, 2025 – January 5, 2026").
+    /// Pass a custom `calendar` to control timezone interpretation (defaults to `.current`).
+    public static func formatWeekRange(start: Date, end: Date, calendar: Calendar = .current) -> String {
         let startFormatter = DateFormatter()
         let endFormatter = DateFormatter()
+        startFormatter.calendar = calendar
+        startFormatter.timeZone = calendar.timeZone
+        endFormatter.calendar = calendar
+        endFormatter.timeZone = calendar.timeZone
         if calendar.component(.year, from: start) == calendar.component(.year, from: end) {
             startFormatter.dateFormat = "MMMM d"
             endFormatter.dateFormat = "MMMM d, yyyy"
