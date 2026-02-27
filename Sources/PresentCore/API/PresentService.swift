@@ -466,11 +466,17 @@ public final class PresentService: PresentAPI, Sendable {
         }
     }
 
-    public func listSessions(from startDate: Date, to endDate: Date, type: SessionType? = nil, activityId: Int64? = nil, includeArchived: Bool = true) async throws -> [(Session, Activity)] {
-        try await dbWriter.read { db in
+    public func listSessions(from startDate: Date, to endDate: Date, type: SessionType? = nil, activityId: Int64? = nil, includeArchived: Bool = true, query: String? = nil) async throws -> [(Session, Activity)] {
+        // Validate query if provided
+        if let query, !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            _ = try Validation.sanitize(query, fieldName: "Search query", maxLength: Constants.maxSearchQueryLength)
+        }
+
+        return try await dbWriter.read { db in
             // Overlap: session started before range end AND ended after range start (or still running)
             var conditions = ["s.startedAt < ?", "(s.endedAt > ? OR s.endedAt IS NULL)", "s.state IN (?, ?)"]
             var arguments: [any DatabaseValueConvertible] = [endDate, startDate, SessionState.completed.rawValue, SessionState.cancelled.rawValue]
+            var joins = "INNER JOIN activity a ON a.id = s.activityId"
 
             if let type {
                 conditions.append("s.sessionType = ?")
@@ -483,13 +489,18 @@ public final class PresentService: PresentAPI, Sendable {
             if !includeArchived {
                 conditions.append("a.isArchived = 0")
             }
+            if let query, !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                joins += " INNER JOIN session_fts ON session_fts.rowid = s.rowid"
+                conditions.append("session_fts MATCH ?")
+                arguments.append(query + "*")
+            }
 
             let sql = """
                 SELECT s.*, a.id AS a_id, a.title AS a_title, a.externalId AS a_externalId,
                        a.link AS a_link, a.notes AS a_notes, a.isArchived AS a_isArchived,
                        a.isSystem AS a_isSystem, a.createdAt AS a_createdAt, a.updatedAt AS a_updatedAt
                 FROM session s
-                INNER JOIN activity a ON a.id = s.activityId
+                \(joins)
                 WHERE \(conditions.joined(separator: " AND "))
                 ORDER BY s.startedAt DESC
                 """

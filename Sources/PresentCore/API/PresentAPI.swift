@@ -10,7 +10,7 @@ public protocol PresentAPI: Sendable {
     func currentSession() async throws -> (Session, Activity)?
     func getSession(id: Int64) async throws -> (Session, Activity)
     func createBackdatedSession(_ input: CreateBackdatedSessionInput) async throws -> Session
-    func listSessions(from: Date, to: Date, type: SessionType?, activityId: Int64?, includeArchived: Bool) async throws -> [(Session, Activity)]
+    func listSessions(from: Date, to: Date, type: SessionType?, activityId: Int64?, includeArchived: Bool, query: String?) async throws -> [(Session, Activity)]
     func lastCompletedSession(since: Date) async throws -> (Session, Activity)?
     func lastCompletedNonSystemSession(since: Date) async throws -> (Session, Activity)?
     func earliestSessionDate() async throws -> Date?
@@ -81,6 +81,10 @@ public protocol PresentAPI: Sendable {
 public extension PresentAPI {
     func startSession(activityId: Int64, type: SessionType, timerMinutes: Int? = nil, breakMinutes: Int? = nil) async throws -> Session {
         try await startSession(activityId: activityId, type: type, timerMinutes: timerMinutes, breakMinutes: breakMinutes, note: nil, link: nil)
+    }
+
+    func listSessions(from: Date, to: Date, type: SessionType? = nil, activityId: Int64? = nil, includeArchived: Bool = true) async throws -> [(Session, Activity)] {
+        try await listSessions(from: from, to: to, type: type, activityId: activityId, includeArchived: includeArchived, query: nil)
     }
 
     func listActivities(includeArchived: Bool) async throws -> [Activity] {

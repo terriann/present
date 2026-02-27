@@ -1119,6 +1119,9 @@ Dates use YYYY-MM-DD format and are inclusive on both ends.
 `[--activity=<activity>]`
 : Filter by activity name (substring match).
 
+`[--query=<query>]`
+: Search session notes and ticket IDs.
+
 `[--page=<page>]`
 : Page number (1-indexed, max 100 results per page). Default: `1`.
 
