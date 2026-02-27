@@ -12,6 +12,7 @@ struct MenuBarView: View {
     @State private var selectedRhythmOption: RhythmOption?
     @State private var timeboundMinutes: Int = 25
     @State private var activitySort: String = "recent"
+    @State private var selectedIndex: Int?
     @State private var isSortRecentHovered = false
     @State private var isSortAlphaHovered = false
     @State private var isLaunchHovered = false
@@ -202,6 +203,41 @@ struct MenuBarView: View {
                 TextField("Search or create...", text: $searchText)
                     .textFieldStyle(.plain)
                     .font(scaledFont(.body))
+                    .onKeyPress(.downArrow) {
+                        let maxIndex = selectableItemCount - 1
+                        guard maxIndex >= 0 else { return .ignored }
+                        if let current = selectedIndex {
+                            selectedIndex = min(current + 1, maxIndex)
+                        } else {
+                            selectedIndex = 0
+                        }
+                        return .handled
+                    }
+                    .onKeyPress(.upArrow) {
+                        guard let current = selectedIndex else { return .ignored }
+                        if current == 0 {
+                            selectedIndex = nil
+                        } else {
+                            selectedIndex = current - 1
+                        }
+                        return .handled
+                    }
+                    .onKeyPress(.return) {
+                        guard let index = selectedIndex else { return .ignored }
+                        activateSelectedItem(at: index)
+                        return .handled
+                    }
+                    .onKeyPress(.escape) {
+                        if !searchText.isEmpty || selectedIndex != nil {
+                            searchText = ""
+                            selectedIndex = nil
+                            return .handled
+                        }
+                        return .ignored
+                    }
+                    .onChange(of: searchText) {
+                        selectedIndex = nil
+                    }
                 if !searchText.isEmpty {
                     ClearSearchButton {
                         searchText = ""
@@ -253,27 +289,43 @@ struct MenuBarView: View {
                     .padding(.horizontal, Constants.spacingCard * zoomScale)
                     .padding(.vertical, Constants.spacingTight * zoomScale)
             } else {
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        ForEach(activities) { activity in
-                            QuickStartRow(activity: activity, onTap: {
-                                Task {
-                                    await startSessionForType(activity: activity)
-                                }
-                            }, onEdit: {
-                                dismiss()
-                                if let id = activity.id {
-                                    appState.navigate(to: .showActivity(id))
-                                }
-                            })
-                        }
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            ForEach(Array(activities.enumerated()), id: \.element.id) { index, activity in
+                                QuickStartRow(
+                                    activity: activity,
+                                    isSelected: selectedIndex == index,
+                                    onTap: {
+                                        Task {
+                                            await startSessionForType(activity: activity)
+                                        }
+                                    },
+                                    onEdit: {
+                                        dismiss()
+                                        if let id = activity.id {
+                                            appState.navigate(to: .showActivity(id))
+                                        }
+                                    }
+                                )
+                                .id(index)
+                            }
 
-                        if showCreateRow {
-                            createActivityRow(title: trimmedSearch)
+                            if showCreateRow {
+                                createActivityRow(title: trimmedSearch, isSelected: selectedIndex == activities.count)
+                                    .id(activities.count)
+                            }
+                        }
+                    }
+                    .frame(height: 200 * zoomScale)
+                    .onChange(of: selectedIndex) { _, newValue in
+                        if let newValue {
+                            withAnimation {
+                                proxy.scrollTo(newValue, anchor: .center)
+                            }
                         }
                     }
                 }
-                .frame(height: 200 * zoomScale)
             }
         }
         .onAppear {
@@ -325,13 +377,44 @@ struct MenuBarView: View {
     }
 
     @ViewBuilder
-    private func createActivityRow(title: String) -> some View {
-        CreateActivityButton(title: title, theme: theme, scaledFont: scaledFont) {
+    private func createActivityRow(title: String, isSelected: Bool = false) -> some View {
+        CreateActivityButton(title: title, theme: theme, scaledFont: scaledFont, isSelected: isSelected) {
             Task {
                 guard let newActivity = try? await appState.service.createActivity(
                     CreateActivityInput(title: title)
                 ) else { return }
                 searchText = ""
+                await startSessionForType(activity: newActivity)
+            }
+        }
+    }
+
+    private var selectableItemCount: Int {
+        let activities = filteredActivities
+        let trimmedSearch = searchText.trimmingCharacters(in: .whitespaces)
+        let hasCreateRow = !trimmedSearch.isEmpty && !activities.contains(where: {
+            $0.title.caseInsensitiveCompare(trimmedSearch) == .orderedSame
+        })
+        return activities.count + (hasCreateRow ? 1 : 0)
+    }
+
+    private func activateSelectedItem(at index: Int) {
+        let activities = filteredActivities
+        if index < activities.count {
+            let activity = activities[index]
+            Task {
+                await startSessionForType(activity: activity)
+            }
+        } else {
+            // Create row
+            let title = searchText.trimmingCharacters(in: .whitespaces)
+            guard !title.isEmpty else { return }
+            Task {
+                guard let newActivity = try? await appState.service.createActivity(
+                    CreateActivityInput(title: title)
+                ) else { return }
+                searchText = ""
+                selectedIndex = nil
                 await startSessionForType(activity: newActivity)
             }
         }
@@ -419,6 +502,7 @@ private struct CreateActivityButton: View {
     let title: String
     let theme: ThemeManager
     let scaledFont: (Font.TextStyle, Font.Weight) -> Font
+    var isSelected: Bool = false
     let action: () -> Void
 
     @State private var isHovered = false
@@ -426,7 +510,7 @@ private struct CreateActivityButton: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 8) {
-                Image(systemName: isHovered ? "plus.circle.fill" : "plus.circle")
+                Image(systemName: isSelected || isHovered ? "plus.circle.fill" : "plus.circle")
                     .foregroundStyle(theme.accent)
                 Text("Create \"\(title)\"")
                     .font(scaledFont(.body, .regular))
@@ -436,7 +520,7 @@ private struct CreateActivityButton: View {
             }
             .padding(.horizontal, Constants.spacingCard)
             .padding(.vertical, 6)
-            .background(Color.primary.opacity(isHovered ? 0.05 : 0))
+            .background(isSelected ? theme.accent.opacity(0.12) : Color.primary.opacity(isHovered ? 0.05 : 0))
             .clipShape(RoundedRectangle(cornerRadius: 4))
             .contentShape(Rectangle())
         }

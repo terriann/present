@@ -7,6 +7,7 @@ struct QuickStartRow: View {
     let activity: Activity
     var icon: String = "play.circle"
     var subtitle: String?
+    var isSelected: Bool = false
     let onTap: () -> Void
     let onEdit: () -> Void
 
@@ -17,7 +18,7 @@ struct QuickStartRow: View {
             Button(action: onTap) {
                 HStack(spacing: 8) {
                     Image(systemName: icon)
-                        .foregroundStyle(isRowHovered ? theme.accent : .secondary)
+                        .foregroundStyle(isSelected || isRowHovered ? theme.accent : .secondary)
 
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(spacing: 4) {
@@ -49,7 +50,7 @@ struct QuickStartRow: View {
         }
         .padding(.horizontal, Constants.spacingCard)
         .padding(.vertical, 6)
-        .background(Color.primary.opacity(isRowHovered ? 0.05 : 0))
+        .background(isSelected ? theme.accent.opacity(0.12) : Color.primary.opacity(isRowHovered ? 0.05 : 0))
         .clipShape(RoundedRectangle(cornerRadius: 4))
         .onHover { hovering in
             isRowHovered = hovering
