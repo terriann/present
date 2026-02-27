@@ -25,6 +25,7 @@ struct PresentApp: App {
     var body: some Scene {
         let _ = startStatusItemMenu()
         let _ = loadThemeSettings()
+        let _ = configureAppDelegate()
 
         MenuBarExtra {
             MenuBarView()
@@ -47,12 +48,6 @@ struct PresentApp: App {
                 .preferredColorScheme(themeManager.preferredColorScheme)
                 .modifier(ErrorAlertModifier(appState: appState, scene: .mainWindow))
                 .onAppear {
-                    appDelegate.appState = appState
-                    if appDelegate.floatingAlertManager == nil {
-                        appDelegate.floatingAlertManager = FloatingAlertPanelManager(
-                            appState: appState, themeManager: themeManager
-                        )
-                    }
                     appState.showDockIcon(true)
                 }
                 .onChange(of: appState.timerCompletionContext) { _, newValue in
@@ -67,6 +62,7 @@ struct PresentApp: App {
                 }
                 .onDisappear { appState.showDockIcon(false) }
         }
+        .defaultLaunchBehavior(.suppressed)
         .defaultSize(width: 900, height: 600)
         .commands {
             CommandGroup(before: .toolbar) {
@@ -91,6 +87,14 @@ struct PresentApp: App {
                 .preferredColorScheme(themeManager.preferredColorScheme)
                 .modifier(ErrorAlertModifier(appState: appState, scene: .settings))
         }
+    }
+
+    private func configureAppDelegate() {
+        guard appDelegate.appState == nil else { return }
+        appDelegate.appState = appState
+        appDelegate.floatingAlertManager = FloatingAlertPanelManager(
+            appState: appState, themeManager: themeManager
+        )
     }
 
     private func loadThemeSettings() {
@@ -151,6 +155,14 @@ private struct MenuBarLabelView: View {
                     .monospacedDigit()
             }
         }
+        .task {
+            // On a normal launch, open the main window. On a login‐item
+            // launch the app starts silently in the menu bar.
+            if let delegate = NSApp.delegate as? AppDelegate,
+               !delegate.launchedAsLoginItem {
+                appState.pendingNavigation = .launchMainWindow
+            }
+        }
         .onChange(of: appState.pendingNavigation) { _, action in
             guard let action else { return }
             appState.pendingNavigation = nil
@@ -177,6 +189,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var appState: AppState?
     var statusItemMenuManager: StatusItemMenuManager?
     var floatingAlertManager: FloatingAlertPanelManager?
+    private(set) var launchedAsLoginItem = false
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // Detect whether the system launched us as a login item.
+        // 'logi' (0x6C6F6769) is keyAELaunchedAsLogInItem from AEDataModel.h.
+        if let event = NSAppleEventManager.shared().currentAppleEvent,
+           event.eventID == kAEOpenApplication {
+            launchedAsLoginItem = event.paramDescriptor(
+                forKeyword: AEKeyword(0x6C6F_6769)
+            )?.booleanValue ?? false
+        }
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag {
+            appState?.navigate(to: .launchMainWindow)
+        }
+        return true
+    }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard let appState, appState.isSessionActive else {

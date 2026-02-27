@@ -1,4 +1,5 @@
 import SwiftUI
+import ServiceManagement
 import PresentCore
 
 struct SettingsView: View {
@@ -67,6 +68,7 @@ struct SettingsView: View {
 struct GeneralSettingsTab: View {
     @Environment(AppState.self) private var appState
     @Environment(ThemeManager.self) private var theme
+    @State private var launchOnLogin = SMAppService.mainApp.status == .enabled
     @State private var baseUrl = ""
     @State private var weekStartDay = "sunday"
     @State private var appearanceMode: AppearanceMode = .system
@@ -81,6 +83,29 @@ struct GeneralSettingsTab: View {
         @Bindable var theme = theme
 
         Form {
+            Section {
+                Toggle("Start Present when you log in", isOn: $launchOnLogin)
+                    .toggleStyle(ThemedToggleStyle(tintColor: theme.accent))
+                    .onChange(of: launchOnLogin) {
+                        do {
+                            if launchOnLogin {
+                                try SMAppService.mainApp.register()
+                            } else {
+                                try SMAppService.mainApp.unregister()
+                            }
+                        } catch {
+                            launchOnLogin = SMAppService.mainApp.status == .enabled
+                            appState.showError(error, context: "Could not update login item", scene: .settings)
+                        }
+                    }
+
+                Text("Present will start silently in the menu bar when you log in.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } header: {
+                Text("Launch on Login")
+            }
+
             Section("Week Start") {
                 Picker("Start week on", selection: $weekStartDay) {
                     Text("Sunday").tag("sunday")
