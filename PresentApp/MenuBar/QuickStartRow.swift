@@ -13,11 +13,15 @@ struct QuickStartRow: View {
 
     @State private var isRowHovered = false
 
+    private var filledIcon: String {
+        icon.hasSuffix(".fill") ? icon : "\(icon).fill"
+    }
+
     var body: some View {
         HStack(spacing: 8) {
             Button(action: onTap) {
                 HStack(spacing: 8) {
-                    Image(systemName: icon)
+                    Image(systemName: isSelected || isRowHovered ? filledIcon : icon)
                         .foregroundStyle(isSelected || isRowHovered ? theme.accent : .secondary)
 
                     VStack(alignment: .leading, spacing: 2) {
