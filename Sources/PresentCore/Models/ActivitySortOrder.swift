@@ -12,3 +12,16 @@ public enum ActivitySortOrder: String, CaseIterable, Sendable {
         }
     }
 }
+
+/// Grouping mode for session lists in the activity breakdown card.
+public enum SessionGrouping: String, CaseIterable, Sendable {
+    case activity
+    case none
+
+    public var displayName: String {
+        switch self {
+        case .activity: "Activity"
+        case .none: "None"
+        }
+    }
+}

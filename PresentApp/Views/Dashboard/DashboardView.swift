@@ -10,6 +10,8 @@ struct DashboardView: View {
     /// Tracks the current date for greeting/date text; updated at period boundaries.
     @State private var greetingDate = Date()
     @State private var showConvertPicker = false
+    @State private var todaySessions: [(Session, Activity)] = []
+    @State private var todayPortions: [Int64: Int] = [:]
 
     /// Shared color mapping so today timeline and weekly chart use the same color per activity.
     ///
@@ -80,7 +82,11 @@ struct DashboardView: View {
             })
         }
         .navigationTitle("Dashboard")
+        .task { await loadTodaySessions() }
         .task { await refreshGreetingAtBoundary() }
+        .onChange(of: appState.todayActivities.map { $0.activity.id }) {
+            Task { await loadTodaySessions() }
+        }
         .task(id: appState.isSessionActive) {
             if appState.isSessionActive {
                 quickRestartSuggestions = []
@@ -191,6 +197,38 @@ struct DashboardView: View {
             }
         }
         quickRestartSuggestions = unique
+    }
+
+    // MARK: - Today Sessions Loader
+
+    private func loadTodaySessions() async {
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: Date())
+        guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else { return }
+        do {
+            let sessions = try await appState.service.listSessions(
+                from: startOfDay, to: endOfDay,
+                type: nil, activityId: nil, includeArchived: false
+            )
+            todaySessions = sessions
+
+            // Compute segment-based today portions for cross-midnight sessions
+            let crossMidnightIds = sessions.compactMap { entry -> Int64? in
+                guard let id = entry.0.id,
+                      !calendar.isDateInToday(entry.0.startedAt) else { return nil }
+                return id
+            }
+            if !crossMidnightIds.isEmpty {
+                let portions = try await appState.service.sessionDayPortions(
+                    sessionIds: crossMidnightIds, date: Date()
+                )
+                todayPortions = portions
+            } else {
+                todayPortions = [:]
+            }
+        } catch {
+            // Fail silently
+        }
     }
 
     // MARK: - Dashboard Header
@@ -347,6 +385,13 @@ struct DashboardView: View {
     // MARK: - Activity Breakdown
 
     private var activityBreakdownCard: some View {
-        DashboardActivityBreakdownCard(activityColorMap: activityColorMap)
+        ActivitySessionCard(
+            title: "Today's Activities",
+            sessionEntries: todaySessions,
+            activityColorMap: activityColorMap,
+            dayPortions: todayPortions,
+            includeActiveSession: true,
+            onReload: { Task { await loadTodaySessions() } }
+        )
     }
 }
