@@ -19,6 +19,7 @@ struct ReportsView: View {
 
     // Active session toggle (ephemeral, resets on view load and when navigating away from today)
     @State private var showActiveSessions = false
+    @State private var activeActivityTags: [Tag] = []
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     // Navigation state
@@ -55,23 +56,28 @@ struct ReportsView: View {
                     )
                     HStack(alignment: .top, spacing: 16) {
                         ReportActivityPieChart(
-                            activities: activities,
-                            totalSeconds: totalSeconds,
+                            activities: displayActivities,
+                            totalSeconds: displayTotalSeconds,
                             chartColorDomain: chartColorDomain,
-                            chartColorRange: chartColorRange
+                            chartColorRange: chartColorRange,
+                            activeActivityTitle: activeActivityTitle
                         )
                         .frame(maxWidth: .infinity)
-                        if !tagActivitySummaries.isEmpty {
+                        if !displayTagActivitySummaries.isEmpty {
                             ReportTagBarChart(
-                                tagActivitySummaries: tagActivitySummaries,
-                                activities: activities,
+                                tagActivitySummaries: displayTagActivitySummaries,
+                                activities: displayActivities,
                                 chartColorDomain: chartColorDomain,
-                                chartColorRange: chartColorRange
+                                chartColorRange: chartColorRange,
+                                activeTagNames: activeTagNames
                             )
                             .frame(maxWidth: .infinity)
                         }
                     }
-                    ReportExternalIdChart(activities: activities)
+                    ReportExternalIdChart(
+                        activities: displayActivities,
+                        activeExternalId: activeExternalId
+                    )
                 } else {
                     let includesToday = periodStartDate(for: selectedDate) <= Date() && Date() < periodEndDate(for: selectedDate)
                     GroupBox {
@@ -118,6 +124,13 @@ struct ReportsView: View {
         .onChange(of: isShowingToday) {
             if !isShowingToday {
                 showActiveSessions = false
+            }
+        }
+        .onChange(of: showActiveSessions) {
+            if showActiveSessions {
+                loadActiveActivityTags()
+            } else {
+                activeActivityTags = []
             }
         }
     }
@@ -310,6 +323,88 @@ struct ReportsView: View {
             count += 1
         }
         return count
+    }
+
+    /// Activities augmented with the active session's elapsed time (for pie chart, external ID chart).
+    private var displayActivities: [ActivitySummary] {
+        guard let activity = activeActivity, !activity.isSystem else { return activities }
+        var result = activities
+        if let index = result.firstIndex(where: { $0.activity.id == activity.id }) {
+            result[index].totalSeconds += activeElapsedSeconds
+            result[index].sessionCount += 1
+        } else {
+            result.append(ActivitySummary(
+                activity: activity,
+                totalSeconds: activeElapsedSeconds,
+                sessionCount: 1
+            ))
+        }
+        return result
+    }
+
+    /// Tag summaries augmented with the active session's elapsed time.
+    private var displayTagActivitySummaries: [TagActivitySummary] {
+        guard let activity = activeActivity, !activity.isSystem else { return tagActivitySummaries }
+        var result = tagActivitySummaries
+        let tagNames = Set(activeActivityTags.map(\.name))
+
+        for tagName in tagNames {
+            if let tagIndex = result.firstIndex(where: { $0.tagName == tagName }) {
+                // Tag exists — inject active time into matching activity or add new entry
+                if let actIndex = result[tagIndex].activities.firstIndex(where: { $0.activity.id == activity.id }) {
+                    result[tagIndex].activities[actIndex].totalSeconds += activeElapsedSeconds
+                    result[tagIndex].activities[actIndex].sessionCount += 1
+                } else {
+                    result[tagIndex].activities.append(ActivitySummary(
+                        activity: activity, totalSeconds: activeElapsedSeconds, sessionCount: 1
+                    ))
+                    result[tagIndex].activityCount += 1
+                }
+                result[tagIndex].totalSeconds += activeElapsedSeconds
+            } else {
+                // New tag entry
+                result.append(TagActivitySummary(
+                    tagName: tagName,
+                    activities: [ActivitySummary(
+                        activity: activity, totalSeconds: activeElapsedSeconds, sessionCount: 1
+                    )],
+                    totalSeconds: activeElapsedSeconds,
+                    activityCount: 1
+                ))
+            }
+        }
+        return result
+    }
+
+    /// The title of the active activity (for charts to identify which element to pulse).
+    private var activeActivityTitle: String? {
+        guard let activity = activeActivity, !activity.isSystem else { return nil }
+        return activity.title
+    }
+
+    /// Tag names that include active session data (for tag chart pulsing).
+    private var activeTagNames: Set<String> {
+        guard activeActivity != nil else { return [] }
+        return Set(activeActivityTags.map(\.name))
+    }
+
+    /// The external ID of the active activity (for external ID chart pulsing).
+    private var activeExternalId: String? {
+        activeActivity?.externalId
+    }
+
+    private func loadActiveActivityTags() {
+        guard let activity = appState.currentActivity, let id = activity.id else {
+            activeActivityTags = []
+            return
+        }
+        Task {
+            do {
+                activeActivityTags = try await appState.service.tagsForActivity(activityId: id)
+            } catch {
+                activeActivityTags = []
+            }
+        }
     }
 
     private var summaryBar: some View {

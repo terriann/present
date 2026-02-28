@@ -7,12 +7,20 @@ struct ReportActivityPieChart: View {
     let totalSeconds: Int
     let chartColorDomain: [String]
     let chartColorRange: [Color]
+    /// Title of the active session's activity, if any. Matching sector pulses.
+    var activeActivityTitle: String?
 
     @Environment(ThemeManager.self) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var activityAngleSelection: Int?
     @State private var hoveredActivityName: String?
     @State private var legendHoveredActivity: String?
+    @State private var pulseState = ActivePulseState()
+
+    private var hasActiveEntry: Bool {
+        activeActivityTitle != nil
+    }
 
     var body: some View {
         let palette = ThemeManager.chartColors(for: theme.activePalette)
@@ -20,6 +28,21 @@ struct ReportActivityPieChart: View {
         ChartCard(title: "Activity Distribution") {
             activityDonutChart
             activityDonutLegend(palette: palette)
+        }
+        .onChange(of: hasActiveEntry) {
+            if hasActiveEntry {
+                pulseState.start(reduceMotion: reduceMotion)
+            } else {
+                pulseState.stop()
+            }
+        }
+        .onAppear {
+            if hasActiveEntry {
+                pulseState.start(reduceMotion: reduceMotion)
+            }
+        }
+        .onDisappear {
+            pulseState.stop()
         }
     }
 
@@ -33,7 +56,7 @@ struct ReportActivityPieChart: View {
                 angularInset: 1
             )
             .foregroundStyle(by: .value("Activity", summary.activity.title))
-            .opacity(hoveredActivityName == nil || hoveredActivityName == summary.activity.title ? 1.0 : 0.4)
+            .opacity(sectorOpacity(for: summary.activity.title))
         }
         .chartForegroundStyleScale(domain: chartColorDomain, range: chartColorRange)
         .chartAngleSelection(value: $activityAngleSelection)
@@ -49,12 +72,13 @@ struct ReportActivityPieChart: View {
                     let frame = geometry[plotFrame]
                     if let name = hoveredActivityName,
                        let summary = activities.first(where: { $0.activity.title == name }) {
+                        let isActive = name == activeActivityTitle
                         DonutCenterTooltip {
                             Text(summary.activity.title)
                                 .font(.dataLabel)
                                 .lineLimit(2)
                                 .multilineTextAlignment(.center)
-                            Text(TimeFormatting.formatDuration(seconds: summary.totalSeconds))
+                            Text(TimeFormatting.formatDuration(seconds: summary.totalSeconds, active: isActive))
                                 .font(.dataValue)
                             let pct = totalSeconds > 0 ? Double(summary.totalSeconds) / Double(totalSeconds) * 100 : 0
                             Text(String(format: "%.1f%%", pct))
@@ -98,6 +122,16 @@ struct ReportActivityPieChart: View {
     }
 
     // MARK: - Helpers
+
+    private func sectorOpacity(for title: String) -> Double {
+        // Hover dimming takes priority
+        if hoveredActivityName != nil {
+            return hoveredActivityName == title ? 1.0 : 0.4
+        }
+        // Pulse the active sector when no hover is active
+        if title == activeActivityTitle { return pulseState.opacity }
+        return 1.0
+    }
 
     private func findActivity(for value: Int?) -> String? {
         guard let value else { return nil }

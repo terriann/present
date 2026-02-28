@@ -7,11 +7,19 @@ struct ReportTagBarChart: View {
     let activities: [ActivitySummary]
     let chartColorDomain: [String]
     let chartColorRange: [Color]
+    /// Tag names that include active session data. Matching bars pulse.
+    var activeTagNames: Set<String> = []
 
     @Environment(ThemeManager.self) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var hoveredTagName: String?
     @State private var tagHoverLocation: CGPoint = .zero
+    @State private var pulseState = ActivePulseState()
+
+    private var hasActiveEntries: Bool {
+        !activeTagNames.isEmpty
+    }
 
     var body: some View {
         let sorted = tagActivitySummaries.sorted { $0.totalSeconds > $1.totalSeconds }
@@ -19,7 +27,8 @@ struct ReportTagBarChart: View {
 
         // Flatten into entries for the stacked bar
         let entries: [TagBarEntry] = sorted.flatMap { tag in
-            let duration = TimeFormatting.formatDuration(seconds: tag.totalSeconds)
+            let isActive = activeTagNames.contains(tag.tagName)
+            let duration = TimeFormatting.formatDuration(seconds: tag.totalSeconds, active: isActive)
             let yLabel = "\(tag.tagName) \u{00B7} \(duration) (\(tag.activityCount))"
             return tag.activities.map { summary in
                 TagBarEntry(
@@ -27,13 +36,29 @@ struct ReportTagBarChart: View {
                     tagLabel: yLabel,
                     activityTitle: summary.activity.title,
                     hours: Double(summary.totalSeconds) / 3600.0,
-                    totalSeconds: tag.totalSeconds
+                    totalSeconds: tag.totalSeconds,
+                    isActive: isActive
                 )
             }
         }
 
         ChartCard(title: "Tag Distribution") {
             tagBarChart(entries: entries, sorted: sorted, barHeight: barHeight)
+        }
+        .onChange(of: hasActiveEntries) {
+            if hasActiveEntries {
+                pulseState.start(reduceMotion: reduceMotion)
+            } else {
+                pulseState.stop()
+            }
+        }
+        .onAppear {
+            if hasActiveEntries {
+                pulseState.start(reduceMotion: reduceMotion)
+            }
+        }
+        .onDisappear {
+            pulseState.stop()
         }
     }
 
@@ -46,7 +71,7 @@ struct ReportTagBarChart: View {
                 y: .value("Tag", entry.tagLabel)
             )
             .foregroundStyle(by: .value("Activity", entry.activityTitle))
-            .opacity(hoveredTagName == nil || hoveredTagName == entry.tagName ? 1.0 : 0.4)
+            .opacity(tagBarOpacity(entry: entry))
         }
         .chartForegroundStyleScale(domain: chartColorDomain, range: chartColorRange)
         .chartLegend(.hidden)
@@ -99,11 +124,24 @@ struct ReportTagBarChart: View {
         .padding(Constants.spacingCard)
     }
 
+    // MARK: - Opacity
+
+    private func tagBarOpacity(entry: TagBarEntry) -> Double {
+        // Hover dimming takes priority
+        if hoveredTagName != nil {
+            return hoveredTagName == entry.tagName ? 1.0 : 0.4
+        }
+        // Pulse active tag bars when no hover is active
+        if entry.isActive { return pulseState.opacity }
+        return 1.0
+    }
+
     // MARK: - Tooltip
 
     private func tagTooltip(forTag tagName: String?, summaries: [TagActivitySummary]) -> some View {
         let matching = summaries.first { $0.tagName == tagName }
         let palette = ThemeManager.chartColors(for: theme.activePalette)
+        let isActive = tagName.map { activeTagNames.contains($0) } ?? false
 
         return ChartTooltip {
             if let tag = matching {
@@ -132,7 +170,7 @@ struct ReportTagBarChart: View {
                         Text("Total")
                             .font(.dataLabel)
                         Spacer()
-                        Text(TimeFormatting.formatDuration(seconds: tag.totalSeconds))
+                        Text(TimeFormatting.formatDuration(seconds: tag.totalSeconds, active: isActive))
                             .font(.dataBoldValue)
                     }
                 }
@@ -144,10 +182,12 @@ struct ReportTagBarChart: View {
 // MARK: - Supporting Types
 
 struct TagBarEntry: Identifiable {
-    let id = UUID()
+    /// Deterministic ID for stable chart identity during per-second active session updates.
+    var id: String { "\(tagName)-\(activityTitle)" }
     let tagName: String
     let tagLabel: String
     let activityTitle: String
     let hours: Double
     let totalSeconds: Int
+    var isActive: Bool = false
 }

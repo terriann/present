@@ -4,11 +4,15 @@ import PresentCore
 
 struct ReportExternalIdChart: View {
     let activities: [ActivitySummary]
+    /// External ID of the active session's activity, if any. Matching sector pulses.
+    var activeExternalId: String?
 
     @Environment(ThemeManager.self) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var externalIdAngleSelection: Int?
     @State private var hoveredExternalSegment: String?
+    @State private var pulseState = ActivePulseState()
 
     private var externalIdGroups: [(externalId: String, activities: [ActivitySummary], totalSeconds: Int)] {
         var grouped: [String: [ActivitySummary]] = [:]
@@ -21,6 +25,10 @@ struct ReportExternalIdChart: View {
             .sorted { $0.totalSeconds > $1.totalSeconds }
     }
 
+    private var hasActiveEntry: Bool {
+        activeExternalId != nil && externalIdGroups.contains { $0.externalId == activeExternalId }
+    }
+
     var body: some View {
         let groups = externalIdGroups
         guard !groups.isEmpty else { return AnyView(EmptyView()) }
@@ -31,6 +39,21 @@ struct ReportExternalIdChart: View {
             ChartCard(title: "External ID Breakdown") {
                 externalIdDonutChart(groups: groups, combinedTotal: combinedTotal, palette: palette)
                 externalIdLegend(groups: groups, palette: palette)
+            }
+            .onChange(of: hasActiveEntry) {
+                if hasActiveEntry {
+                    pulseState.start(reduceMotion: reduceMotion)
+                } else {
+                    pulseState.stop()
+                }
+            }
+            .onAppear {
+                if hasActiveEntry {
+                    pulseState.start(reduceMotion: reduceMotion)
+                }
+            }
+            .onDisappear {
+                pulseState.stop()
             }
         )
     }
@@ -49,7 +72,7 @@ struct ReportExternalIdChart: View {
                 angularInset: 1
             )
             .foregroundStyle(by: .value("External ID", group.externalId))
-            .opacity(hoveredExternalSegment == nil || hoveredExternalSegment == group.externalId ? 1.0 : 0.4)
+            .opacity(sectorOpacity(for: group.externalId))
         }
         .chartForegroundStyleScale(
             domain: groups.map(\.externalId),
@@ -66,12 +89,13 @@ struct ReportExternalIdChart: View {
                     let frame = geometry[plotFrame]
                     if let segmentId = hoveredExternalSegment,
                        let group = groups.first(where: { $0.externalId == segmentId }) {
+                        let isActive = segmentId == activeExternalId
                         DonutCenterTooltip {
                             Text(group.externalId)
                                 .font(.dataLabel)
                                 .lineLimit(2)
                                 .multilineTextAlignment(.center)
-                            Text(TimeFormatting.formatDuration(seconds: group.totalSeconds))
+                            Text(TimeFormatting.formatDuration(seconds: group.totalSeconds, active: isActive))
                                 .font(.dataValue)
                             let pct = combinedTotal > 0 ? Double(group.totalSeconds) / Double(combinedTotal) * 100 : 0
                             Text(String(format: "%.1f%%", pct))
@@ -117,6 +141,16 @@ struct ReportExternalIdChart: View {
     }
 
     // MARK: - Helpers
+
+    private func sectorOpacity(for externalId: String) -> Double {
+        // Hover dimming takes priority
+        if hoveredExternalSegment != nil {
+            return hoveredExternalSegment == externalId ? 1.0 : 0.4
+        }
+        // Pulse the active sector when no hover is active
+        if externalId == activeExternalId { return pulseState.opacity }
+        return 1.0
+    }
 
     private func findExternalSegment(for value: Int?) -> String? {
         guard let value else { return nil }
