@@ -39,7 +39,8 @@ struct ReportsView: View {
                             sessionEntries: sessionEntries,
                             sessionSegments: sessionSegments,
                             activityColorMap: activityColorMap,
-                            referenceDate: Calendar.current.startOfDay(for: selectedDate)
+                            referenceDate: Calendar.current.startOfDay(for: selectedDate),
+                            showActiveSessions: shouldIncludeActive
                         )
                     }
                     ReportStackedBarChart(
@@ -356,10 +357,11 @@ struct ReportsView: View {
     // MARK: - Bar Entry Data
 
     private var barEntries: [BarEntry] {
+        var entries: [BarEntry]
         switch selectedPeriod {
         case .daily:
             let buckets = dailySummaryData?.hourlyBreakdown ?? []
-            return buckets.map { bucket in
+            entries = buckets.map { bucket in
                 BarEntry(
                     label: hourLabel(bucket.hour),
                     activity: bucket.activity.title,
@@ -368,7 +370,7 @@ struct ReportsView: View {
             }
         case .weekly:
             let dailyBreakdown = weeklySummaryData?.dailyBreakdown ?? []
-            return dailyBreakdown.flatMap { daily in
+            entries = dailyBreakdown.flatMap { daily in
                 daily.activities.map { summary in
                     BarEntry(
                         label: dayLabel(daily.date),
@@ -379,7 +381,7 @@ struct ReportsView: View {
             }
         case .monthly:
             let dailyBreakdown = monthlySummaryData?.dailyBreakdown ?? []
-            return dailyBreakdown.flatMap { daily in
+            entries = dailyBreakdown.flatMap { daily in
                 daily.activities.map { summary in
                     BarEntry(
                         label: dayNumberLabel(daily.date),
@@ -389,6 +391,39 @@ struct ReportsView: View {
                 }
             }
         }
+
+        // Inject active session into the correct bucket (mirrors DashboardWeeklyChartCard pattern).
+        // Skip system activities (e.g., Break).
+        if let activity = activeActivity, !activity.isSystem {
+            let activeLabel: String
+            let activeValue: Double
+            switch selectedPeriod {
+            case .daily:
+                activeLabel = hourLabel(Calendar.current.component(.hour, from: Date()))
+                activeValue = Double(activeElapsedSeconds) / 60.0
+            case .weekly:
+                activeLabel = dayLabel(Date())
+                activeValue = Double(activeElapsedSeconds) / 3600.0
+            case .monthly:
+                activeLabel = dayNumberLabel(Date())
+                activeValue = Double(activeElapsedSeconds) / 3600.0
+            }
+
+            if let index = entries.firstIndex(where: { $0.label == activeLabel && $0.activity == activity.title }) {
+                let existing = entries[index]
+                entries[index] = BarEntry(
+                    label: existing.label, activity: existing.activity,
+                    value: existing.value + activeValue, isActive: true
+                )
+            } else {
+                entries.append(BarEntry(
+                    label: activeLabel, activity: activity.title,
+                    value: activeValue, isActive: true
+                ))
+            }
+        }
+
+        return entries
     }
 
     private var weeklyTooltipLabelMap: [String: String] {

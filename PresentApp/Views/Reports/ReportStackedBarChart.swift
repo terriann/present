@@ -13,10 +13,12 @@ struct ReportStackedBarChart: View {
     let weekendDayLabels: Set<String>
 
     @Environment(ThemeManager.self) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var hoveredBarLabel: String?
     @State private var hoveredBarActivity: String?
     @State private var barHoverLocation: CGPoint = .zero
+    @State private var pulseState = ActivePulseState()
 
     private var yAxisLabel: String {
         selectedPeriod == .daily ? "Minutes" : "Hours"
@@ -37,10 +39,29 @@ struct ReportStackedBarChart: View {
         }
     }
 
+    private var hasActiveEntries: Bool {
+        entries.contains { $0.isActive }
+    }
+
     var body: some View {
         ChartCard(title: "Time by \(selectedPeriod.timeLabel)") {
             stackedBarChart
             barChartLegend
+        }
+        .onChange(of: hasActiveEntries) {
+            if hasActiveEntries {
+                pulseState.start(reduceMotion: reduceMotion)
+            } else {
+                pulseState.stop()
+            }
+        }
+        .onAppear {
+            if hasActiveEntries {
+                pulseState.start(reduceMotion: reduceMotion)
+            }
+        }
+        .onDisappear {
+            pulseState.stop()
         }
     }
 
@@ -155,6 +176,8 @@ struct ReportStackedBarChart: View {
         if let label = hoveredBarLabel {
             return entry.label == label ? 1.0 : 0.4
         }
+        // Active session segment pulses when no hover interaction is active
+        if entry.isActive { return pulseState.opacity }
         return 1.0
     }
 
@@ -178,18 +201,19 @@ struct ReportStackedBarChart: View {
                         .font(.caption)
                         .lineLimit(1)
                     Spacer()
-                    Text(formatValue(entry.value))
+                    Text(formatValue(entry.value, active: entry.isActive))
                         .font(.dataValue)
                 }
             }
 
+            let hasActive = matching.contains { $0.isActive }
             if matching.count > 1 {
                 Divider()
                 HStack {
                     Text("Total")
                         .font(.dataLabel)
                     Spacer()
-                    Text(formatValue(bucketTotal))
+                    Text(formatValue(bucketTotal, active: hasActive))
                         .font(.dataBoldValue)
                 }
             }
@@ -197,11 +221,11 @@ struct ReportStackedBarChart: View {
     }
 
     /// Format a value for tooltip display, using the correct unit for the period.
-    private func formatValue(_ value: Double) -> String {
+    private func formatValue(_ value: Double, active: Bool = false) -> String {
         if selectedPeriod == .daily {
-            TimeFormatting.formatDuration(seconds: Int(value * 60))
+            TimeFormatting.formatDuration(seconds: Int(value * 60), active: active)
         } else {
-            TimeFormatting.formatDuration(seconds: Int(value * 3600))
+            TimeFormatting.formatDuration(seconds: Int(value * 3600), active: active)
         }
     }
 
@@ -243,8 +267,10 @@ struct ReportStackedBarChart: View {
 // MARK: - Supporting Types
 
 struct BarEntry: Identifiable {
-    let id = UUID()
+    /// Deterministic ID so chart identity is stable during per-second active session updates.
+    var id: String { "\(label)-\(activity)" }
     let label: String
     let activity: String
     let value: Double
+    var isActive: Bool = false
 }

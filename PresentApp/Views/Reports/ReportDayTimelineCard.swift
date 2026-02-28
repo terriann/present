@@ -7,6 +7,9 @@ struct ReportDayTimelineCard: View {
     let sessionSegments: [Int64: [SessionSegment]]
     let activityColorMap: [String: Color]
     let referenceDate: Date
+    /// When true, includes the active session on the timeline. When false and viewing today,
+    /// the timeline shows only completed sessions.
+    var showActiveSessions: Bool = true
 
     @Environment(AppState.self) private var appState
     @State private var hoveredActivityTitle: String? = nil
@@ -16,10 +19,15 @@ struct ReportDayTimelineCard: View {
         Calendar.current.isDateInToday(referenceDate)
     }
 
+    /// Whether to actually include the live session (isToday AND toggle enabled).
+    private var includeLiveSession: Bool {
+        isToday && showActiveSessions
+    }
+
     private var allSessions: [(Session, Activity)] {
         var result = sessionEntries
-        // Include active session when viewing today (handles cross-midnight)
-        if isToday,
+        // Include active session when viewing today and toggle is on (handles cross-midnight)
+        if includeLiveSession,
            let current = appState.currentSession,
            let activity = appState.currentActivity,
            !result.contains(where: { $0.0.id == current.id }) {
@@ -29,7 +37,7 @@ struct ReportDayTimelineCard: View {
     }
 
     private var liveSessionId: Int64? {
-        isToday ? appState.currentSession?.id : nil
+        includeLiveSession ? appState.currentSession?.id : nil
     }
 
     var body: some View {
