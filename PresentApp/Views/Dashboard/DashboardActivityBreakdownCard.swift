@@ -10,6 +10,7 @@ struct DashboardActivityBreakdownCard: View {
     @State private var todayPortions: [Int64: Int] = [:]
     /// Pre-midnight active seconds for a cross-midnight active session; computed once from segments.
     @State private var activePreMidnightSeconds: Int?
+    @State private var sortOrder: ActivitySortOrder = .timeSpent
 
     /// Includes the active session's activity even if it's not in DB summaries (cross-midnight).
     private var displayActivities: [ActivitySummary] {
@@ -19,11 +20,26 @@ struct DashboardActivityBreakdownCard: View {
            !activities.contains(where: { $0.activity.id == activity.id }) {
             activities.append(ActivitySummary(activity: activity, totalSeconds: 0, sessionCount: 0))
         }
-        return activities
+        switch sortOrder {
+        case .timeSpent:
+            return activities.sorted { $0.totalSeconds > $1.totalSeconds }
+        case .mostRecent:
+            return activities.sorted { latestSessionDate(for: $0) > latestSessionDate(for: $1) }
+        case .alphabetical:
+            return activities.sorted { $0.activity.title.localizedCaseInsensitiveCompare($1.activity.title) == .orderedAscending }
+        }
     }
 
     var body: some View {
         ChartCard(title: "Today's Activities") {
+            Picker("Sort", selection: $sortOrder) {
+                ForEach(ActivitySortOrder.allCases, id: \.self) { order in
+                    Text(order.displayName).tag(order)
+                }
+            }
+            .pickerStyle(.menu)
+            .fixedSize()
+        } content: {
             if displayActivities.isEmpty {
                 ContentUnavailableView(
                     "No Activities",
@@ -184,6 +200,22 @@ struct DashboardActivityBreakdownCard: View {
     }
 
     // MARK: - Helpers
+
+    /// Most recent session start time for an activity, used for "Most Recent" sort.
+    /// Considers the active session and loaded completed sessions.
+    private func latestSessionDate(for summary: ActivitySummary) -> Date {
+        let activityId = summary.activity.id ?? -1
+        var latest: Date = .distantPast
+        // Active session for this activity
+        if let current = appState.currentSession, current.activityId == activityId {
+            latest = current.startedAt
+        }
+        // Most recent completed session (sorted by endedAt descending, so first is newest)
+        if let sessions = todaySessions[activityId], let first = sessions.first {
+            latest = max(latest, first.startedAt)
+        }
+        return latest
+    }
 
     private func activityTimeRange(_ sessions: [Session]?, active: Session?) -> String? {
         var starts: [Date] = sessions?.map(\.startedAt) ?? []
