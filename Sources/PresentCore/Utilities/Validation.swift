@@ -32,13 +32,13 @@ public enum Validation {
         return try sanitize(value, fieldName: fieldName, maxLength: maxLength)
     }
 
-    /// Validates a URL string has a reasonable format (scheme + host).
+    /// Validates a URL string has a reasonable format (http/https scheme + host).
     public static func validateLink(_ value: String) throws {
         guard let url = URL(string: value),
-              let scheme = url.scheme,
-              !scheme.isEmpty,
+              let scheme = url.scheme?.lowercased(),
+              ["http", "https"].contains(scheme),
               url.host != nil else {
-            throw PresentError.invalidInput("Link must be a valid URL (e.g., https://example.com).")
+            throw PresentError.invalidInput("Link must be a valid URL with http or https scheme (e.g., https://example.com).")
         }
     }
 

@@ -24,7 +24,7 @@ struct SessionInlineEditForm: View {
     @State private var errorFields: Set<ErrorField> = []
     @FocusState private var focusedField: FocusField?
 
-    private enum ErrorField { case activity, start, end }
+    private enum ErrorField { case activity, start, end, note, link }
     private enum FocusField { case note, link }
 
     private var isActive: Bool {
@@ -107,7 +107,7 @@ struct SessionInlineEditForm: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Note")
                         .font(.caption.bold())
-                        .foregroundStyle(focusedField == .note ? theme.accent : .secondary)
+                        .foregroundStyle(noteLabelColor)
                     TextField("Add a note...", text: $noteText)
                         .textFieldStyle(.roundedBorder)
                         .focused($focusedField, equals: .note)
@@ -116,7 +116,7 @@ struct SessionInlineEditForm: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Link")
                         .font(.caption.bold())
-                        .foregroundStyle(focusedField == .link ? theme.accent : .secondary)
+                        .foregroundStyle(linkLabelColor)
                     TextField("https://...", text: $linkText)
                         .textFieldStyle(.roundedBorder)
                         .focused($focusedField, equals: .link)
@@ -169,6 +169,18 @@ struct SessionInlineEditForm: View {
     }
 
     // MARK: - Helpers
+
+    private var noteLabelColor: Color {
+        if errorFields.contains(.note) { return theme.alert }
+        if focusedField == .note { return theme.accent }
+        return .secondary
+    }
+
+    private var linkLabelColor: Color {
+        if errorFields.contains(.link) { return theme.alert }
+        if focusedField == .link { return theme.accent }
+        return .secondary
+    }
 
     private var hasChanges: Bool {
         selectedActivityId != session.activityId
@@ -239,6 +251,12 @@ struct SessionInlineEditForm: View {
                 let changed = changedTimeFields
                 return changed.isEmpty ? [.start, .end] : changed
             case .invalidInput(let msg):
+                if msg.localizedCaseInsensitiveContains("link") {
+                    return [.link]
+                }
+                if msg.localizedCaseInsensitiveContains("note") {
+                    return [.note]
+                }
                 let mentionsStart = msg.localizedCaseInsensitiveContains("start time")
                 let mentionsEnd = msg.localizedCaseInsensitiveContains("end time")
                 // "Start time must be before end time" or "End time must be after start time"
