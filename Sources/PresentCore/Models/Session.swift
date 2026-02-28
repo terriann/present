@@ -85,3 +85,29 @@ extension Session: FetchableRecord, PersistableRecord {
     public static let activity = belongsTo(Activity.self)
     public static let segments = hasMany(SessionSegment.self)
 }
+
+extension Session {
+
+    /// Human-readable session type description with parameters.
+    ///
+    /// - Work: "Work Session"
+    /// - Timebound: "Timebound · 45m"
+    /// - Rhythm: "Rhythm Session · 25m / 5m"
+    public var typeDescription: String {
+        let typeName = SessionTypeConfig.config(for: sessionType).displayName
+        switch sessionType {
+        case .rhythm:
+            if let focus = timerLengthMinutes, let brk = breakMinutes {
+                return "\(typeName) · \(RhythmOption(focusMinutes: focus, breakMinutes: brk).displayLabel)"
+            }
+            return typeName
+        case .timebound:
+            if let minutes = timerLengthMinutes {
+                return "\(typeName) · \(minutes)m"
+            }
+            return typeName
+        case .work:
+            return typeName
+        }
+    }
+}

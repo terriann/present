@@ -5,7 +5,7 @@ struct DashboardView: View {
     @Environment(AppState.self) private var appState
     @Environment(ThemeManager.self) private var theme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var quickRestartSuggestions: [(Session, Activity)] = []
+    @State private var repeatSuggestions: [(Session, Activity)] = []
     @State private var contentWidth: CGFloat = 600
     /// Tracks the current date for greeting/date text; updated at period boundaries.
     @State private var greetingDate = Date()
@@ -89,10 +89,10 @@ struct DashboardView: View {
         }
         .task(id: appState.isSessionActive) {
             if appState.isSessionActive {
-                quickRestartSuggestions = []
+                repeatSuggestions = []
             } else {
                 showConvertPicker = false
-                await loadQuickRestarts()
+                await loadRepeatSuggestions()
             }
         }
     }
@@ -180,9 +180,9 @@ struct DashboardView: View {
         }
     }
 
-    // MARK: - Quick restart loader
+    // MARK: - Repeat suggestions loader
 
-    private func loadQuickRestarts() async {
+    private func loadRepeatSuggestions() async {
         let lookback = Date().addingTimeInterval(-7 * 24 * 60 * 60)
         guard let sessions = try? await appState.service.listSessions(
             from: lookback, to: Date(), type: nil, activityId: nil, includeArchived: false
@@ -196,7 +196,7 @@ struct DashboardView: View {
                 if unique.count == 3 { break }
             }
         }
-        quickRestartSuggestions = unique
+        repeatSuggestions = unique
     }
 
     // MARK: - Today Sessions Loader
@@ -251,8 +251,8 @@ struct DashboardView: View {
                 if appState.isSessionActive {
                     activeTimerPanel
                         .frame(minWidth: 320, maxWidth: max(320, contentWidth * 0.3))
-                } else if !quickRestartSuggestions.isEmpty {
-                    quickRestartPanel
+                } else if !repeatSuggestions.isEmpty {
+                    repeatPanel
                         .frame(minWidth: 320, maxWidth: max(320, contentWidth * 0.3))
                 }
             }
@@ -335,22 +335,22 @@ struct DashboardView: View {
         }
     }
 
-    // MARK: - Quick Restart Panel
+    // MARK: - Repeat Panel
 
-    private var quickRestartPanel: some View {
+    private var repeatPanel: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Continue Recent Activities")
+            Text("Repeat Recent Sessions")
                 .font(.title3.bold())
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, Constants.spacingCard)
                 .padding(.bottom, Constants.spacingCompact)
 
-            ForEach(Array(quickRestartSuggestions.enumerated()), id: \.offset) { _, pair in
+            ForEach(Array(repeatSuggestions.enumerated()), id: \.offset) { _, pair in
                 let (session, activity) = pair
                 QuickStartRow(
                     activity: activity,
                     icon: "arrow.counterclockwise.circle.fill",
-                    subtitle: sessionSubtitle(session),
+                    subtitle: session.typeDescription,
                     onTap: {
                         Task { await appState.startSession(activityId: session.activityId, type: session.sessionType, timerMinutes: session.timerLengthMinutes, breakMinutes: session.breakMinutes) }
                     },
@@ -361,24 +361,6 @@ struct DashboardView: View {
                     }
                 )
             }
-        }
-    }
-
-    private func sessionSubtitle(_ session: Session) -> String {
-        let typeName = SessionTypeConfig.config(for: session.sessionType).displayName
-        switch session.sessionType {
-        case .rhythm:
-            if let focus = session.timerLengthMinutes, let brk = session.breakMinutes {
-                return "\(typeName) · \(RhythmOption(focusMinutes: focus, breakMinutes: brk).displayLabel)"
-            }
-            return typeName
-        case .timebound:
-            if let minutes = session.timerLengthMinutes {
-                return "\(typeName) (\(minutes)m)"
-            }
-            return typeName
-        default:
-            return typeName
         }
     }
 
