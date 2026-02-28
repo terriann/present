@@ -17,25 +17,39 @@ final class DataRefreshCoordinator {
     var recentSessionSuggestion: (session: Session, activity: Activity)?
     var rhythmDurationOptions: [RhythmOption] = Constants.defaultRhythmDurationOptions
 
-    // MARK: - Polling & IPC
+    // MARK: - Observation & IPC
 
     private var observationTask: Task<Void, Never>?
+    private var midnightTask: Task<Void, Never>?
+    private var debounceTask: Task<Void, Never>?
     private var ipcServer: IPCServer?
 
     // MARK: - Callback
 
-    /// Called from the polling loop when a refresh cycle is due.
+    /// Called when a database change or midnight rollover requires a refresh.
     /// AppState sets this to its own `refreshAll()`.
     var onRefreshNeeded: (() async -> Void)?
 
     // MARK: - Dependencies
 
     private let service: PresentService
+    private let changeNotifier: DatabaseChangeNotifier
+
+    /// Tables whose modifications trigger a data refresh.
+    private static let trackedTables = [
+        Session.databaseTableName,
+        SessionSegment.databaseTableName,
+        Activity.databaseTableName,
+        ActivityTag.databaseTableName,
+        Tag.databaseTableName,
+        Preference.databaseTableName,
+    ]
 
     // MARK: - Initialization
 
-    init(service: PresentService) {
+    init(service: PresentService, changeNotifier: DatabaseChangeNotifier) {
         self.service = service
+        self.changeNotifier = changeNotifier
     }
 
     // MARK: - Data Refresh
@@ -96,15 +110,57 @@ final class DataRefreshCoordinator {
         }
     }
 
-    // MARK: - Polling
+    // MARK: - Database Observation
 
+    /// Starts listening for database changes via `DatabaseRegionObservation`.
+    /// Each detected change is debounced (100ms) before triggering a refresh,
+    /// so rapid mutations (e.g. stop session = segment + session update)
+    /// collapse into a single refresh cycle.
     func startObservations() {
+        let stream = changeNotifier.changes(tracking: Self.trackedTables)
+
         observationTask = Task {
+            for await _ in stream {
+                guard !Task.isCancelled else { break }
+                scheduleRefresh()
+            }
+        }
+
+        startMidnightTimer()
+    }
+
+    // MARK: - Midnight Timer
+
+    /// Schedules a refresh at the next midnight so date-boundary changes
+    /// (daily/weekly summaries) update even without database writes.
+    private func startMidnightTimer() {
+        midnightTask?.cancel()
+        midnightTask = Task {
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(2))
+                let now = Date()
+                let calendar = Calendar.current
+                guard let nextMidnight = calendar.date(
+                    byAdding: .day, value: 1,
+                    to: calendar.startOfDay(for: now)
+                ) else { break }
+                let seconds = nextMidnight.timeIntervalSince(now)
+                try? await Task.sleep(for: .seconds(seconds))
                 guard !Task.isCancelled else { break }
                 await onRefreshNeeded?()
             }
+        }
+    }
+
+    // MARK: - Debounce
+
+    /// Schedules a debounced refresh. Multiple calls within 100ms collapse
+    /// into a single `onRefreshNeeded` invocation.
+    private func scheduleRefresh() {
+        debounceTask?.cancel()
+        debounceTask = Task {
+            try? await Task.sleep(for: .milliseconds(100))
+            guard !Task.isCancelled else { return }
+            await onRefreshNeeded?()
         }
     }
 
@@ -113,7 +169,7 @@ final class DataRefreshCoordinator {
     func startIPCServer() {
         ipcServer = IPCServer { [weak self] _ in
             Task { @MainActor [weak self] in
-                await self?.onRefreshNeeded?()
+                self?.scheduleRefresh()
             }
         }
         try? ipcServer?.start()
