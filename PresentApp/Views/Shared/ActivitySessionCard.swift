@@ -276,13 +276,14 @@ struct ActivitySessionCard: View {
         HStack(spacing: Constants.spacingCompact) {
             SpinningClockIcon(isRunning: session.state == .running)
 
-            HStack(spacing: 4) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(sessionTypeLabel(session))
-                Text("\u{00B7}")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
                 Text(TimeFormatting.formatTime(session.startedAt, referenceDate: Date()))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             }
-            .font(.body)
-            .foregroundStyle(.secondary)
 
             Spacer()
             activeDurationLabel
@@ -354,13 +355,15 @@ struct ActivitySessionCard: View {
         HStack(spacing: Constants.spacingCompact) {
             stateIcon(for: session)
 
-            HStack(spacing: 4) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(sessionTypeLabel(session))
-                Text("\u{00B7}")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+
                 Text(sessionTimeRange(session))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             }
-            .font(.body)
-            .foregroundStyle(.secondary)
 
             Spacer()
 
