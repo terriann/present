@@ -81,7 +81,13 @@ struct ReportsView: View {
                     }
                 }
 
-                ReportActivityBreakdownCard(sessionEntries: sessionEntries, onReload: reloadReport)
+                ActivitySessionCard(
+                    title: "Session Log",
+                    sessionEntries: sessionEntries,
+                    activityColorMap: activityColorMap,
+                    includeActiveSession: isShowingToday,
+                    onReload: reloadReport
+                )
                 ReportCLIPromoCard()
             }
             .padding(Constants.spacingPage)
