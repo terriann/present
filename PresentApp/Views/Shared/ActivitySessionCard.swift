@@ -26,14 +26,6 @@ struct ActivitySessionCard: View {
 
     var body: some View {
         ChartCard(title: title) {
-            Picker("Sort", selection: $sortOrder) {
-                ForEach(ActivitySortOrder.allCases, id: \.self) { order in
-                    Text(order.displayName).tag(order)
-                }
-            }
-            .pickerStyle(.menu)
-            .fixedSize()
-        } content: {
             if sessionEntries.isEmpty && !hasActiveSession {
                 ContentUnavailableView(
                     "No Sessions",
@@ -43,9 +35,7 @@ struct ActivitySessionCard: View {
                 .emptyStateStyle()
             } else {
                 VStack(spacing: 0) {
-                    searchBar
-                    Divider()
-                    controlsBar
+                    toolbar
                     Divider()
 
                     let entries = filteredEntries
@@ -108,48 +98,59 @@ struct ActivitySessionCard: View {
         }
     }
 
-    // MARK: - Search Bar
+    // MARK: - Toolbar
 
-    private var searchBar: some View {
-        HStack {
-            Image(systemName: "magnifyingglass")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            TextField("Search notes, tickets, activities...", text: $searchText)
-                .textFieldStyle(.plain)
-                .font(.subheadline)
-            if !searchText.isEmpty {
-                Button {
-                    searchText = ""
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(.horizontal, Constants.spacingCard)
-        .padding(.vertical, Constants.spacingCompact)
-    }
-
-    // MARK: - Controls Bar
-
-    private var controlsBar: some View {
-        HStack {
-            Text("Group by:")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            Picker("Group by", selection: $grouping) {
-                ForEach(SessionGrouping.allCases, id: \.self) { mode in
-                    Text(mode.displayName).tag(mode)
+    private var toolbar: some View {
+        HStack(alignment: .bottom, spacing: Constants.spacingCard) {
+            // Search field fills available space
+            HStack {
+                Image(systemName: "magnifyingglass")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                TextField("Search...", text: $searchText)
+                    .textFieldStyle(.plain)
+                    .font(.subheadline)
+                if !searchText.isEmpty {
+                    Button {
+                        searchText = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
-            .pickerStyle(.menu)
-            .fixedSize()
-            .labelsHidden()
 
-            Spacer()
+            // Sort dropdown with label above
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Sort")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Picker("Sort", selection: $sortOrder) {
+                    ForEach(ActivitySortOrder.allCases, id: \.self) { order in
+                        Text(order.displayName).tag(order)
+                    }
+                }
+                .pickerStyle(.menu)
+                .fixedSize()
+                .labelsHidden()
+            }
+
+            // Group-by dropdown with label above
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Group")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Picker("Group", selection: $grouping) {
+                    ForEach(SessionGrouping.allCases, id: \.self) { mode in
+                        Text(mode.displayName).tag(mode)
+                    }
+                }
+                .pickerStyle(.menu)
+                .fixedSize()
+                .labelsHidden()
+            }
         }
         .padding(.horizontal, Constants.spacingCard)
         .padding(.vertical, Constants.spacingCompact)
