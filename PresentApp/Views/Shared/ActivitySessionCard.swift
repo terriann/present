@@ -110,6 +110,10 @@ struct ActivitySessionCard: View {
                 TextField("Search...", text: $searchText)
                     .textFieldStyle(.plain)
                     .font(.subheadline)
+                    .onKeyPress(.escape) {
+                        searchText = ""
+                        return .handled
+                    }
                 if !searchText.isEmpty {
                     Button {
                         searchText = ""
