@@ -242,12 +242,12 @@ struct ActivitySessionCard: View {
 
     private func ungroupedView(entries: [(Session, Activity)]) -> some View {
         VStack(spacing: 0) {
-            // Active session at top when ungrouped — matches SessionRow layout
+            // Active session at top
             if hasActiveSession, activeSessionMatchesSearch,
                let active = appState.currentSession, let activity = appState.currentActivity {
-                ungroupedActiveSessionRow(session: active, activityTitle: activity.title)
-                    .padding(.horizontal, Constants.spacingCard)
+                ungroupedActiveSessionRow(session: active, activity: activity)
                     .padding(.vertical, Constants.spacingCompact)
+                    .padding(.horizontal, Constants.spacingCard)
                     .background(entries.isEmpty ? Color.clear : Color.gray.opacity(0.08))
                     .contentShape(Rectangle())
                     .sessionContextMenu(session: active, activityTitle: activity.title)
@@ -255,9 +255,9 @@ struct ActivitySessionCard: View {
 
             ForEach(Array(entries.enumerated()), id: \.element.0.id) { index, entry in
                 let adjustedIndex = hasActiveSessionMatchingSearch ? index + 1 : index
-                SessionRow(session: entry.0, activityTitle: entry.1.title)
-                    .padding(.horizontal, Constants.spacingCard)
+                ungroupedSessionRow(session: entry.0, activity: entry.1)
                     .padding(.vertical, Constants.spacingCompact)
+                    .padding(.horizontal, Constants.spacingCard)
                     .background(adjustedIndex.isMultiple(of: 2) ? Color.clear : Color.gray.opacity(0.08))
                     .contentShape(Rectangle())
                     .sessionContextMenu(session: entry.0, activityTitle: entry.1.title) {
@@ -276,14 +276,14 @@ struct ActivitySessionCard: View {
         HStack(spacing: Constants.spacingCompact) {
             SpinningClockIcon(isRunning: session.state == .running)
 
-            VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 4) {
                 Text(sessionTypeLabel(session))
-                    .font(.body)
-                    .foregroundStyle(.secondary)
+                Text("\u{00B7}")
                 Text(TimeFormatting.formatTime(session.startedAt, referenceDate: Date()))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
             }
+            .font(.body)
+            .foregroundStyle(.secondary)
+
             Spacer()
             activeDurationLabel
         }
@@ -295,31 +295,56 @@ struct ActivitySessionCard: View {
         .sessionContextMenu(session: session, activityTitle: activityTitle)
     }
 
-    /// Active session row for ungrouped view — matches `SessionRow` layout with live duration
-    /// and SpinningClockIcon as the trailing state indicator.
+    /// Active session row for ungrouped view — SpinningClockIcon on left where the dot would be.
     @ViewBuilder
-    private func ungroupedActiveSessionRow(session: Session, activityTitle: String) -> some View {
-        HStack {
+    private func ungroupedActiveSessionRow(session: Session, activity: Activity) -> some View {
+        HStack(spacing: Constants.spacingCompact) {
+            SpinningClockIcon(isRunning: session.state == .running)
+
             VStack(alignment: .leading, spacing: 2) {
-                Text(activityTitle)
+                Text(activity.title)
                     .font(.body.bold())
 
-                HStack(spacing: 8) {
-                    Text(SessionTypeConfig.config(for: session.sessionType).displayName)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-
-                    Text(TimeFormatting.formatTime(session.startedAt))
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                HStack(spacing: 4) {
+                    Text(sessionTypeLabel(session))
+                    Text("\u{00B7}")
+                    Text(TimeFormatting.formatTime(session.startedAt, referenceDate: Date()))
                 }
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
             }
 
             Spacer()
 
             activeDurationLabel
+        }
+        .padding(.vertical, 2)
+    }
 
-            SpinningClockIcon(isRunning: session.state == .running)
+    /// Completed/cancelled session row for ungrouped view — colored dot on left, no trailing icon.
+    @ViewBuilder
+    private func ungroupedSessionRow(session: Session, activity: Activity) -> some View {
+        HStack(spacing: Constants.spacingCompact) {
+            Circle()
+                .fill(activityColorMap[activity.title] ?? .secondary)
+                .frame(width: 8, height: 8)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(activity.title)
+                    .font(.body.bold())
+
+                HStack(spacing: 4) {
+                    Text(sessionTypeLabel(session))
+                    Text("\u{00B7}")
+                    Text(sessionTimeRange(session))
+                }
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            sessionDurationLabel(session)
         }
         .padding(.vertical, 2)
     }
@@ -329,15 +354,13 @@ struct ActivitySessionCard: View {
         HStack(spacing: Constants.spacingCompact) {
             stateIcon(for: session)
 
-            VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 4) {
                 Text(sessionTypeLabel(session))
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-
+                Text("\u{00B7}")
                 Text(sessionTimeRange(session))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
             }
+            .font(.body)
+            .foregroundStyle(.secondary)
 
             Spacer()
 
