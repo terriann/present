@@ -8,6 +8,11 @@ A simple, intentional way to track time on macOS. Present combines a menu bar
 timer with a full windowed app and a CLI tool, all backed by a local SQLite
 database.
 
+Everything is effortlessly editable. Changing an activity name, adjusting a
+session, or adding a note happens through simple interactions that do not
+distract from what you're doing. Present stays out of your way so you can focus
+on the work, not the tool.
+
 [![CI](https://github.com/terriann/present/actions/workflows/ci.yml/badge.svg)](https://github.com/terriann/present/actions/workflows/ci.yml)
 
 ## Table of Contents

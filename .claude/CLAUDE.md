@@ -46,6 +46,15 @@ For dismiss actions, prefer descriptive labels over mechanical ones. Use "Done f
 
 Always say "Launch Present" — never "Open Present." Launch conveys intent and action. Open is generic, passive, and carries connotations of unwrapping something precious. Time is a gift; this app is just a tool.
 
+### Interaction design
+
+Everything should be effortlessly editable through simple interactions that do not distract. These principles make that concrete:
+
+- **Edits happen in place** — prefer inline editing over sheets or navigation when the edit is a single field or short text. The user should feel like they can reach out and change something without leaving their current context.
+- **Stay in context** — don't navigate the user away from what they're looking at to make a change. If an edit can happen in a popover, inline field, or the current view, it should.
+- **Commit without ceremony** — save on blur, on return, or on dismiss. Don't require explicit save buttons or confirmation for low-risk, easily reversible edits. Reserve confirmation for destructive or irreversible actions (delete, cancel, discard).
+- **Signal navigation with ellipsis** — if an action opens a separate window, sheet, or dialog, suffix the label with an ellipsis (`…`). This tells the user the action won't complete inline and another view is coming (e.g., "Export…", "Edit Details…").
+
 ## Architecture
 
 ```
@@ -73,6 +82,7 @@ CLI Commands ──────────────────────�
 
 ### ViewModels
 - `AppState` is `@MainActor @Observable` (Observation framework, not `ObservableObject`/`@Published`).
+- `AppState` delegates to focused managers (`ZoomManager`, `TimerManager`, `DataRefreshCoordinator`, `SessionManager`) and forwards their state via computed properties. No manager-to-manager references — AppState coordinates all cross-manager logic. See [docs/architecture.md](../docs/architecture.md) for the full decomposition.
 - Views access via `@Environment(AppState.self)` and use `@Bindable var state = appState` for two-way binding.
 - GRDB `ValueObservation` for reactive database updates.
 
@@ -81,6 +91,7 @@ CLI Commands ──────────────────────�
 - Use SF Symbols for icons. `.monospacedDigit()` for timer displays.
 - Standard section order: properties, body, MARK subviews, MARK helpers.
 - All tabs and panes align content to the top — use `.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)`. Empty states (`ContentUnavailableView`) must also be top-aligned, never vertically centered.
+- **File naming**: Feature-scoped view files use their directory as a prefix (`Dashboard/DashboardWeeklyChartCard.swift`, `Activities/ActivitiesDetailView.swift`, `Reports/ReportStackedBarChart.swift`). Generic shared components in `Shared/` skip the prefix (`SpinningClockIcon.swift`, `ChartTooltip.swift`).
 
 ### Typography
 - Semantic font tokens are defined in `PresentApp/Views/Shared/Typography.swift` as `Font` static properties.
@@ -197,6 +208,23 @@ CLI Commands ──────────────────────�
 - **Auto-rotating content** (carousels, timed transitions): disable the rotation entirely when reduce motion is on. Read `@Environment(\.accessibilityReduceMotion)` and guard the timer callback.
 - `.contentTransition(.numericText())` respects reduce motion automatically — no wrapper needed.
 
+### Accessibility (VoiceOver)
+- **Icon-only buttons** must have `.accessibilityLabel("Description")`. `.help()` provides a tooltip but is not announced by VoiceOver — always add both.
+- **Decorative icons** (paired with a text label, or redundant with nearby content like a status message) get `.accessibilityHidden(true)`.
+- **Buttons with text labels** need no extra accessibility work — SwiftUI derives the accessible name from the label content automatically.
+- When adding any new icon or image-only control, decide: is it interactive or decorative? Apply the appropriate modifier before committing.
+
+### Scripts
+
+- **`Scripts/preview-icons.sh`**: Renders Icon Composer (`.icon`) files at all standard macOS sizes into an HTML preview. Uses `ictool` (bundled with Xcode's Icon Composer). Renders Default and Dark renditions at 16–512pt (1x and 2x). When multiple files are passed, includes a side-by-side comparison section. Opens the HTML in the default browser.
+  ```bash
+  bash Scripts/preview-icons.sh local-assets/*.icon
+  bash Scripts/preview-icons.sh file1.icon file2.icon file3.icon
+  ```
+  Note: `ictool` does not add the transparent margin macOS applies to Dock/Finder icons — previews will appear slightly larger than in production.
+
+- **`Scripts/generate-cli-docs.sh`**: Regenerates `docs/cli-reference.md` from the CLI binary. Run after any CLI command change.
+
 ## Pull Requests
 - Default PR base branch is `main` unless otherwise specified.
 
@@ -264,7 +292,7 @@ When a change spans multiple scopes, use the most significant one. If truly cros
 
 ## Filing Issues & Project Management
 
-**Always delegate bug reports, feature requests, triage, and milestone planning to the PM agent** (`.claude/agents/pm.md`). Do not create GitHub issues directly.
+**Always delegate bug reports, feature requests, triage, and milestone planning to the project manager agent** (`.claude/agents/project-manager.md`). Do not create GitHub issues directly.
 
 This applies when the user:
 - Reports a bug or unexpected behavior
@@ -274,7 +302,7 @@ This applies when the user:
 - Asks to triage, audit, size, or prioritize issues
 - Asks to plan or propose milestones
 
-The PM agent handles issue creation (via the `/issue` skill), triage, labeling, sizing, and milestone management.
+The project manager agent handles issue creation (via the `/issue` skill), triage, labeling, sizing, and milestone management.
 
 ### Milestones
 
@@ -286,8 +314,8 @@ The PM agent handles issue creation (via the `/issue` skill), triage, labeling, 
 
 This applies when the user:
 - Asks for a codebase audit or code review
-- Wants to check for DRY violations, force unwraps, or security concerns
+- Wants to check for SOLID, SoC, or DRY violations, force unwraps, or security concerns
 - Asks to "review the code", "audit the codebase", or "check code quality"
 - Wants a pre-release quality check
 
-The code-reviewer agent explores the codebase, produces categorized findings, and delegates issue filing to the PM agent. It does not implement fixes.
+The code-reviewer agent explores the codebase, produces categorized findings, and delegates issue filing to the project manager agent. It does not implement fixes.

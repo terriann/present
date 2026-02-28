@@ -28,6 +28,8 @@ public enum Constants {
     public static let maxExternalIdLength = 255
     public static let maxLinkLength = 2000
     public static let maxNotesLength = 50_000
+    public static let maxSessionNoteLength = 10_000
+    public static let maxSessionLinkLength = 2000
     public static let maxSearchQueryLength = 200
     public static let minSearchQueryLength = 1
     public static let sessionMinutesRange = 1...480
@@ -71,5 +73,5 @@ public enum Constants {
 
     // MARK: - CLI
 
-    public static let cliVersion = "0.1.1"
+    public static let cliVersion = "0.3.0-dev"
 }

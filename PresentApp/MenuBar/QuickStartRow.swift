@@ -7,22 +7,35 @@ struct QuickStartRow: View {
     let activity: Activity
     var icon: String = "play.circle"
     var subtitle: String?
+    var isSelected: Bool = false
     let onTap: () -> Void
     let onEdit: () -> Void
 
     @State private var isRowHovered = false
 
+    private var filledIcon: String {
+        icon.hasSuffix(".fill") ? icon : "\(icon).fill"
+    }
+
     var body: some View {
         HStack(spacing: 8) {
             Button(action: onTap) {
                 HStack(spacing: 8) {
-                    Image(systemName: icon)
-                        .foregroundStyle(isRowHovered ? theme.accent : .secondary)
+                    Image(systemName: isSelected || isRowHovered ? filledIcon : icon)
+                        .foregroundStyle(isSelected || isRowHovered ? theme.accent : .secondary)
 
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(activity.title)
-                            .font(.body)
-                            .lineLimit(1)
+                        HStack(spacing: 4) {
+                            Text(activity.title)
+                                .font(.body)
+                                .lineLimit(1)
+
+                            if activity.isSystem {
+                                Text("System")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
 
                         if let subtitle {
                             Text(subtitle)
@@ -41,7 +54,7 @@ struct QuickStartRow: View {
         }
         .padding(.horizontal, Constants.spacingCard)
         .padding(.vertical, 6)
-        .background(Color.primary.opacity(isRowHovered ? 0.05 : 0))
+        .background(isSelected ? theme.accent.opacity(0.12) : Color.primary.opacity(isRowHovered ? 0.05 : 0))
         .clipShape(RoundedRectangle(cornerRadius: 4))
         .onHover { hovering in
             isRowHovered = hovering

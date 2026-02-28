@@ -38,13 +38,14 @@ struct CLICommandTests {
     @Test func sessionGroupConfiguration() {
         #expect(SessionCommand.configuration.commandName == "session")
         let subcommands = SessionCommand.configuration.subcommands
-        #expect(subcommands.count == 6)
+        #expect(subcommands.count == 7)
 
         let names = subcommands.map { $0.configuration.commandName ?? "" }
         #expect(names.contains("start"))
         #expect(names.contains("add"))
         #expect(names.contains("get"))
         #expect(names.contains("list"))
+        #expect(names.contains("update"))
         #expect(names.contains("delete"))
         #expect(names.contains("current"))
     }

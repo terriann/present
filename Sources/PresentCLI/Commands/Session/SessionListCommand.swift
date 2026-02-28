@@ -41,6 +41,9 @@ struct SessionListCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Filter by activity name (substring match).")
     var activity: String?
 
+    @Option(name: [.short, .long], help: "Search session notes and ticket IDs.")
+    var query: String?
+
     @Option(name: .long, help: "Page number (1-indexed, max 100 results per page).")
     var page: Int = 1
 
@@ -111,7 +114,8 @@ struct SessionListCommand: AsyncParsableCommand {
             to: toDate,
             type: sessionType,
             activityId: activityId,
-            includeArchived: true
+            includeArchived: true,
+            query: query
         )
 
         // Post-filter by activity name if multiple matches

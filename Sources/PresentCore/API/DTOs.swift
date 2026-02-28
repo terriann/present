@@ -53,6 +53,8 @@ public struct CreateBackdatedSessionInput: Sendable {
     public var endedAt: Date
     public var timerLengthMinutes: Int?
     public var breakMinutes: Int?
+    public var note: String?
+    public var link: String?
 
     public init(
         activityId: Int64,
@@ -60,13 +62,58 @@ public struct CreateBackdatedSessionInput: Sendable {
         startedAt: Date,
         endedAt: Date,
         timerLengthMinutes: Int? = nil,
-        breakMinutes: Int? = nil
+        breakMinutes: Int? = nil,
+        note: String? = nil,
+        link: String? = nil
     ) {
         self.activityId = activityId
         self.sessionType = sessionType
         self.startedAt = startedAt
         self.endedAt = endedAt
         self.timerLengthMinutes = timerLengthMinutes
+        self.breakMinutes = breakMinutes
+        self.note = note
+        self.link = link
+    }
+}
+
+public struct UpdateSessionInput: Sendable {
+    /// New note text. `nil` = no change, empty string = clear.
+    public var note: String?
+    /// New link URL. `nil` = no change, empty string = clear.
+    public var link: String?
+    /// Reassign session to a different activity. `nil` = no change.
+    public var activityId: Int64?
+    /// Adjust session start time. `nil` = no change.
+    public var startedAt: Date?
+    /// Adjust session end time. `nil` = no change. Not allowed for active sessions.
+    public var endedAt: Date?
+
+    public init(
+        note: String? = nil,
+        link: String? = nil,
+        activityId: Int64? = nil,
+        startedAt: Date? = nil,
+        endedAt: Date? = nil
+    ) {
+        self.note = note
+        self.link = link
+        self.activityId = activityId
+        self.startedAt = startedAt
+        self.endedAt = endedAt
+    }
+}
+
+public struct ConvertSessionInput: Sendable {
+    public let targetType: SessionType
+    /// Required when converting to timebound or rhythm (focus duration).
+    public let timerMinutes: Int?
+    /// Required when converting to rhythm (break duration).
+    public let breakMinutes: Int?
+
+    public init(targetType: SessionType, timerMinutes: Int? = nil, breakMinutes: Int? = nil) {
+        self.targetType = targetType
+        self.timerMinutes = timerMinutes
         self.breakMinutes = breakMinutes
     }
 }

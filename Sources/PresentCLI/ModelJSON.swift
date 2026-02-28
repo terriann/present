@@ -92,6 +92,18 @@ extension Session {
         if let breakMinutes {
             dict["breakMinutes"] = breakMinutes
         }
+        if let note {
+            dict["note"] = note
+        }
+        if let link {
+            dict["link"] = link
+        }
+        if let ticketId {
+            dict["ticketId"] = ticketId
+        }
+        if countdownBaseSeconds > 0 {
+            dict["countdownBaseSeconds"] = countdownBaseSeconds
+        }
         return dict
     }
 
@@ -116,6 +128,18 @@ extension Session {
         }
         if let breakMinutes {
             fields["breakMinutes"] = "\(breakMinutes)"
+        }
+        if let note {
+            fields["note"] = note
+        }
+        if let link {
+            fields["link"] = link
+        }
+        if let ticketId {
+            fields["ticketId"] = ticketId
+        }
+        if countdownBaseSeconds > 0 {
+            fields["countdownBaseSeconds"] = "\(countdownBaseSeconds)"
         }
         return fields
     }

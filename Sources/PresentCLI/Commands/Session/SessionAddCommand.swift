@@ -53,6 +53,12 @@ struct SessionAddCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Break duration in minutes (for rhythm).")
     var breakMinutes: Int?
 
+    @Option(name: .long, help: "Session note (free text).")
+    var note: String?
+
+    @Option(name: .long, help: "Link URL (ticket ID extracted automatically).")
+    var link: String?
+
     @OptionGroup var outputOptions: OutputOptions
 
     func run() async throws {
@@ -97,7 +103,9 @@ struct SessionAddCommand: AsyncParsableCommand {
             startedAt: startDate,
             endedAt: endDate,
             timerLengthMinutes: minutes,
-            breakMinutes: breakMinutes
+            breakMinutes: breakMinutes,
+            note: note,
+            link: link
         )
 
         let session = try await service.createBackdatedSession(input)

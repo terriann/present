@@ -43,6 +43,12 @@ struct SessionStartCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Break duration in minutes (overrides rhythm option default).")
     var breakMinutes: Int?
 
+    @Option(name: .long, help: "Session note (free text).")
+    var note: String?
+
+    @Option(name: .long, help: "Link URL (ticket ID extracted automatically).")
+    var link: String?
+
     @OptionGroup var outputOptions: OutputOptions
 
     func run() async throws {
@@ -92,7 +98,9 @@ struct SessionStartCommand: AsyncParsableCommand {
             activityId: activity.id!,
             type: sessionType,
             timerMinutes: minutes,
-            breakMinutes: resolvedBreakMinutes
+            breakMinutes: resolvedBreakMinutes,
+            note: note,
+            link: link
         )
 
         switch outputOptions.format {

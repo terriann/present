@@ -23,7 +23,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.present.app
-        MARKETING_VERSION: "0.1.0-dev"
+        MARKETING_VERSION: "0.2.0-dev"
         INFOPLIST_FILE: PresentApp/Info.plist
         GENERATE_INFOPLIST_FILE: NO
         SWIFT_VERSION: "6.0"

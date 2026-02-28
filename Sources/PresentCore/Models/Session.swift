@@ -14,6 +14,10 @@ public struct Session: Codable, Sendable, Identifiable, Equatable {
     public var totalPausedSeconds: Int
     public var lastPausedAt: Date?
     public var breakMinutes: Int?
+    public var note: String?
+    public var link: String?
+    public var ticketId: String?
+    public var countdownBaseSeconds: Int
     public var createdAt: Date
 
     public init(
@@ -29,6 +33,10 @@ public struct Session: Codable, Sendable, Identifiable, Equatable {
         totalPausedSeconds: Int = 0,
         lastPausedAt: Date? = nil,
         breakMinutes: Int? = nil,
+        note: String? = nil,
+        link: String? = nil,
+        ticketId: String? = nil,
+        countdownBaseSeconds: Int = 0,
         createdAt: Date = Date()
     ) {
         self.id = id
@@ -43,6 +51,10 @@ public struct Session: Codable, Sendable, Identifiable, Equatable {
         self.totalPausedSeconds = totalPausedSeconds
         self.lastPausedAt = lastPausedAt
         self.breakMinutes = breakMinutes
+        self.note = note
+        self.link = link
+        self.ticketId = ticketId
+        self.countdownBaseSeconds = countdownBaseSeconds
         self.createdAt = createdAt
     }
 }
@@ -63,9 +75,39 @@ extension Session: FetchableRecord, PersistableRecord {
         static let totalPausedSeconds = Column(CodingKeys.totalPausedSeconds)
         static let lastPausedAt = Column(CodingKeys.lastPausedAt)
         static let breakMinutes = Column(CodingKeys.breakMinutes)
+        static let note = Column(CodingKeys.note)
+        static let link = Column(CodingKeys.link)
+        static let ticketId = Column(CodingKeys.ticketId)
+        static let countdownBaseSeconds = Column(CodingKeys.countdownBaseSeconds)
         static let createdAt = Column(CodingKeys.createdAt)
     }
 
     public static let activity = belongsTo(Activity.self)
     public static let segments = hasMany(SessionSegment.self)
+}
+
+extension Session {
+
+    /// Human-readable session type description with parameters.
+    ///
+    /// - Work: "Work Session"
+    /// - Timebound: "Timebound · 45m"
+    /// - Rhythm: "Rhythm Session · 25m / 5m"
+    public var typeDescription: String {
+        let typeName = SessionTypeConfig.config(for: sessionType).displayName
+        switch sessionType {
+        case .rhythm:
+            if let focus = timerLengthMinutes, let brk = breakMinutes {
+                return "\(typeName) · \(RhythmOption(focusMinutes: focus, breakMinutes: brk).displayLabel)"
+            }
+            return typeName
+        case .timebound:
+            if let minutes = timerLengthMinutes {
+                return "\(typeName) · \(minutes)m"
+            }
+            return typeName
+        case .work:
+            return typeName
+        }
+    }
 }

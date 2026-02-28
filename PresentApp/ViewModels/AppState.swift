@@ -1,102 +1,57 @@
 import SwiftUI
 import PresentCore
-import GRDB
-import Combine
-
-enum ErrorScene {
-    case mainWindow
-    case menuBar
-    case settings
-}
-
-struct AppError: Identifiable {
-    let id = UUID()
-    let title: String
-    let message: String
-    let scene: ErrorScene
-}
 
 @MainActor @Observable
 final class AppState {
-    // MARK: - Published State
+    // MARK: - Session State
 
     var currentSession: Session?
     var currentActivity: Activity?
-    var todayTotalSeconds: Int = 0
-    var todaySessionCount: Int = 0
-    var todayActivities: [ActivitySummary] = []
-    var weeklySummary: WeeklySummary?
-    var weekStartDay: Int = 1
-    var recentActivities: [Activity] = []
-    var allActivities: [Activity] = []
-    var allTags: [Tag] = []
-    var recentSessionSuggestion: (session: Session, activity: Activity)?
-    var rhythmDurationOptions: [RhythmOption] = Constants.defaultRhythmDurationOptions
 
-    // MARK: - Timer
+    // MARK: - Data (forwarded from DataRefreshCoordinator)
 
-    var timerElapsedSeconds: Int = 0
-    private var timerTask: Task<Void, Never>?
-    private var timerCompletionHandled = false
+    private(set) var dataRefresh: DataRefreshCoordinator!
 
-    // MARK: - Completed Timer Linger
+    var todayTotalSeconds: Int { dataRefresh.todayTotalSeconds }
+    var todaySessionCount: Int { dataRefresh.todaySessionCount }
+    var todayActivities: [ActivitySummary] { dataRefresh.todayActivities }
+    var weeklySummary: WeeklySummary? { dataRefresh.weeklySummary }
+    var weekStartDay: Int { dataRefresh.weekStartDay }
+    var recentActivities: [Activity] { dataRefresh.recentActivities }
+    var popoverActivities: [Activity] { dataRefresh.popoverActivities }
+    var allActivities: [Activity] { dataRefresh.allActivities }
+    var allTags: [Tag] { dataRefresh.allTags }
+    var recentSessionSuggestion: (session: Session, activity: Activity)? { dataRefresh.recentSessionSuggestion }
+    var rhythmDurationOptions: [RhythmOption] { dataRefresh.rhythmDurationOptions }
 
-    var completedTimerText: String?
-    var isCompletedTimerFading: Bool = false
-    private var completedTimerLingerTask: Task<Void, Never>?
+    // MARK: - Timer (forwarded from TimerManager)
 
-    // MARK: - Timer Completion Alert
+    private(set) var timer: TimerManager!
 
-    var timerCompletionContext: TimerCompletionContext?
-    /// Saved when starting a break so the break-end alert knows what to resume.
-    /// Also persisted to UserDefaults so it survives crashes/force-quits.
+    var timerElapsedSeconds: Int { timer.timerElapsedSeconds }
+    var completedTimerText: String? { timer.completedTimerText }
+    var isCompletedTimerFading: Bool { timer.isCompletedTimerFading }
+    var timerCompletionContext: TimerCompletionContext? {
+        get { timer.timerCompletionContext }
+        set { timer.timerCompletionContext = newValue }
+    }
     var breakPrecedingContext: (activityId: Int64, title: String, timerMinutes: Int, breakMinutes: Int)? {
-        didSet {
-            if let ctx = breakPrecedingContext {
-                persistBreakContext(ctx)
-            } else {
-                UserDefaults.standard.removeObject(forKey: "breakPrecedingContext")
-            }
-        }
+        get { timer.breakPrecedingContext }
+        set { timer.breakPrecedingContext = newValue }
     }
 
-    // MARK: - Zoom
+    // MARK: - Zoom (forwarded from ZoomManager)
 
-    var zoomScale: CGFloat = 1.0
+    private(set) var zoom: ZoomManager!
 
-    static let defaultZoomIndex = 3
-    static let zoomScales: [CGFloat] = [0.85, 0.9, 0.95, 1.0, 1.1, 1.2, 1.35, 1.5, 1.75]
+    var zoomScale: CGFloat { zoom.zoomScale }
+    var canZoomIn: Bool { zoom.canZoomIn }
+    var canZoomOut: Bool { zoom.canZoomOut }
+    var isDefaultZoom: Bool { zoom.isDefaultZoom }
 
-    private var zoomIndex: Int {
-        Self.zoomScales.firstIndex(of: zoomScale) ?? Self.defaultZoomIndex
-    }
-
-    var canZoomIn: Bool { zoomIndex < Self.zoomScales.count - 1 }
-    var canZoomOut: Bool { zoomIndex > 0 }
-    var isDefaultZoom: Bool { zoomScale == 1.0 }
-
-    func zoomIn() {
-        guard canZoomIn else { return }
-        zoomScale = Self.zoomScales[zoomIndex + 1]
-        saveZoomLevel()
-    }
-
-    func zoomOut() {
-        guard canZoomOut else { return }
-        zoomScale = Self.zoomScales[zoomIndex - 1]
-        saveZoomLevel()
-    }
-
-    func resetZoom() {
-        zoomScale = 1.0
-        saveZoomLevel()
-    }
-
-    private func saveZoomLevel() {
-        Task {
-            try? await service.setPreference(key: PreferenceKey.zoomLevel, value: String(zoomIndex))
-        }
-    }
+    func zoomIn() { zoom.zoomIn() }
+    func zoomOut() { zoom.zoomOut() }
+    func resetZoom() { zoom.resetZoom() }
 
     // MARK: - Error Feedback
 
@@ -106,13 +61,43 @@ final class AppState {
 
     var selectedSidebarItem: SidebarItem = .dashboard
     var navigateToActivityId: Int64?
+    var pendingNavigation: NavigationAction?
+    var pendingSettingsTab: SettingsTab?
+
+    /// Centralized navigation entry point.
+    ///
+    /// Sets the relevant sidebar/activity state and queues a `pendingNavigation`
+    /// action that `MenuBarLabelView` consumes via `onChange` to open windows.
+    func navigate(to action: NavigationAction) {
+        switch action {
+        case .launchMainWindow:
+            pendingNavigation = .launchMainWindow
+
+        case .showDashboard:
+            selectedSidebarItem = .dashboard
+            pendingNavigation = .launchMainWindow
+
+        case .showActivity(let id):
+            navigateToActivityId = id
+            selectedSidebarItem = .activities
+            pendingNavigation = .launchMainWindow
+
+        case .showSettings(let tab):
+            if let tab {
+                pendingSettingsTab = tab
+            }
+            pendingNavigation = .showSettings(tab)
+        }
+    }
+
+    // MARK: - Session (delegated to SessionManager)
+
+    private(set) var sessionMgr: SessionManager!
 
     // MARK: - Services
 
     private(set) var service: PresentService
     private let dbManager: DatabaseManager
-    private var ipcServer: IPCServer?
-    private var observationTask: Task<Void, Never>?
 
     // MARK: - Computed Properties
 
@@ -135,18 +120,7 @@ final class AppState {
     }
 
     var formattedTimerValue: String {
-        guard let session = currentSession else { return "0:00" }
-
-        // For countdown timers, show remaining time
-        if let timerMinutes = session.timerLengthMinutes,
-           session.sessionType == .rhythm || session.sessionType == .timebound {
-            let totalSeconds = timerMinutes * 60
-            let remaining = max(0, totalSeconds - timerElapsedSeconds)
-            return TimeFormatting.formatTimer(seconds: remaining)
-        }
-
-        // For work sessions, show elapsed time
-        return TimeFormatting.formatTimer(seconds: timerElapsedSeconds)
+        timer.formattedTimerValue
     }
 
     var isSessionActive: Bool {
@@ -167,10 +141,20 @@ final class AppState {
             fatalError("Failed to initialize database: \(error)")
         }
         service = PresentService(databasePool: dbManager.writer)
+        zoom = ZoomManager(service: service)
+        timer = TimerManager(service: service)
+        timer.onCountdownCompleted = { [weak self] in
+            await self?.handleTimerCompletion()
+        }
+        sessionMgr = SessionManager(service: service)
+        dataRefresh = DataRefreshCoordinator(service: service)
+        dataRefresh.onRefreshNeeded = { [weak self] in
+            await self?.refreshAll()
+        }
         NotificationManager.shared.requestPermission()
         SoundManager.shared.configure(service: service)
-        startObservations()
-        startIPCServer()
+        dataRefresh.startObservations()
+        dataRefresh.startIPCServer()
         loadInitialData()
     }
 
@@ -184,56 +168,28 @@ final class AppState {
 
     func refreshAll() async {
         do {
+            // 1. Sync session state
             if let (session, activity) = try await service.currentSession() {
                 currentSession = session
                 currentActivity = activity
-                if session.state == .running, timerTask == nil {
-                    startTimer()
+                timer.currentSession = session
+                if session.state == .running, !timer.isTimerRunning {
+                    timer.startTimer(session: session)
                 } else if session.state == .paused {
-                    // Use fixed dates only — no Date() calls that cause rounding jitter
-                    if let pausedAt = session.lastPausedAt {
-                        let activeTime = Int(pausedAt.timeIntervalSince(session.startedAt)) - session.totalPausedSeconds
-                        timerElapsedSeconds = max(0, activeTime)
-                    }
+                    timer.syncPausedElapsed(session: session)
                 }
             } else {
                 currentSession = nil
                 currentActivity = nil
-                stopTimer()
+                timer.currentSession = nil
+                timer.stopTimer()
             }
 
-            let summary = try await service.todaySummary()
-            todayTotalSeconds = summary.totalSeconds
-            todaySessionCount = summary.sessionCount
-            todayActivities = summary.activities
+            // 2. Refresh data properties
+            try await dataRefresh.refreshData(hasActiveSession: currentSession != nil)
 
-            if let weekStartPref = try? await service.getPreference(key: PreferenceKey.weekStartDay) {
-                weekStartDay = PreferenceKey.parseWeekStartDay(weekStartPref)
-            }
-            let weekly = try await service.weeklySummary(weekOf: Date(), includeArchived: false, weekStartDay: weekStartDay, roundToMinute: true)
-            if weekly != weeklySummary { weeklySummary = weekly }
-
-            if currentSession == nil {
-                let since = Date().addingTimeInterval(-3 * 60 * 60)
-                recentSessionSuggestion = try await service.lastCompletedSession(since: since)
-            } else {
-                recentSessionSuggestion = nil
-            }
-
-            recentActivities = try await service.recentActivities(limit: 6)
-            allActivities = try await service.listActivities(includeArchived: true, includeSystem: true)
-            allTags = try await service.listTags()
-
-            if let zoomStr = try? await service.getPreference(key: PreferenceKey.zoomLevel),
-               let index = Int(zoomStr),
-               index >= 0, index < Self.zoomScales.count {
-                zoomScale = Self.zoomScales[index]
-            }
-
-            if let optionsStr = try? await service.getPreference(key: PreferenceKey.rhythmDurationOptions) {
-                let parsed: [RhythmOption] = PreferenceKey.parseRhythmOptions(optionsStr)
-                rhythmDurationOptions = parsed.isEmpty ? Constants.defaultRhythmDurationOptions : parsed
-            }
+            // 3. Refresh preferences
+            await zoom.loadFromPreferences()
         } catch {
             print("Error refreshing data: \(error)")
         }
@@ -242,19 +198,18 @@ final class AppState {
     // MARK: - Session Actions
 
     func startSession(activityId: Int64, type: SessionType, timerMinutes: Int? = nil, breakMinutes: Int? = nil) async {
-        clearCompletedTimerLinger()
+        timer.clearCompletedTimerLinger()
         timerCompletionContext = nil
         do {
-            let session = try await service.startSession(
+            let (session, activity) = try await sessionMgr.startSession(
                 activityId: activityId,
                 type: type,
                 timerMinutes: timerMinutes,
                 breakMinutes: breakMinutes
             )
             currentSession = session
-            currentActivity = try await service.getActivity(id: activityId)
-            timerCompletionHandled = false
-            startTimer()
+            currentActivity = activity
+            timer.startTimer(session: session)
             SoundManager.shared.play(.blow)
             await refreshAll()
         } catch {
@@ -264,9 +219,10 @@ final class AppState {
 
     func pauseSession() async {
         do {
-            let session = try await service.pauseSession()
+            let session = try await sessionMgr.pauseSession()
             currentSession = session
-            stopTimer(resetElapsed: false)
+            timer.currentSession = session
+            timer.stopTimer(resetElapsed: false)
         } catch {
             showError(error, context: "Could not pause session")
         }
@@ -274,9 +230,9 @@ final class AppState {
 
     func resumeSession() async {
         do {
-            let session = try await service.resumeSession()
+            let session = try await sessionMgr.resumeSession()
             currentSession = session
-            startTimer()
+            timer.startTimer(session: session)
             SoundManager.shared.play(.blow)
         } catch {
             showError(error, context: "Could not resume session")
@@ -284,17 +240,18 @@ final class AppState {
     }
 
     func stopSession() async {
-        let finalText = formattedTimerValue
+        let finalText = timer.formattedTimerValue
 
         do {
-            _ = try await service.stopSession()
+            _ = try await sessionMgr.stopSession()
             currentSession = nil
             currentActivity = nil
-            stopTimer()
+            timer.currentSession = nil
+            timer.stopTimer()
 
             // Start linger unless handleTimerCompletion already did
             if completedTimerText == nil {
-                startCompletedTimerLinger(text: finalText, isCountdown: false)
+                timer.startCompletedTimerLinger(text: finalText, isCountdown: false)
             }
 
             await refreshAll()
@@ -305,10 +262,11 @@ final class AppState {
 
     func cancelSession() async {
         do {
-            try await service.cancelSession()
+            try await sessionMgr.cancelSession()
             currentSession = nil
             currentActivity = nil
-            stopTimer()
+            timer.currentSession = nil
+            timer.stopTimer()
             SoundManager.shared.play(.dip)
             await refreshAll()
         } catch {
@@ -316,49 +274,37 @@ final class AppState {
         }
     }
 
-    // MARK: - Timer
+    func updateSession(id: Int64, _ input: UpdateSessionInput) async throws {
+        let updated = try await sessionMgr.updateSession(id: id, input)
+        if updated.id == currentSession?.id {
+            currentSession = updated
+        }
+        await refreshAll()
+    }
 
-    private func startTimer() {
-        stopTimer()
-        guard let session = currentSession else { return }
-
-        let elapsed = Int(Date().timeIntervalSince(session.startedAt)) - session.totalPausedSeconds
-        timerElapsedSeconds = max(0, elapsed)
-
-        timerTask = Task {
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(1))
-                guard !Task.isCancelled else { break }
-                guard let session = self.currentSession, session.state == .running else { return }
-                let elapsed = Int(Date().timeIntervalSince(session.startedAt)) - session.totalPausedSeconds
-                self.timerElapsedSeconds = max(0, elapsed)
-
-                // Check for countdown timer completion
-                if !self.timerCompletionHandled,
-                   let timerMinutes = session.timerLengthMinutes,
-                   (session.sessionType == .rhythm || session.sessionType == .timebound) {
-                    let totalSeconds = timerMinutes * 60
-                    if self.timerElapsedSeconds >= totalSeconds {
-                        self.timerCompletionHandled = true
-                        await self.handleTimerCompletion()
-                    }
-                }
+    func convertSession(_ input: ConvertSessionInput) async {
+        do {
+            // If converting away from rhythm, abandon the rhythm cycle
+            if currentSession?.sessionType == .rhythm, input.targetType != .rhythm {
+                breakPrecedingContext = nil
             }
+            let session = try await sessionMgr.convertSessionType(input)
+            currentSession = session
+            timer.currentSession = session
+            timer.resetCompletionHandled()
+            IPCClient().send(.sessionConverted)
+            await refreshAll()
+        } catch {
+            showError(error, context: "Could not convert session")
         }
     }
 
-    private func stopTimer(resetElapsed: Bool = true) {
-        timerTask?.cancel()
-        timerTask = nil
-        if resetElapsed {
-            timerElapsedSeconds = 0
-        }
-    }
+    // MARK: - Timer Completion (coordination)
 
     private func handleTimerCompletion() async {
         guard let activity = currentActivity, let session = currentSession else { return }
 
-        let finalText = formattedTimerValue
+        let finalText = timer.formattedTimerValue
         let isCountdown = session.sessionType == .rhythm || session.sessionType == .timebound
         let timerMinutes = session.timerLengthMinutes ?? 0
 
@@ -366,7 +312,7 @@ final class AppState {
         let completionType: TimerCompletionContext.CompletionType?
         if activity.isSystem {
             // Break session ended — restore from disk if lost (e.g., after crash)
-            restoreBreakContextIfNeeded()
+            timer.restoreBreakContextIfNeeded()
             if let ctx = breakPrecedingContext {
                 completionType = .rhythmBreakExpiry(
                     previousActivityId: ctx.activityId,
@@ -387,8 +333,8 @@ final class AppState {
                 )
             }
         } else if session.sessionType == .rhythm, let index = session.rhythmSessionIndex {
-            let breakMins = await resolveBreakMinutes(session: session, sessionIndex: index)
-            let cycleLength = await resolveCycleLength()
+            let breakMins = await timer.resolveBreakMinutes(session: session, sessionIndex: index)
+            let cycleLength = await timer.resolveCycleLength()
             let isLong = index >= cycleLength
             completionType = .rhythmFocusExpiry(breakMinutes: breakMins, isLongBreak: isLong)
         } else {
@@ -404,7 +350,7 @@ final class AppState {
         SoundManager.shared.play(.shimmer)
 
         // Start linger BEFORE stopSession so it doesn't get overwritten
-        startCompletedTimerLinger(text: finalText, isCountdown: isCountdown)
+        timer.startCompletedTimerLinger(text: finalText, isCountdown: isCountdown)
 
         // Auto-stop the session
         await stopSession()
@@ -419,53 +365,6 @@ final class AppState {
                 timerMinutes: timerMinutes
             )
         }
-    }
-
-    private func resolveBreakMinutes(session: Session, sessionIndex: Int) async -> Int {
-        let cycleLength = await resolveCycleLength()
-        let isLong = sessionIndex >= cycleLength
-
-        if isLong {
-            if let val = try? await service.getPreference(key: PreferenceKey.longBreakMinutes) {
-                return Int(val) ?? Constants.longBreakMinutes
-            }
-            return Constants.longBreakMinutes
-        }
-        return session.breakMinutes ?? Constants.defaultShortBreakMinutes
-    }
-
-    private func resolveCycleLength() async -> Int {
-        if let val = try? await service.getPreference(key: PreferenceKey.rhythmCycleLength) {
-            return Int(val) ?? Constants.rhythmCycleLength
-        }
-        return Constants.rhythmCycleLength
-    }
-
-    // MARK: - Completed Timer Linger
-
-    private func startCompletedTimerLinger(text: String, isCountdown: Bool) {
-        clearCompletedTimerLinger()
-        completedTimerText = text
-
-        isCompletedTimerFading = false
-
-        completedTimerLingerTask = Task {
-            try? await Task.sleep(for: .seconds(Constants.completedTimerLingerSeconds))
-            guard !Task.isCancelled else { return }
-
-            isCompletedTimerFading = true
-            completedTimerText = nil
-
-            clearCompletedTimerLinger()
-        }
-    }
-
-    private func clearCompletedTimerLinger() {
-        completedTimerLingerTask?.cancel()
-        completedTimerLingerTask = nil
-        completedTimerText = nil
-
-        isCompletedTimerFading = false
     }
 
     // MARK: - Timer Completion Alert Actions
@@ -495,7 +394,7 @@ final class AppState {
         timerCompletionContext = nil
 
         do {
-            let breakActivity = try await service.getBreakActivity()
+            let breakActivity = try await sessionMgr.getBreakActivity()
             guard let breakId = breakActivity.id else { return }
             await startSession(activityId: breakId, type: .timebound, timerMinutes: breakMins)
         } catch {
@@ -532,55 +431,6 @@ final class AppState {
         breakPrecedingContext = nil
     }
 
-    // MARK: - Break Context Persistence
-
-    private func persistBreakContext(
-        _ ctx: (activityId: Int64, title: String, timerMinutes: Int, breakMinutes: Int)
-    ) {
-        let dict: [String: Any] = [
-            "activityId": ctx.activityId,
-            "title": ctx.title,
-            "timerMinutes": ctx.timerMinutes,
-            "breakMinutes": ctx.breakMinutes,
-        ]
-        UserDefaults.standard.set(dict, forKey: "breakPrecedingContext")
-    }
-
-    private func restoreBreakContextIfNeeded() {
-        guard breakPrecedingContext == nil else { return }
-        guard let dict = UserDefaults.standard.dictionary(forKey: "breakPrecedingContext"),
-              let activityId = dict["activityId"] as? Int64,
-              let title = dict["title"] as? String,
-              let timerMinutes = dict["timerMinutes"] as? Int,
-              let breakMinutes = dict["breakMinutes"] as? Int else { return }
-        // Set directly to avoid re-persisting via didSet
-        breakPrecedingContext = (activityId: activityId, title: title,
-                                timerMinutes: timerMinutes, breakMinutes: breakMinutes)
-    }
-
-    // MARK: - Database Observation
-
-    private func startObservations() {
-        observationTask = Task {
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(2))
-                guard !Task.isCancelled else { break }
-                await refreshAll()
-            }
-        }
-    }
-
-    // MARK: - IPC
-
-    private func startIPCServer() {
-        ipcServer = IPCServer { _ in
-            Task { @MainActor in
-                // Refresh handled by periodic polling
-            }
-        }
-        try? ipcServer?.start()
-    }
-
     // MARK: - Error Feedback
 
     func showError(_ error: Error, context: String? = nil, scene: ErrorScene = .mainWindow) {
@@ -599,22 +449,6 @@ final class AppState {
             NSApplication.shared.setActivationPolicy(.regular)
         } else {
             NSApplication.shared.setActivationPolicy(.accessory)
-        }
-    }
-}
-
-enum SidebarItem: String, CaseIterable, Identifiable {
-    case dashboard = "Dashboard"
-    case activities = "Activities"
-    case reports = "Reports"
-
-    var id: String { rawValue }
-
-    var icon: String {
-        switch self {
-        case .dashboard: return "square.grid.2x2"
-        case .reports: return "chart.bar"
-        case .activities: return "tray.full"
         }
     }
 }

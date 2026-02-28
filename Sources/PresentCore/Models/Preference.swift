@@ -33,6 +33,8 @@ public enum PreferenceKey {
     public static let colorPalette = "colorPalette"
     public static let weekStartDay = "weekStartDay"
     public static let zoomLevel = "zoomLevel"
+    public static let appearanceMode = "appearanceMode"
+    public static let menuBarActivitySort = "menuBarActivitySort"
 
     public static let defaults: [(String, String)] = [
         (externalIdBaseUrl, ""),
@@ -47,6 +49,8 @@ public enum PreferenceKey {
         (colorPalette, "basic"),
         (weekStartDay, "sunday"),
         (zoomLevel, "3"),
+        (appearanceMode, "system"),
+        (menuBarActivitySort, "recent"),
     ]
 
     /// Parse weekStartDay preference to Calendar.firstWeekday value.

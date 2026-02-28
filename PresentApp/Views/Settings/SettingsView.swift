@@ -1,36 +1,11 @@
 import SwiftUI
+import ServiceManagement
 import PresentCore
 
 struct SettingsView: View {
     @Environment(AppState.self) private var appState
     @Environment(ThemeManager.self) private var theme
     @State private var selectedTab = SettingsTab.general
-
-    static let openCLITabNotification = Notification.Name("openCLITab")
-
-    enum SettingsTab: String, CaseIterable {
-        case general, cli, sessions, notifications, about
-
-        var label: String {
-            switch self {
-            case .general: "General"
-            case .cli: "CLI"
-            case .sessions: "Sessions"
-            case .notifications: "Notifications"
-            case .about: "About"
-            }
-        }
-
-        var icon: String {
-            switch self {
-            case .general: "gear"
-            case .cli: "terminal"
-            case .sessions: "timer"
-            case .notifications: "bell"
-            case .about: "info.circle"
-            }
-        }
-    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -82,8 +57,10 @@ struct SettingsView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(minWidth: 500, maxWidth: 500, minHeight: 520)
-        .onReceive(NotificationCenter.default.publisher(for: Self.openCLITabNotification)) { _ in
-            selectedTab = .cli
+        .onChange(of: appState.pendingSettingsTab) { _, tab in
+            guard let tab else { return }
+            selectedTab = tab
+            appState.pendingSettingsTab = nil
         }
     }
 }
@@ -91,8 +68,10 @@ struct SettingsView: View {
 struct GeneralSettingsTab: View {
     @Environment(AppState.self) private var appState
     @Environment(ThemeManager.self) private var theme
+    @State private var launchOnLogin = SMAppService.mainApp.status == .enabled
     @State private var baseUrl = ""
     @State private var weekStartDay = "sunday"
+    @State private var appearanceMode: AppearanceMode = .system
 
     // MARK: - Data Management State
 
@@ -104,6 +83,29 @@ struct GeneralSettingsTab: View {
         @Bindable var theme = theme
 
         Form {
+            Section {
+                Toggle("Start Present when you log in", isOn: $launchOnLogin)
+                    .toggleStyle(ThemedToggleStyle(tintColor: theme.accent))
+                    .onChange(of: launchOnLogin) {
+                        do {
+                            if launchOnLogin {
+                                try SMAppService.mainApp.register()
+                            } else {
+                                try SMAppService.mainApp.unregister()
+                            }
+                        } catch {
+                            launchOnLogin = SMAppService.mainApp.status == .enabled
+                            appState.showError(error, context: "Could not update login item", scene: .settings)
+                        }
+                    }
+
+                Text("Present will start silently in the menu bar when you log in.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } header: {
+                Text("Launch on Login")
+            }
+
             Section("Week Start") {
                 Picker("Start week on", selection: $weekStartDay) {
                     Text("Sunday").tag("sunday")
@@ -121,6 +123,23 @@ struct GeneralSettingsTab: View {
             }
 
             Section("Appearance") {
+                Picker("Mode", selection: $appearanceMode) {
+                    ForEach(AppearanceMode.allCases, id: \.self) { mode in
+                        Text(mode.displayName).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .onAppear { loadAppearanceMode() }
+                .onChange(of: appearanceMode) {
+                    theme.appearanceMode = appearanceMode
+                    Task {
+                        try? await appState.service.setPreference(
+                            key: PreferenceKey.appearanceMode,
+                            value: appearanceMode.rawValue
+                        )
+                    }
+                }
+
                 ForEach(ColorPalette.allCases, id: \.self) { palette in
                     PaletteRow(
                         palette: palette,
@@ -201,7 +220,7 @@ struct GeneralSettingsTab: View {
                     .foregroundStyle(.secondary)
                 Spacer()
                 Button("Open CLI Setup") {
-                    NotificationCenter.default.post(name: SettingsView.openCLITabNotification, object: nil)
+                    appState.pendingSettingsTab = .cli
                 }
                 .font(.caption)
                 .foregroundStyle(theme.accent)
@@ -236,6 +255,15 @@ struct GeneralSettingsTab: View {
     private func loadWeekStartDay() {
         Task {
             weekStartDay = try await appState.service.getPreference(key: PreferenceKey.weekStartDay) ?? "sunday"
+        }
+    }
+
+    private func loadAppearanceMode() {
+        Task {
+            if let value = try? await appState.service.getPreference(key: PreferenceKey.appearanceMode),
+               let mode = AppearanceMode(rawValue: value) {
+                appearanceMode = mode
+            }
         }
     }
 
@@ -619,6 +647,7 @@ struct SessionSettingsTab: View {
 }
 
 struct AboutTab: View {
+    @Environment(AppState.self) private var appState
     @Environment(ThemeManager.self) private var theme
     @State private var installedCLIVersion: String?
     @State private var isDetectingCLI = true
@@ -684,7 +713,7 @@ struct AboutTab: View {
     private var cliVersionLine: some View {
         if !isDetectingCLI && cliIsOutdated {
             Button {
-                NotificationCenter.default.post(name: SettingsView.openCLITabNotification, object: nil)
+                appState.pendingSettingsTab = .cli
             } label: {
                 Text("CLI: v\(Constants.cliVersion) — Update Available")
                     .font(.caption)

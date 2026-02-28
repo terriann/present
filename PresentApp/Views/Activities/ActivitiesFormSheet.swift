@@ -1,17 +1,17 @@
 import SwiftUI
 import PresentCore
 
-enum ActivityFormMode {
+enum ActivitiesFormMode {
     case create
     case edit(Activity)
 }
 
-struct ActivityFormSheet: View {
+struct ActivitiesFormSheet: View {
     @Environment(AppState.self) private var appState
     @Environment(ThemeManager.self) private var theme
     @Environment(\.dismiss) private var dismiss
 
-    let mode: ActivityFormMode
+    let mode: ActivitiesFormMode
 
     @State private var title = ""
     @State private var externalId = ""

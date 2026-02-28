@@ -892,6 +892,56 @@ struct PresentServiceTests {
         #expect(duration == sumFromSegments)
     }
 
+    @Test func negativeSegmentDurationExcludedFromSum() async throws {
+        let (service, dbWriter) = try makeServiceWithWriter()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Work"))
+
+        let cal = Calendar.current
+        var c = DateComponents()
+        c.year = 2024; c.month = 6; c.day = 1
+        c.hour = 10; c.minute = 0; c.second = 0
+        let base = cal.date(from: c)!
+
+        // Create a backdated session so we can control segments
+        let session = try await service.createBackdatedSession(CreateBackdatedSessionInput(
+            activityId: activity.id!,
+            startedAt: base,
+            endedAt: base.addingTimeInterval(3600)
+        ))
+
+        // Replace segments: one valid (600s) + one corrupt (startedAt > endedAt)
+        try await dbWriter.write { db in
+            try SessionSegment
+                .filter(SessionSegment.Columns.sessionId == session.id!)
+                .deleteAll(db)
+
+            // Valid segment: 600 seconds
+            let valid = SessionSegment(
+                sessionId: session.id!,
+                startedAt: base,
+                endedAt: base.addingTimeInterval(600)
+            )
+            try valid.insert(db)
+
+            // Corrupt segment: startedAt 300s after endedAt (negative duration)
+            let corrupt = SessionSegment(
+                sessionId: session.id!,
+                startedAt: base.addingTimeInterval(1200),
+                endedAt: base.addingTimeInterval(900)
+            )
+            try corrupt.insert(db)
+        }
+
+        // Update the session to trigger duration recalculation from segments
+        let updated = try await service.updateSession(
+            id: session.id!,
+            UpdateSessionInput(startedAt: base)
+        )
+
+        // Duration should only include the valid segment (600s), not the corrupt one
+        #expect(updated.durationSeconds == 600)
+    }
+
     @Test func hourlyBreakdownAcrossHours() async throws {
         let (service, dbWriter) = try makeServiceWithWriter()
         let activity = try await service.createActivity(CreateActivityInput(title: "Focus"))

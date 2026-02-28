@@ -1,5 +1,6 @@
 import Foundation
 import GRDB
+import os
 
 public enum PresentError: Error, LocalizedError, Sendable {
     case activityNotFound(Int64)
@@ -39,9 +40,29 @@ public enum PresentError: Error, LocalizedError, Sendable {
     }
 }
 
+/// Helper for decoding Session + Activity from GRDB association queries.
+private struct SessionInfo: Decodable, FetchableRecord, Sendable {
+    var session: Session
+    var activity: Activity
+}
+
 public final class PresentService: PresentAPI, Sendable {
     private let dbWriter: any DatabaseWriter
     public static let maxActiveActivities = 50
+    private static let logger = Logger(subsystem: "com.present.core", category: "segments")
+
+    /// Sum closed segment durations, skipping segments with negative duration (startedAt > endedAt).
+    private static func sumSegmentDurations(_ segments: [SessionSegment]) -> Int {
+        segments.reduce(0) { sum, seg in
+            guard let end = seg.endedAt else { return sum }
+            let duration = Int(end.timeIntervalSince(seg.startedAt))
+            if duration < 0 {
+                logger.warning("Negative segment duration: segment \(seg.id ?? -1, privacy: .public), session \(seg.sessionId, privacy: .public)")
+                return sum
+            }
+            return sum + duration
+        }
+    }
 
     public init(databasePool: any DatabaseWriter) {
         self.dbWriter = databasePool
@@ -49,13 +70,21 @@ public final class PresentService: PresentAPI, Sendable {
 
     // MARK: - Sessions
 
-    public func startSession(activityId: Int64, type: SessionType, timerMinutes: Int? = nil, breakMinutes: Int? = nil) async throws -> Session {
+    public func startSession(activityId: Int64, type: SessionType, timerMinutes: Int? = nil, breakMinutes: Int? = nil, note: String? = nil, link: String? = nil) async throws -> Session {
         if let timerMinutes {
             try Validation.validateRange(timerMinutes, range: Constants.sessionMinutesRange, fieldName: "Timer duration")
         }
         if let breakMinutes {
             try Validation.validateRange(breakMinutes, range: Constants.breakDurationRange, fieldName: "Break duration")
         }
+        let sanitizedNote = try Validation.sanitizeOptional(note, fieldName: "Note", maxLength: Constants.maxSessionNoteLength)
+        let sanitizedLink: String? = if let link, !link.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            try Validation.sanitize(link, fieldName: "Link", maxLength: Constants.maxSessionLinkLength)
+        } else {
+            nil
+        }
+        if let sanitizedLink { try Validation.validateLink(sanitizedLink) }
+        let ticketId = sanitizedLink.flatMap { TicketExtractor.extractTicketId(from: $0) }
 
         return try await dbWriter.write { db in
             // Check no active session
@@ -86,6 +115,11 @@ public final class PresentService: PresentAPI, Sendable {
                 state: .running,
                 createdAt: now
             )
+
+            // Attach note and link
+            session.note = sanitizedNote
+            session.link = sanitizedLink
+            session.ticketId = ticketId
 
             // For rhythm sessions, store break duration and determine the session index
             if type == .rhythm {
@@ -129,6 +163,14 @@ public final class PresentService: PresentAPI, Sendable {
         if let breakMinutes = input.breakMinutes {
             try Validation.validateRange(breakMinutes, range: Constants.breakDurationRange, fieldName: "Break duration")
         }
+        let sanitizedNote = try Validation.sanitizeOptional(input.note, fieldName: "Note", maxLength: Constants.maxSessionNoteLength)
+        let sanitizedLink: String? = if let link = input.link, !link.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            try Validation.sanitize(link, fieldName: "Link", maxLength: Constants.maxSessionLinkLength)
+        } else {
+            nil
+        }
+        if let sanitizedLink { try Validation.validateLink(sanitizedLink) }
+        let ticketId = sanitizedLink.flatMap { TicketExtractor.extractTicketId(from: $0) }
 
         return try await dbWriter.write { db in
             // Validate activity exists and is not archived
@@ -178,6 +220,9 @@ public final class PresentService: PresentAPI, Sendable {
                 timerLengthMinutes: input.timerLengthMinutes,
                 state: .completed,
                 breakMinutes: input.breakMinutes,
+                note: sanitizedNote,
+                link: sanitizedLink,
+                ticketId: ticketId,
                 createdAt: now
             )
 
@@ -188,6 +233,271 @@ public final class PresentService: PresentAPI, Sendable {
             let segment = SessionSegment(sessionId: session.id!, startedAt: input.startedAt, endedAt: input.endedAt)
             try segment.insert(db)
 
+            return session
+        }
+    }
+
+    public func updateSession(id: Int64, _ input: UpdateSessionInput) async throws -> Session {
+        // Pre-validate and build an immutable set of changes for the write block
+        let noteChange: (apply: Bool, value: String?)
+        if let note = input.note {
+            if note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                noteChange = (true, nil)
+            } else {
+                let sanitized = try Validation.sanitize(note, fieldName: "Note", maxLength: Constants.maxSessionNoteLength)
+                noteChange = (true, sanitized)
+            }
+        } else {
+            noteChange = (false, nil)
+        }
+
+        let linkChange: (apply: Bool, link: String?, ticketId: String?)
+        if let link = input.link {
+            if link.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                linkChange = (true, nil, nil)
+            } else {
+                let sanitized = try Validation.sanitize(link, fieldName: "Link", maxLength: Constants.maxSessionLinkLength)
+                try Validation.validateLink(sanitized)
+                let extracted = TicketExtractor.extractTicketId(from: sanitized)
+                linkChange = (true, sanitized, extracted)
+            }
+        } else {
+            linkChange = (false, nil, nil)
+        }
+
+        return try await dbWriter.write { db in
+            guard var session = try Session.fetchOne(db, key: id) else {
+                throw PresentError.sessionNotFound
+            }
+
+            let isActive = session.state == .running || session.state == .paused
+
+            // Note change
+            if noteChange.apply {
+                session.note = noteChange.value
+            }
+
+            // Link change
+            if linkChange.apply {
+                session.link = linkChange.link
+                session.ticketId = linkChange.ticketId
+            }
+
+            // Activity reassignment
+            if let newActivityId = input.activityId, newActivityId != session.activityId {
+                guard let activity = try Activity.fetchOne(db, key: newActivityId) else {
+                    throw PresentError.activityNotFound(newActivityId)
+                }
+                if activity.isArchived {
+                    throw PresentError.activityIsArchived(newActivityId)
+                }
+                session.activityId = newActivityId
+            }
+
+            // Start time change
+            if let newStart = input.startedAt, newStart != session.startedAt {
+                let effectiveEnd = session.endedAt ?? Date()
+                guard newStart < effectiveEnd else {
+                    throw PresentError.invalidInput("Start time must be before end time.")
+                }
+
+                // Validate new start is before the first segment's end
+                if let firstSegment = try SessionSegment
+                    .filter(SessionSegment.Columns.sessionId == id)
+                    .order(SessionSegment.Columns.startedAt.asc)
+                    .fetchOne(db),
+                   let segEnd = firstSegment.endedAt, newStart >= segEnd {
+                    throw PresentError.invalidInput("Start time must be before first segment end.")
+                }
+
+                session.startedAt = newStart
+
+                // Adjust first segment's startedAt
+                if var firstSegment = try SessionSegment
+                    .filter(SessionSegment.Columns.sessionId == id)
+                    .order(SessionSegment.Columns.startedAt.asc)
+                    .fetchOne(db) {
+                    firstSegment.startedAt = newStart
+                    try firstSegment.update(db)
+                }
+            }
+
+            // End time change
+            if let newEnd = input.endedAt, newEnd != session.endedAt {
+                if isActive {
+                    throw PresentError.invalidInput("Cannot change end time of an active session.")
+                }
+                guard newEnd <= Date() else {
+                    throw PresentError.invalidInput("End time cannot be in the future.")
+                }
+                guard newEnd > session.startedAt else {
+                    throw PresentError.invalidInput("End time must be after start time.")
+                }
+
+                // Validate new end is after the last segment's start
+                if let lastSegment = try SessionSegment
+                    .filter(SessionSegment.Columns.sessionId == id)
+                    .order(SessionSegment.Columns.startedAt.desc)
+                    .fetchOne(db), newEnd <= lastSegment.startedAt {
+                    throw PresentError.invalidInput("End time must be after last segment start.")
+                }
+
+                session.endedAt = newEnd
+
+                // Adjust last segment's endedAt
+                if var lastSegment = try SessionSegment
+                    .filter(SessionSegment.Columns.sessionId == id)
+                    .order(SessionSegment.Columns.startedAt.desc)
+                    .fetchOne(db) {
+                    lastSegment.endedAt = newEnd
+                    try lastSegment.update(db)
+                }
+            }
+
+            // Overlap validation (when start or end changed)
+            if input.startedAt != nil || input.endedAt != nil {
+                let checkStart = session.startedAt
+                let checkEnd = session.endedAt
+
+                // Check against completed sessions (exclude self)
+                let overlapSQL = """
+                    SELECT COUNT(*) FROM session
+                    WHERE state = ?
+                      AND id != ?
+                      AND startedAt < ? AND endedAt > ?
+                    """
+                if let checkEnd {
+                    let overlapCount = try Int.fetchOne(db, sql: overlapSQL, arguments: [
+                        SessionState.completed.rawValue, id,
+                        checkEnd, checkStart
+                    ]) ?? 0
+                    if overlapCount > 0 {
+                        throw PresentError.sessionOverlap
+                    }
+                }
+
+                // Check against active sessions (exclude self)
+                let activeSQL = """
+                    SELECT COUNT(*) FROM session
+                    WHERE state IN (?, ?)
+                      AND id != ?
+                      AND startedAt < ?
+                    """
+                let activeEnd = checkEnd ?? Date()
+                let activeOverlap = try Int.fetchOne(db, sql: activeSQL, arguments: [
+                    SessionState.running.rawValue, SessionState.paused.rawValue,
+                    id, activeEnd
+                ]) ?? 0
+                if activeOverlap > 0 {
+                    throw PresentError.sessionOverlap
+                }
+            }
+
+            // Duration recalculation for completed sessions
+            if !isActive && (input.startedAt != nil || input.endedAt != nil) {
+                let segments = try SessionSegment
+                    .filter(SessionSegment.Columns.sessionId == id)
+                    .fetchAll(db)
+                session.durationSeconds = Self.sumSegmentDurations(segments)
+            }
+
+            try session.update(db)
+            return session
+        }
+    }
+
+    public func convertSessionType(_ input: ConvertSessionInput) async throws -> Session {
+        if input.targetType == .timebound || input.targetType == .rhythm {
+            if let minutes = input.timerMinutes {
+                try Validation.validateRange(minutes, range: Constants.sessionMinutesRange, fieldName: "Timer duration")
+            }
+        }
+        if input.targetType == .rhythm, let breakMins = input.breakMinutes {
+            try Validation.validateRange(breakMins, range: Constants.breakDurationRange, fieldName: "Break duration")
+        }
+
+        return try await dbWriter.write { db in
+            // Find active session (running or paused)
+            guard var session = try Session
+                .filter(Session.Columns.state == SessionState.running.rawValue || Session.Columns.state == SessionState.paused.rawValue)
+                .fetchOne(db) else {
+                throw PresentError.noActiveSession
+            }
+
+            // Target type must differ from current
+            guard input.targetType != session.sessionType else {
+                throw PresentError.invalidInput("Session is already \(SessionTypeConfig.config(for: session.sessionType).displayName.lowercased()).")
+            }
+
+            // System activities cannot use rhythm
+            if input.targetType == .rhythm {
+                guard let activity = try Activity.fetchOne(db, key: session.activityId) else {
+                    throw PresentError.activityNotFound(session.activityId)
+                }
+                if activity.isSystem {
+                    throw PresentError.rhythmNotAllowedForSystemActivity
+                }
+            }
+
+            // Compute elapsed seconds from segments
+            let closedSegments = try SessionSegment
+                .filter(SessionSegment.Columns.sessionId == session.id!)
+                .filter(SessionSegment.Columns.endedAt != nil)
+                .fetchAll(db)
+            var elapsedSeconds = Self.sumSegmentDurations(closedSegments)
+
+            // Add open segment time if running
+            if session.state == .running,
+               let openSegment = try SessionSegment
+                .filter(SessionSegment.Columns.sessionId == session.id!)
+                .filter(SessionSegment.Columns.endedAt == nil)
+                .fetchOne(db) {
+                elapsedSeconds += Int(Date().timeIntervalSince(openSegment.startedAt))
+            }
+
+            // Apply conversion
+            session.sessionType = input.targetType
+
+            switch input.targetType {
+            case .timebound:
+                guard let minutes = input.timerMinutes, minutes > 0 else {
+                    throw PresentError.invalidInput("Timer duration is required when converting to timebound.")
+                }
+                session.timerLengthMinutes = minutes
+                session.countdownBaseSeconds = elapsedSeconds
+                // Clear rhythm fields
+                session.rhythmSessionIndex = nil
+                session.breakMinutes = nil
+
+            case .work:
+                // Keep timerLengthMinutes as historical artifact
+                session.countdownBaseSeconds = 0
+                // Clear rhythm fields
+                session.rhythmSessionIndex = nil
+                session.breakMinutes = nil
+
+            case .rhythm:
+                guard let minutes = input.timerMinutes, minutes > 0 else {
+                    throw PresentError.invalidInput("Timer duration is required when converting to rhythm.")
+                }
+                guard let breakMins = input.breakMinutes, breakMins > 0 else {
+                    throw PresentError.invalidInput("Break duration is required when converting to rhythm.")
+                }
+                session.timerLengthMinutes = minutes
+                session.breakMinutes = breakMins
+                session.countdownBaseSeconds = elapsedSeconds
+
+                // Determine rhythm cycle position from last completed rhythm session
+                let lastRhythm = try Session
+                    .filter(Session.Columns.sessionType == SessionType.rhythm.rawValue)
+                    .filter(Session.Columns.state == SessionState.completed.rawValue)
+                    .order(Session.Columns.id.desc)
+                    .fetchOne(db)
+                let lastIndex = lastRhythm?.rhythmSessionIndex ?? 0
+                session.rhythmSessionIndex = (lastIndex % 4) + 1
+            }
+
+            try session.update(db)
             return session
         }
     }
@@ -278,11 +588,7 @@ public final class PresentService: PresentAPI, Sendable {
                 .filter(SessionSegment.Columns.sessionId == session.id!)
                 .filter(SessionSegment.Columns.endedAt != nil)
                 .fetchAll(db)
-            let activeDuration = segments.reduce(0) { sum, seg in
-                guard let end = seg.endedAt else { return sum }
-                return sum + Int(end.timeIntervalSince(seg.startedAt))
-            }
-            session.durationSeconds = max(0, activeDuration)
+            session.durationSeconds = Self.sumSegmentDurations(segments)
 
             try session.update(db)
             return session
@@ -327,50 +633,41 @@ public final class PresentService: PresentAPI, Sendable {
         }
     }
 
-    public func listSessions(from startDate: Date, to endDate: Date, type: SessionType? = nil, activityId: Int64? = nil, includeArchived: Bool = true) async throws -> [(Session, Activity)] {
-        try await dbWriter.read { db in
+    public func listSessions(from startDate: Date, to endDate: Date, type: SessionType? = nil, activityId: Int64? = nil, includeArchived: Bool = true, query: String? = nil) async throws -> [(Session, Activity)] {
+        // Validate query if provided
+        if let query, !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            _ = try Validation.sanitize(query, fieldName: "Search query", maxLength: Constants.maxSearchQueryLength)
+        }
+
+        return try await dbWriter.read { db in
+            // Filter the activity association (optionally excluding archived)
+            let activityAssoc = includeArchived
+                ? Session.activity
+                : Session.activity.filter(Activity.Columns.isArchived == false)
+
             // Overlap: session started before range end AND ended after range start (or still running)
-            var conditions = ["s.startedAt < ?", "(s.endedAt > ? OR s.endedAt IS NULL)", "s.state IN (?, ?)"]
-            var arguments: [any DatabaseValueConvertible] = [endDate, startDate, SessionState.completed.rawValue, SessionState.cancelled.rawValue]
+            let completedStates = [SessionState.completed.rawValue, SessionState.cancelled.rawValue]
+            var request = Session
+                .including(required: activityAssoc)
+                .filter(Session.Columns.startedAt < endDate)
+                .filter(Session.Columns.endedAt > startDate || Session.Columns.endedAt == nil)
+                .filter(completedStates.contains(Session.Columns.state))
+                .order(Session.Columns.startedAt.desc)
 
             if let type {
-                conditions.append("s.sessionType = ?")
-                arguments.append(type.rawValue)
+                request = request.filter(Session.Columns.sessionType == type.rawValue)
             }
             if let activityId {
-                conditions.append("s.activityId = ?")
-                arguments.append(activityId)
+                request = request.filter(Session.Columns.activityId == activityId)
             }
-            if !includeArchived {
-                conditions.append("a.isArchived = 0")
-            }
-
-            let sql = """
-                SELECT s.*, a.id AS a_id, a.title AS a_title, a.externalId AS a_externalId,
-                       a.link AS a_link, a.notes AS a_notes, a.isArchived AS a_isArchived,
-                       a.isSystem AS a_isSystem, a.createdAt AS a_createdAt, a.updatedAt AS a_updatedAt
-                FROM session s
-                INNER JOIN activity a ON a.id = s.activityId
-                WHERE \(conditions.joined(separator: " AND "))
-                ORDER BY s.startedAt DESC
-                """
-
-            let rows = try Row.fetchAll(db, sql: sql, arguments: StatementArguments(arguments))
-            return rows.map { row in
-                let session = try! Session(row: row)
-                let activity = Activity(
-                    id: row["a_id"],
-                    title: row["a_title"],
-                    externalId: row["a_externalId"],
-                    link: row["a_link"],
-                    notes: row["a_notes"],
-                    isArchived: row["a_isArchived"],
-                    isSystem: row["a_isSystem"],
-                    createdAt: row["a_createdAt"],
-                    updatedAt: row["a_updatedAt"]
+            if let query, !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                request = request.filter(
+                    SQL("rowid IN (SELECT rowid FROM session_fts WHERE session_fts MATCH \(query + "*"))")
                 )
-                return (session, activity)
             }
+
+            let results = try SessionInfo.fetchAll(db, request)
+            return results.map { ($0.session, $0.activity) }
         }
     }
 
@@ -737,6 +1034,23 @@ public final class PresentService: PresentAPI, Sendable {
         }
     }
 
+    public func listActivitiesForPopover() async throws -> [Activity] {
+        try await dbWriter.read { db in
+            let sql = """
+                SELECT a.*
+                FROM activity a
+                LEFT JOIN (
+                    SELECT activityId, MAX(startedAt) AS lastStarted
+                    FROM session
+                    GROUP BY activityId
+                ) s ON s.activityId = a.id
+                WHERE a.isArchived = 0
+                ORDER BY s.lastStarted DESC NULLS LAST, a.title ASC
+                """
+            return try Activity.fetchAll(db, sql: sql)
+        }
+    }
+
     public func getBreakActivity() async throws -> Activity {
         try await dbWriter.write { db in
             if let activity = try Activity
@@ -1042,8 +1356,8 @@ public final class PresentService: PresentAPI, Sendable {
                 endDate, startDate
             ])
 
-            return rows.map { row in
-                let activity = try! Activity(row: row)
+            return try rows.map { row in
+                let activity = try Activity(row: row)
                 let secs: Int = row["totalSecs"]
                 let count: Int = row["sessCount"]
                 return ActivitySummary(activity: activity, totalSeconds: secs, sessionCount: count)

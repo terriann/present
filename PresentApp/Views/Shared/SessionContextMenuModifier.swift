@@ -5,15 +5,17 @@ import PresentCore
 ///
 /// - **Active sessions** (running/paused): pause, resume, stop, and delete controls.
 ///   Deleting an active session stops it first, then removes it.
-/// - **Completed/cancelled sessions**: delete only.
+/// - **Completed/cancelled sessions**: edit, repeat, and delete.
 struct SessionContextMenuModifier: ViewModifier {
     @Environment(AppState.self) private var appState
 
     let session: Session
     let activityTitle: String
+    var onEdit: ((Int64) -> Void)?
     var onDelete: (() -> Void)?
 
     @State private var showingDeleteConfirm = false
+    @State private var showingConvertSheet = false
 
     private var isActive: Bool {
         session.state == .running || session.state == .paused
@@ -27,11 +29,40 @@ struct SessionContextMenuModifier: ViewModifier {
                     Divider()
                 }
 
+                if let onEdit {
+                    Button {
+                        if let id = session.id { onEdit(id) }
+                    } label: {
+                        Label("Edit Session", systemImage: "pencil")
+                    }
+                }
+
+                if !isActive {
+                    Button {
+                        Task {
+                            await appState.startSession(
+                                activityId: session.activityId,
+                                type: session.sessionType,
+                                timerMinutes: session.timerLengthMinutes,
+                                breakMinutes: session.breakMinutes
+                            )
+                        }
+                    } label: {
+                        Label("Repeat \(session.typeDescription)", systemImage: "arrow.counterclockwise")
+                    }
+                    .disabled(appState.currentSession != nil)
+                }
+
+                Divider()
+
                 Button(role: .destructive) {
                     showingDeleteConfirm = true
                 } label: {
                     Label("Delete Session...", systemImage: "trash")
                 }
+            }
+            .sheet(isPresented: $showingConvertSheet) {
+                ConvertSessionSheet(session: session)
             }
             .alert("Delete Session?", isPresented: $showingDeleteConfirm) {
                 Button("Delete", role: .destructive) {
@@ -68,6 +99,33 @@ struct SessionContextMenuModifier: ViewModifier {
                 Label("Resume Session", systemImage: "play.fill")
             }
         }
+
+        // Conversion options
+        if session.sessionType != .work {
+            Button {
+                Task { await appState.convertSession(ConvertSessionInput(targetType: .work)) }
+            } label: {
+                Label("Convert to Work Session", systemImage: "infinity")
+            }
+        }
+
+        if session.sessionType != .timebound {
+            Button {
+                showingConvertSheet = true
+            } label: {
+                Label("Convert to Timebound...", systemImage: "timer")
+            }
+        }
+
+        if session.sessionType != .rhythm {
+            Button {
+                showingConvertSheet = true
+            } label: {
+                Label("Convert to Rhythm...", systemImage: "arrow.triangle.2.circlepath")
+            }
+        }
+
+        Divider()
 
         Button {
             Task { await appState.stopSession() }
@@ -130,11 +188,13 @@ extension View {
     func sessionContextMenu(
         session: Session,
         activityTitle: String,
+        onEdit: ((Int64) -> Void)? = nil,
         onDelete: (() -> Void)? = nil
     ) -> some View {
         modifier(SessionContextMenuModifier(
             session: session,
             activityTitle: activityTitle,
+            onEdit: onEdit,
             onDelete: onDelete
         ))
     }
