@@ -81,7 +81,7 @@ struct ReportsView: View {
                     }
                 }
 
-                ReportSessionLogCard(sessionEntries: sessionEntries, onReload: reloadReport)
+                ReportActivityBreakdownCard(sessionEntries: sessionEntries, onReload: reloadReport)
                 ReportCLIPromoCard()
             }
             .padding(Constants.spacingPage)
