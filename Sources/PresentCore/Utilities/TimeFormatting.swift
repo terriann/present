@@ -8,16 +8,21 @@ public enum TimeFormatting {
         (seconds / 60) * 60
     }
 
-    /// Format seconds as "Xh Ym" (e.g., "2h 15m") or "Xm" for short durations
-    public static func formatDuration(seconds: Int) -> String {
+    /// Format seconds as "Xh Ym" (e.g., "2h 15m") or "Xm" for short durations.
+    ///
+    /// When `active` is true, appends " +" to indicate the value includes an in-progress session
+    /// (e.g., "2h 15m +").
+    public static func formatDuration(seconds: Int, active: Bool = false) -> String {
         let hours = seconds / 3600
         let minutes = (seconds % 3600) / 60
 
+        let base: String
         if hours > 0 {
-            return "\(hours)h \(minutes)m"
+            base = "\(hours)h \(minutes)m"
         } else {
-            return "\(minutes)m"
+            base = "\(minutes)m"
         }
+        return active ? "\(base) +" : base
     }
 
     /// Format seconds as "HH:MM:SS" for timer display

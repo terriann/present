@@ -17,6 +17,10 @@ struct ReportsView: View {
     @State private var sessionEntries: [(Session, Activity)] = []
     @State private var sessionSegments: [Int64: [SessionSegment]] = [:]
 
+    // Active session toggle (ephemeral, resets on view load and when navigating away from today)
+    @State private var showActiveSessions = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     // Navigation state
     @State private var earliestDate: Date?
     @State private var weekStartDay: Int = 1 // Calendar.firstWeekday: 1=Sunday, 2=Monday
@@ -110,6 +114,11 @@ struct ReportsView: View {
         .onChange(of: hideArchived) {
             reloadReport()
         }
+        .onChange(of: isShowingToday) {
+            if !isShowingToday {
+                showActiveSessions = false
+            }
+        }
     }
 
     // MARK: - Controls
@@ -127,7 +136,13 @@ struct ReportsView: View {
             Spacer()
 
             Toggle("Hide archived", isOn: $hideArchived)
-            .toggleStyle(ThemedToggleStyle(tintColor: theme.accent))
+                .toggleStyle(ThemedToggleStyle(tintColor: theme.accent))
+
+            if appState.isSessionActive {
+                Toggle("Show active session", isOn: $showActiveSessions)
+                    .toggleStyle(ThemedToggleStyle(tintColor: theme.accent))
+                    .disabled(!isShowingToday)
+            }
         }
     }
 
@@ -255,21 +270,63 @@ struct ReportsView: View {
         return calendar.dateInterval(of: .weekOfYear, for: date)?.start ?? calendar.startOfDay(for: date)
     }
 
+    // MARK: - Active Session
+
+    /// Whether to include the active session's elapsed time in charts and stats.
+    private var shouldIncludeActive: Bool {
+        showActiveSessions && isShowingToday && appState.isSessionActive
+    }
+
+    /// The activity for the currently running session, when inclusion is enabled.
+    private var activeActivity: Activity? {
+        shouldIncludeActive ? appState.currentActivity : nil
+    }
+
+    /// Elapsed seconds for the active session, clamped to today's portion for cross-midnight sessions.
+    /// Mirrors `DashboardView.todayPortionSeconds`.
+    private var activeElapsedSeconds: Int {
+        guard shouldIncludeActive, let session = appState.currentSession else { return 0 }
+        let elapsed = appState.timerElapsedSeconds
+        if Calendar.current.isDateInToday(session.startedAt) {
+            return TimeFormatting.floorToMinute(elapsed)
+        }
+        let secondsSinceMidnight = Int(Date().timeIntervalSince(Calendar.current.startOfDay(for: Date())))
+        return TimeFormatting.floorToMinute(min(elapsed, secondsSinceMidnight))
+    }
+
+    private var displayTotalSeconds: Int {
+        totalSeconds + activeElapsedSeconds
+    }
+
+    private var displaySessionCount: Int {
+        sessionCount + (shouldIncludeActive ? 1 : 0)
+    }
+
+    private var displayActivityCount: Int {
+        var count = activities.count
+        if let activity = activeActivity,
+           !activities.contains(where: { $0.activity.id == activity.id }) {
+            count += 1
+        }
+        return count
+    }
+
     private var summaryBar: some View {
         HStack(spacing: 40) {
             StatItem(
                 title: "Total Time",
-                value: TimeFormatting.formatDuration(seconds: totalSeconds)
+                value: TimeFormatting.formatDuration(seconds: displayTotalSeconds, active: shouldIncludeActive)
             )
+            .activePulse(isActive: shouldIncludeActive, reduceMotion: reduceMotion)
 
             StatItem(
                 title: "Sessions",
-                value: "\(sessionCount)"
+                value: "\(displaySessionCount)"
             )
 
             StatItem(
                 title: "Activities",
-                value: "\(activities.count)"
+                value: "\(displayActivityCount)"
             )
 
             Spacer()
@@ -279,12 +336,17 @@ struct ReportsView: View {
     // MARK: - Chart Colors
 
     private var chartColorDomain: [String] {
-        activities.map(\.activity.title)
+        var titles = activities.map(\.activity.title)
+        // Include active activity so chart color scale covers it when injected into entries.
+        if let activity = activeActivity, !titles.contains(activity.title) {
+            titles.append(activity.title)
+        }
+        return titles
     }
 
     private var chartColorRange: [Color] {
         let palette = ThemeManager.chartColors(for: theme.activePalette)
-        return activities.indices.map { palette[$0 % palette.count] }
+        return chartColorDomain.indices.map { palette[$0 % palette.count] }
     }
 
     private var activityColorMap: [String: Color] {
