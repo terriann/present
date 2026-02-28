@@ -306,6 +306,9 @@ public final class PresentService: PresentAPI, Sendable {
                 if isActive {
                     throw PresentError.invalidInput("Cannot change end time of an active session.")
                 }
+                guard newEnd <= Date() else {
+                    throw PresentError.invalidInput("End time cannot be in the future.")
+                }
                 guard newEnd > session.startedAt else {
                     throw PresentError.invalidInput("End time must be after start time.")
                 }

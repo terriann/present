@@ -19,6 +19,9 @@ struct SessionInlineEditForm: View {
     @State private var endTime: Date
     @State private var isSaving = false
     @State private var errorMessage: String?
+    @State private var errorFields: Set<ErrorField> = []
+
+    private enum ErrorField { case activity, start, end }
 
     private var isActive: Bool {
         session.state == .running || session.state == .paused
@@ -36,72 +39,76 @@ struct SessionInlineEditForm: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Constants.spacingCompact) {
-            // Activity picker
-            HStack {
-                Text("Activity")
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Picker("Activity", selection: $selectedActivityId) {
-                    ForEach(appState.popoverActivities) { activity in
-                        Text(activity.title).tag(activity.id ?? Int64(-1))
+            // Top row: Activity, Start, End side by side
+            HStack(alignment: .top, spacing: Constants.spacingCard) {
+                // Activity picker
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Activity")
+                        .font(.caption.bold())
+                        .foregroundStyle(errorFields.contains(.activity) ? theme.alert : .secondary)
+                    Picker("Activity", selection: $selectedActivityId) {
+                        ForEach(appState.popoverActivities) { activity in
+                            Text(activity.title).tag(activity.id ?? Int64(-1))
+                        }
+                    }
+                    .labelsHidden()
+                    .fixedSize()
+                }
+
+                // Start time
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Start")
+                        .font(.caption.bold())
+                        .foregroundStyle(errorFields.contains(.start) ? theme.alert : .secondary)
+                    DatePicker("Start", selection: $startTime)
+                        .datePickerStyle(.stepperField)
+                        .labelsHidden()
+                        .fixedSize()
+                }
+
+                // End time
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("End")
+                        .font(.caption.bold())
+                        .foregroundStyle(errorFields.contains(.end) ? theme.alert : .secondary)
+                    DatePicker("End", selection: $endTime, in: ...Date())
+                        .datePickerStyle(.stepperField)
+                        .labelsHidden()
+                        .fixedSize()
+                        .disabled(isActive)
+                }
+
+                // Paused time
+                if session.totalPausedSeconds > 0 {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Paused")
+                            .font(.caption.bold())
+                            .foregroundStyle(.secondary)
+                        Text(TimeFormatting.formatDuration(seconds: session.totalPausedSeconds))
+                            .font(.body)
+                            .foregroundStyle(.secondary)
                     }
                 }
-                .labelsHidden()
-                .fixedSize()
-            }
 
-            // Start time
-            HStack {
-                Text("Start")
-                    .font(.body)
-                    .foregroundStyle(.secondary)
                 Spacer()
-                DatePicker("Start", selection: $startTime)
-                    .labelsHidden()
-                    .fixedSize()
             }
-
-            // End time
-            HStack {
-                Text("End")
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                Spacer()
-                DatePicker("End", selection: $endTime)
-                    .labelsHidden()
-                    .fixedSize()
-                    .disabled(isActive)
-            }
-
-            // Paused time (read-only, shown only when relevant)
-            if session.totalPausedSeconds > 0 {
-                HStack {
-                    Text("Paused")
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Text(TimeFormatting.formatDuration(seconds: session.totalPausedSeconds))
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-                }
-            }
+            .onChange(of: selectedActivityId) { clearError() }
+            .onChange(of: startTime) { clearError() }
+            .onChange(of: endTime) { clearError() }
 
             // Error display
             if let errorMessage {
                 Text(errorMessage)
-                    .font(.caption)
+                    .font(.body)
                     .foregroundStyle(theme.alert)
             }
 
             // Actions
-            HStack {
+            HStack(spacing: Constants.spacingCompact) {
                 Button("Cancel") {
                     onCancel()
                 }
                 .buttonStyle(.bordered)
-
-                Spacer()
 
                 Button("Save") {
                     save()
@@ -112,11 +119,7 @@ struct SessionInlineEditForm: View {
             }
         }
         .padding(Constants.spacingCard)
-        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .strokeBorder(theme.accent.opacity(0.3), lineWidth: 1)
-        )
+        .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
         .onKeyPress(.escape) {
             onCancel()
             return .handled
@@ -140,6 +143,7 @@ struct SessionInlineEditForm: View {
         guard let sessionId = session.id else { return }
         isSaving = true
         errorMessage = nil
+        errorFields = []
 
         // Build input with only changed fields
         let input = UpdateSessionInput(
@@ -154,8 +158,52 @@ struct SessionInlineEditForm: View {
                 onSave()
             } catch {
                 errorMessage = error.localizedDescription
+                errorFields = errorFieldsFrom(error)
                 isSaving = false
             }
         }
+    }
+
+    private func clearError() {
+        errorMessage = nil
+        errorFields = []
+    }
+
+    /// Which fields the user actually changed — used to scope error highlights.
+    private var changedTimeFields: Set<ErrorField> {
+        var fields: Set<ErrorField> = []
+        if startTime != session.startedAt { fields.insert(.start) }
+        if !isActive && endTime != (session.endedAt ?? Date()) { fields.insert(.end) }
+        return fields
+    }
+
+    private func errorFieldsFrom(_ error: Error) -> Set<ErrorField> {
+        if let presentError = error as? PresentError {
+            switch presentError {
+            case .activityNotFound, .activityIsArchived:
+                return [.activity]
+            case .sessionOverlap:
+                // Only highlight the time fields that were actually changed
+                let changed = changedTimeFields
+                return changed.isEmpty ? [.start, .end] : changed
+            case .invalidInput(let msg):
+                let mentionsStart = msg.localizedCaseInsensitiveContains("start time")
+                let mentionsEnd = msg.localizedCaseInsensitiveContains("end time")
+                // "Start time must be before end time" or "End time must be after start time"
+                // mention both — highlight both fields
+                if mentionsStart && mentionsEnd {
+                    return [.start, .end]
+                } else if mentionsStart {
+                    return [.start]
+                } else if mentionsEnd {
+                    return [.end]
+                }
+                let changed = changedTimeFields
+                return changed.isEmpty ? [.start, .end] : changed
+            default:
+                return []
+            }
+        }
+        return []
     }
 }
