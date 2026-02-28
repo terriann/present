@@ -46,6 +46,15 @@ For dismiss actions, prefer descriptive labels over mechanical ones. Use "Done f
 
 Always say "Launch Present" — never "Open Present." Launch conveys intent and action. Open is generic, passive, and carries connotations of unwrapping something precious. Time is a gift; this app is just a tool.
 
+### Interaction design
+
+Everything should be effortlessly editable through simple interactions that do not distract. These principles make that concrete:
+
+- **Edits happen in place** — prefer inline editing over sheets or navigation when the edit is a single field or short text. The user should feel like they can reach out and change something without leaving their current context.
+- **Stay in context** — don't navigate the user away from what they're looking at to make a change. If an edit can happen in a popover, inline field, or the current view, it should.
+- **Commit without ceremony** — save on blur, on return, or on dismiss. Don't require explicit save buttons or confirmation for low-risk, easily reversible edits. Reserve confirmation for destructive or irreversible actions (delete, cancel, discard).
+- **Signal navigation with ellipsis** — if an action opens a separate window, sheet, or dialog, suffix the label with an ellipsis (`…`). This tells the user the action won't complete inline and another view is coming (e.g., "Export…", "Edit Details…").
+
 ## Architecture
 
 ```
