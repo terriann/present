@@ -1,5 +1,6 @@
 import Foundation
 import GRDB
+import os
 
 public enum PresentError: Error, LocalizedError, Sendable {
     case activityNotFound(Int64)
@@ -48,6 +49,20 @@ private struct SessionInfo: Decodable, FetchableRecord, Sendable {
 public final class PresentService: PresentAPI, Sendable {
     private let dbWriter: any DatabaseWriter
     public static let maxActiveActivities = 50
+    private static let logger = Logger(subsystem: "com.present.core", category: "segments")
+
+    /// Sum closed segment durations, skipping segments with negative duration (startedAt > endedAt).
+    private static func sumSegmentDurations(_ segments: [SessionSegment]) -> Int {
+        segments.reduce(0) { sum, seg in
+            guard let end = seg.endedAt else { return sum }
+            let duration = Int(end.timeIntervalSince(seg.startedAt))
+            if duration < 0 {
+                logger.warning("Negative segment duration: segment \(seg.id ?? -1, privacy: .public), session \(seg.sessionId, privacy: .public)")
+                return sum
+            }
+            return sum + duration
+        }
+    }
 
     public init(databasePool: any DatabaseWriter) {
         self.dbWriter = databasePool
@@ -383,11 +398,7 @@ public final class PresentService: PresentAPI, Sendable {
                 let segments = try SessionSegment
                     .filter(SessionSegment.Columns.sessionId == id)
                     .fetchAll(db)
-                let totalDuration = segments.reduce(0) { sum, seg in
-                    guard let end = seg.endedAt else { return sum }
-                    return sum + Int(end.timeIntervalSince(seg.startedAt))
-                }
-                session.durationSeconds = totalDuration
+                session.durationSeconds = Self.sumSegmentDurations(segments)
             }
 
             try session.update(db)
@@ -433,10 +444,7 @@ public final class PresentService: PresentAPI, Sendable {
                 .filter(SessionSegment.Columns.sessionId == session.id!)
                 .filter(SessionSegment.Columns.endedAt != nil)
                 .fetchAll(db)
-            var elapsedSeconds = closedSegments.reduce(0) { sum, seg in
-                guard let end = seg.endedAt else { return sum }
-                return sum + Int(end.timeIntervalSince(seg.startedAt))
-            }
+            var elapsedSeconds = Self.sumSegmentDurations(closedSegments)
 
             // Add open segment time if running
             if session.state == .running,
@@ -580,11 +588,7 @@ public final class PresentService: PresentAPI, Sendable {
                 .filter(SessionSegment.Columns.sessionId == session.id!)
                 .filter(SessionSegment.Columns.endedAt != nil)
                 .fetchAll(db)
-            let activeDuration = segments.reduce(0) { sum, seg in
-                guard let end = seg.endedAt else { return sum }
-                return sum + Int(end.timeIntervalSince(seg.startedAt))
-            }
-            session.durationSeconds = max(0, activeDuration)
+            session.durationSeconds = Self.sumSegmentDurations(segments)
 
             try session.update(db)
             return session
