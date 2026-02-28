@@ -16,7 +16,7 @@ struct DashboardWeeklyChartCard: View {
     @State private var hoveredBarActivity: String?
     @State private var barHoverLocation: CGPoint = .zero
     /// Drives the gentle pulse on the active session's bar segment.
-    @State private var activePulseOpacity: Double = 1.0
+    @State private var pulseState = ActivePulseState()
 
     private var legendColorInfo: (domain: [String], range: [Color]) {
         let entries = weeklyBarEntries()
@@ -37,23 +37,20 @@ struct DashboardWeeklyChartCard: View {
             weeklyBarChart(entries: entries, domain: domain, activities: weekly.activities, tooltipLabels: tooltipLabels)
             weeklyBarChartLegend(colorDomain: colorInfo.domain, colorRange: colorInfo.range)
         }
-        .task(id: hasActiveTodaySession) {
-            guard hasActiveTodaySession else {
-                activePulseOpacity = 1.0
-                return
+        .onChange(of: hasActiveTodaySession) {
+            if hasActiveTodaySession {
+                pulseState.start(reduceMotion: reduceMotion)
+            } else {
+                pulseState.stop()
             }
-            guard !reduceMotion else {
-                activePulseOpacity = 1.0
-                return
+        }
+        .onAppear {
+            if hasActiveTodaySession {
+                pulseState.start(reduceMotion: reduceMotion)
             }
-            let midpoint = (Constants.activePulseHigh + Constants.activePulseLow) / 2
-            let amplitude = (Constants.activePulseHigh - Constants.activePulseLow) / 2
-            let period = Constants.activePulseDuration * 2 + Constants.activePulseDelay
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .milliseconds(50))
-                let t = Date().timeIntervalSinceReferenceDate
-                activePulseOpacity = midpoint + amplitude * sin(t * 2 * .pi / period)
-            }
+        }
+        .onDisappear {
+            pulseState.stop()
         }
     }
 
@@ -216,7 +213,7 @@ struct DashboardWeeklyChartCard: View {
             return entry.label == label ? 1.0 : 0.4
         }
         // Active session segment pulses when no hover interaction is active
-        if entry.isActive { return activePulseOpacity }
+        if entry.isActive { return pulseState.opacity }
         return 1.0
     }
 

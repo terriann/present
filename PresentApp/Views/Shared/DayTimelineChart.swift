@@ -99,17 +99,8 @@ struct DayTimelineChart: View {
                             .fill(color.opacity(isActive ? 1.0 : 0.75))
                             .frame(width: w, height: barHeight)
                             .offset(x: x)
-                            .phaseAnimator(
-                                block.isLiveSegment && !reduceMotion
-                                    ? [Constants.activePulseHigh, Constants.activePulseLow]
-                                    : [isActive ? 1.0 : 1.0]
-                            ) { content, phase in
-                                content.opacity(dimmed ? 0.2 : phase)
-                            } animation: { phase in
-                                phase == Constants.activePulseLow
-                                    ? .easeInOut(duration: Constants.activePulseDuration).delay(Constants.activePulseDelay)
-                                    : .easeInOut(duration: Constants.activePulseDuration)
-                            }
+                            .opacity(dimmed ? 0.2 : 1.0)
+                            .activePulse(isActive: block.isLiveSegment && !dimmed, reduceMotion: reduceMotion)
                     }
 
                     // X-axis tick marks
