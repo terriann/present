@@ -17,6 +17,8 @@ struct SessionInlineEditForm: View {
     @State private var selectedActivityId: Int64
     @State private var startTime: Date
     @State private var endTime: Date
+    @State private var noteText: String
+    @State private var linkText: String
     @State private var isSaving = false
     @State private var errorMessage: String?
     @State private var errorFields: Set<ErrorField> = []
@@ -35,6 +37,8 @@ struct SessionInlineEditForm: View {
         _selectedActivityId = State(initialValue: session.activityId)
         _startTime = State(initialValue: session.startedAt)
         _endTime = State(initialValue: session.endedAt ?? Date())
+        _noteText = State(initialValue: session.note ?? "")
+        _linkText = State(initialValue: session.link ?? "")
     }
 
     var body: some View {
@@ -96,6 +100,35 @@ struct SessionInlineEditForm: View {
             .onChange(of: startTime) { clearError() }
             .onChange(of: endTime) { clearError() }
 
+            // Note and Link row
+            HStack(alignment: .top, spacing: Constants.spacingCard) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Note")
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
+                    TextField("Add a note...", text: $noteText)
+                        .textFieldStyle(.roundedBorder)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Link")
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
+                    TextField("https://...", text: $linkText)
+                        .textFieldStyle(.roundedBorder)
+                    if let ticketId = liveTicketId {
+                        HStack(spacing: Constants.spacingTight) {
+                            Image(systemName: "ticket")
+                                .font(.caption)
+                                .accessibilityHidden(true)
+                            Text(ticketId)
+                                .font(.caption)
+                        }
+                        .foregroundStyle(theme.accent)
+                    }
+                }
+            }
+
             // Error display
             if let errorMessage {
                 Text(errorMessage)
@@ -137,6 +170,14 @@ struct SessionInlineEditForm: View {
         selectedActivityId != session.activityId
             || startTime != session.startedAt
             || (!isActive && endTime != (session.endedAt ?? Date()))
+            || noteText.trimmingCharacters(in: .whitespacesAndNewlines) != (session.note ?? "")
+            || linkText.trimmingCharacters(in: .whitespacesAndNewlines) != (session.link ?? "")
+    }
+
+    private var liveTicketId: String? {
+        let trimmed = linkText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        return TicketExtractor.extractTicketId(from: trimmed)
     }
 
     private func save() {
@@ -146,7 +187,14 @@ struct SessionInlineEditForm: View {
         errorFields = []
 
         // Build input with only changed fields
+        let trimmedNote = noteText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedLink = linkText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let noteChanged = trimmedNote != (session.note ?? "")
+        let linkChanged = trimmedLink != (session.link ?? "")
+
         let input = UpdateSessionInput(
+            note: noteChanged ? trimmedNote : nil,
+            link: linkChanged ? trimmedLink : nil,
             activityId: selectedActivityId != session.activityId ? selectedActivityId : nil,
             startedAt: startTime != session.startedAt ? startTime : nil,
             endedAt: !isActive && endTime != session.endedAt ? endTime : nil
