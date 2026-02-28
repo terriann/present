@@ -41,33 +41,58 @@ final class DataRefreshCoordinator {
     // MARK: - Data Refresh
 
     /// Refreshes data-only properties. Session/timer sync is handled by AppState.
+    /// All assignments are guarded by equality checks to avoid unnecessary SwiftUI diffs.
     func refreshData(hasActiveSession: Bool) async throws {
         let summary = try await service.todaySummary()
-        todayTotalSeconds = summary.totalSeconds
-        todaySessionCount = summary.sessionCount
-        todayActivities = summary.activities
+        if todayTotalSeconds != summary.totalSeconds { todayTotalSeconds = summary.totalSeconds }
+        if todaySessionCount != summary.sessionCount { todaySessionCount = summary.sessionCount }
+        if todayActivities != summary.activities { todayActivities = summary.activities }
 
         if let weekStartPref = try? await service.getPreference(key: PreferenceKey.weekStartDay) {
-            weekStartDay = PreferenceKey.parseWeekStartDay(weekStartPref)
+            let parsed = PreferenceKey.parseWeekStartDay(weekStartPref)
+            if weekStartDay != parsed { weekStartDay = parsed }
         }
         let weekly = try await service.weeklySummary(weekOf: Date(), includeArchived: false, weekStartDay: weekStartDay, roundToMinute: true)
         if weekly != weeklySummary { weeklySummary = weekly }
 
         if !hasActiveSession {
             let since = Date().addingTimeInterval(-3 * 60 * 60)
-            recentSessionSuggestion = try await service.lastCompletedSession(since: since)
-        } else {
+            let suggestion = try await service.lastCompletedSession(since: since)
+            if !suggestionEquals(recentSessionSuggestion, suggestion) {
+                recentSessionSuggestion = suggestion
+            }
+        } else if recentSessionSuggestion != nil {
             recentSessionSuggestion = nil
         }
 
-        recentActivities = try await service.recentActivities(limit: 6)
-        popoverActivities = try await service.listActivitiesForPopover()
-        allActivities = try await service.listActivities(includeArchived: true, includeSystem: true)
-        allTags = try await service.listTags()
+        let newRecent = try await service.recentActivities(limit: 6)
+        if recentActivities != newRecent { recentActivities = newRecent }
+
+        let newPopover = try await service.listActivitiesForPopover()
+        if popoverActivities != newPopover { popoverActivities = newPopover }
+
+        let newAll = try await service.listActivities(includeArchived: true, includeSystem: true)
+        if allActivities != newAll { allActivities = newAll }
+
+        let newTags = try await service.listTags()
+        if allTags != newTags { allTags = newTags }
 
         if let optionsStr = try? await service.getPreference(key: PreferenceKey.rhythmDurationOptions) {
             let parsed: [RhythmOption] = PreferenceKey.parseRhythmOptions(optionsStr)
-            rhythmDurationOptions = parsed.isEmpty ? Constants.defaultRhythmDurationOptions : parsed
+            let newOptions = parsed.isEmpty ? Constants.defaultRhythmDurationOptions : parsed
+            if rhythmDurationOptions != newOptions { rhythmDurationOptions = newOptions }
+        }
+    }
+
+    /// Compare optional session suggestion tuples (tuples don't auto-conform to Equatable).
+    private func suggestionEquals(
+        _ lhs: (session: Session, activity: Activity)?,
+        _ rhs: (session: Session, activity: Activity)?
+    ) -> Bool {
+        switch (lhs, rhs) {
+        case (.none, .none): return true
+        case let (.some(l), .some(r)): return l.session == r.session && l.activity == r.activity
+        default: return false
         }
     }
 
