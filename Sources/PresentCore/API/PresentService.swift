@@ -39,6 +39,12 @@ public enum PresentError: Error, LocalizedError, Sendable {
     }
 }
 
+/// Helper for decoding Session + Activity from GRDB association queries.
+private struct SessionInfo: Decodable, FetchableRecord, Sendable {
+    var session: Session
+    var activity: Activity
+}
+
 public final class PresentService: PresentAPI, Sendable {
     private let dbWriter: any DatabaseWriter
     public static let maxActiveActivities = 50
@@ -630,54 +636,34 @@ public final class PresentService: PresentAPI, Sendable {
         }
 
         return try await dbWriter.read { db in
+            // Filter the activity association (optionally excluding archived)
+            let activityAssoc = includeArchived
+                ? Session.activity
+                : Session.activity.filter(Activity.Columns.isArchived == false)
+
             // Overlap: session started before range end AND ended after range start (or still running)
-            var conditions = ["s.startedAt < ?", "(s.endedAt > ? OR s.endedAt IS NULL)", "s.state IN (?, ?)"]
-            var arguments: [any DatabaseValueConvertible] = [endDate, startDate, SessionState.completed.rawValue, SessionState.cancelled.rawValue]
-            var joins = "INNER JOIN activity a ON a.id = s.activityId"
+            let completedStates = [SessionState.completed.rawValue, SessionState.cancelled.rawValue]
+            var request = Session
+                .including(required: activityAssoc)
+                .filter(Session.Columns.startedAt < endDate)
+                .filter(Session.Columns.endedAt > startDate || Session.Columns.endedAt == nil)
+                .filter(completedStates.contains(Session.Columns.state))
+                .order(Session.Columns.startedAt.desc)
 
             if let type {
-                conditions.append("s.sessionType = ?")
-                arguments.append(type.rawValue)
+                request = request.filter(Session.Columns.sessionType == type.rawValue)
             }
             if let activityId {
-                conditions.append("s.activityId = ?")
-                arguments.append(activityId)
-            }
-            if !includeArchived {
-                conditions.append("a.isArchived = 0")
+                request = request.filter(Session.Columns.activityId == activityId)
             }
             if let query, !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                joins += " INNER JOIN session_fts ON session_fts.rowid = s.rowid"
-                conditions.append("session_fts MATCH ?")
-                arguments.append(query + "*")
-            }
-
-            let sql = """
-                SELECT s.*, a.id AS a_id, a.title AS a_title, a.externalId AS a_externalId,
-                       a.link AS a_link, a.notes AS a_notes, a.isArchived AS a_isArchived,
-                       a.isSystem AS a_isSystem, a.createdAt AS a_createdAt, a.updatedAt AS a_updatedAt
-                FROM session s
-                \(joins)
-                WHERE \(conditions.joined(separator: " AND "))
-                ORDER BY s.startedAt DESC
-                """
-
-            let rows = try Row.fetchAll(db, sql: sql, arguments: StatementArguments(arguments))
-            return try rows.map { row in
-                let session = try Session(row: row)
-                let activity = Activity(
-                    id: row["a_id"],
-                    title: row["a_title"],
-                    externalId: row["a_externalId"],
-                    link: row["a_link"],
-                    notes: row["a_notes"],
-                    isArchived: row["a_isArchived"],
-                    isSystem: row["a_isSystem"],
-                    createdAt: row["a_createdAt"],
-                    updatedAt: row["a_updatedAt"]
+                request = request.filter(
+                    SQL("rowid IN (SELECT rowid FROM session_fts WHERE session_fts MATCH \(query + "*"))")
                 )
-                return (session, activity)
             }
+
+            let results = try SessionInfo.fetchAll(db, request)
+            return results.map { ($0.session, $0.activity) }
         }
     }
 
