@@ -5,7 +5,7 @@ import PresentCore
 ///
 /// Adapts its controls based on the available target types:
 /// - **Timebound**: duration field
-/// - **Rhythm**: rhythm option pills + include-elapsed checkbox
+/// - **Rhythm**: rhythm option pills
 /// - **Work**: immediate conversion (no extra options)
 struct ConvertSessionSheet: View {
     @Environment(AppState.self) private var appState
@@ -17,7 +17,6 @@ struct ConvertSessionSheet: View {
     @State private var targetType: SessionType = .work
     @State private var timeboundMinutes: Int = 25
     @State private var rhythmOption: RhythmOption?
-    @State private var includeElapsed = true
 
     private var targets: [SessionType] {
         SessionType.allCases.filter { $0 != session.sessionType }
@@ -83,15 +82,6 @@ struct ConvertSessionSheet: View {
                             .buttonStyle(.plain)
                         }
                     }
-
-                    if let option = rhythmOption {
-                        Toggle(isOn: $includeElapsed) {
-                            Text("Include elapsed \(effectiveElapsedMinutes(focusMinutes: option.focusMinutes))m in first segment")
-                                .font(.callout)
-                                .foregroundStyle(.secondary)
-                        }
-                        .toggleStyle(.checkbox)
-                    }
                 }
 
             case .work:
@@ -151,8 +141,7 @@ struct ConvertSessionSheet: View {
                     ConvertSessionInput(
                         targetType: .rhythm,
                         timerMinutes: option.focusMinutes,
-                        breakMinutes: option.breakMinutes,
-                        includeElapsed: includeElapsed
+                        breakMinutes: option.breakMinutes
                     )
                 )
             case .work:
@@ -161,10 +150,4 @@ struct ConvertSessionSheet: View {
         }
     }
 
-    private func effectiveElapsedMinutes(focusMinutes: Int) -> Int {
-        let elapsed = appState.timerElapsedSeconds
-        let focusSeconds = focusMinutes * 60
-        let effective = focusSeconds > 0 ? elapsed % focusSeconds : elapsed
-        return max(1, effective / 60)
-    }
 }

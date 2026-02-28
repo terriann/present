@@ -16,7 +16,6 @@ struct SessionTypeConvertControls: View {
     @State private var targetType: SessionType = .work
     @State private var timeboundMinutes: Int = 25
     @State private var rhythmOption: RhythmOption?
-    @State private var includeElapsed = true
 
     var body: some View {
         let targets = SessionType.allCases.filter { $0 != session.sessionType }
@@ -76,34 +75,23 @@ struct SessionTypeConvertControls: View {
                 }
 
             case .rhythm:
-                VStack(spacing: 4) {
-                    HStack(spacing: 4) {
-                        ForEach(Array(appState.rhythmDurationOptions.prefix(4)), id: \.self) { option in
-                            let isSelected = rhythmOption == option
-                            Button {
-                                rhythmOption = option
-                            } label: {
-                                Text(option.displayLabel)
-                                    .font(.caption2.weight(isSelected ? .semibold : .regular))
-                                    .padding(.horizontal, Constants.spacingCompact)
-                                    .padding(.vertical, 3)
-                                    .background(isSelected ? theme.accent.opacity(0.12) : Color.secondary.opacity(0.08), in: Capsule())
-                                    .foregroundStyle(isSelected ? theme.accent : .secondary)
-                            }
-                            .buttonStyle(.plain)
+                HStack(spacing: 4) {
+                    ForEach(Array(appState.rhythmDurationOptions.prefix(4)), id: \.self) { option in
+                        let isSelected = rhythmOption == option
+                        Button {
+                            rhythmOption = option
+                        } label: {
+                            Text(option.displayLabel)
+                                .font(.caption2.weight(isSelected ? .semibold : .regular))
+                                .padding(.horizontal, Constants.spacingCompact)
+                                .padding(.vertical, 3)
+                                .background(isSelected ? theme.accent.opacity(0.12) : Color.secondary.opacity(0.08), in: Capsule())
+                                .foregroundStyle(isSelected ? theme.accent : .secondary)
                         }
+                        .buttonStyle(.plain)
                     }
 
-                    if let option = rhythmOption {
-                        Toggle(isOn: $includeElapsed) {
-                            Text("Include elapsed \(effectiveElapsedMinutes(focusMinutes: option.focusMinutes))m in first segment")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
-                        .toggleStyle(.checkbox)
-                    }
-
-                    Button("Convert to Rhythm") {
+                    Button("Convert") {
                         guard let option = rhythmOption else { return }
                         onConvert()
                         Task {
@@ -111,13 +99,12 @@ struct SessionTypeConvertControls: View {
                                 ConvertSessionInput(
                                     targetType: .rhythm,
                                     timerMinutes: option.focusMinutes,
-                                    breakMinutes: option.breakMinutes,
-                                    includeElapsed: includeElapsed
+                                    breakMinutes: option.breakMinutes
                                 )
                             )
                         }
                     }
-                    .font(.caption.weight(.medium))
+                    .font(.caption2.weight(.medium))
                     .buttonStyle(.plain)
                     .foregroundStyle(rhythmOption == nil ? .secondary : theme.accent)
                     .disabled(rhythmOption == nil)
@@ -131,16 +118,6 @@ struct SessionTypeConvertControls: View {
         }
     }
 
-    // MARK: - Helpers
-
-    /// Effective elapsed minutes for the "Include elapsed" checkbox.
-    /// If elapsed > focus duration, uses `elapsed % focus` to show the partial segment.
-    private func effectiveElapsedMinutes(focusMinutes: Int) -> Int {
-        let elapsed = appState.timerElapsedSeconds
-        let focusSeconds = focusMinutes * 60
-        let effective = focusSeconds > 0 ? elapsed % focusSeconds : elapsed
-        return max(1, effective / 60)
-    }
 }
 
 // MARK: - Session Type Convert Label
