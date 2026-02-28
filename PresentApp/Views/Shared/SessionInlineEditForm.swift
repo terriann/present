@@ -22,8 +22,10 @@ struct SessionInlineEditForm: View {
     @State private var isSaving = false
     @State private var errorMessage: String?
     @State private var errorFields: Set<ErrorField> = []
+    @FocusState private var focusedField: FocusField?
 
     private enum ErrorField { case activity, start, end }
+    private enum FocusField { case note, link }
 
     private var isActive: Bool {
         session.state == .running || session.state == .paused
@@ -105,17 +107,19 @@ struct SessionInlineEditForm: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Note")
                         .font(.caption.bold())
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(focusedField == .note ? theme.accent : .secondary)
                     TextField("Add a note...", text: $noteText)
                         .textFieldStyle(.roundedBorder)
+                        .focused($focusedField, equals: .note)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Link")
                         .font(.caption.bold())
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(focusedField == .link ? theme.accent : .secondary)
                     TextField("https://...", text: $linkText)
                         .textFieldStyle(.roundedBorder)
+                        .focused($focusedField, equals: .link)
                     if let ticketId = liveTicketId {
                         HStack(spacing: Constants.spacingTight) {
                             Image(systemName: "ticket")
