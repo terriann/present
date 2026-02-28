@@ -17,12 +17,22 @@ final class DataRefreshCoordinator {
     var recentSessionSuggestion: (session: Session, activity: Activity)?
     var rhythmDurationOptions: [RhythmOption] = Constants.defaultRhythmDurationOptions
 
-    // MARK: - Observation & IPC
+    // MARK: - Observation, Visibility & IPC
 
     private var observationTask: Task<Void, Never>?
     private var midnightTask: Task<Void, Never>?
     private var debounceTask: Task<Void, Never>?
+    private var activateTask: Task<Void, Never>?
+    private var deactivateTask: Task<Void, Never>?
     private var ipcServer: IPCServer?
+
+    /// Whether the app is the frontmost application. When false, database
+    /// change notifications set `isDirty` instead of triggering queries.
+    private var isAppVisible = true
+
+    /// Set when a change arrives while the app is not visible.
+    /// Cleared on the next refresh after the app becomes visible.
+    private var isDirty = false
 
     // MARK: - Callback
 
@@ -127,6 +137,38 @@ final class DataRefreshCoordinator {
         }
 
         startMidnightTimer()
+        startVisibilityTracking()
+    }
+
+    // MARK: - Visibility Tracking
+
+    /// Observes app activation state. When the app resigns active, subsequent
+    /// database changes are deferred. When it becomes active again, any
+    /// deferred changes trigger an immediate refresh.
+    private func startVisibilityTracking() {
+        isAppVisible = NSApplication.shared.isActive
+
+        activateTask = Task {
+            for await _ in NotificationCenter.default.notifications(
+                named: NSApplication.didBecomeActiveNotification
+            ) {
+                guard !Task.isCancelled else { break }
+                isAppVisible = true
+                if isDirty {
+                    isDirty = false
+                    scheduleRefresh()
+                }
+            }
+        }
+
+        deactivateTask = Task {
+            for await _ in NotificationCenter.default.notifications(
+                named: NSApplication.didResignActiveNotification
+            ) {
+                guard !Task.isCancelled else { break }
+                isAppVisible = false
+            }
+        }
     }
 
     // MARK: - Midnight Timer
@@ -146,16 +188,21 @@ final class DataRefreshCoordinator {
                 let seconds = nextMidnight.timeIntervalSince(now)
                 try? await Task.sleep(for: .seconds(seconds))
                 guard !Task.isCancelled else { break }
-                await onRefreshNeeded?()
+                scheduleRefresh()
             }
         }
     }
 
     // MARK: - Debounce
 
-    /// Schedules a debounced refresh. Multiple calls within 100ms collapse
-    /// into a single `onRefreshNeeded` invocation.
+    /// Schedules a debounced refresh. When the app is not visible, marks
+    /// data as dirty instead — the refresh fires when the app reactivates.
     private func scheduleRefresh() {
+        guard isAppVisible else {
+            isDirty = true
+            return
+        }
+        isDirty = false
         debounceTask?.cancel()
         debounceTask = Task {
             try? await Task.sleep(for: .milliseconds(100))
