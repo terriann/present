@@ -18,7 +18,8 @@ struct ActivitySessionCard: View {
 
     @State private var searchText = ""
     @State private var grouping: SessionGrouping = .activity
-    @State private var sortOrder: ActivitySortOrder = .timeSpent
+    @State private var sortOrder: ActivitySortOrder = .mostRecent
+    @State private var sortInitialized = false
     @State private var expandedActivities: Set<Int64> = []
     @State private var activePreMidnightSeconds: Int?
 
@@ -59,6 +60,14 @@ struct ActivitySessionCard: View {
         }
         .task(id: appState.currentSession?.id) {
             await loadActivePreMidnightSeconds()
+        }
+        .onChange(of: appState.isSessionActive) { _, isActive in
+            sortOrder = isActive ? .mostRecent : .timeSpent
+        }
+        .onAppear {
+            guard !sortInitialized else { return }
+            sortInitialized = true
+            sortOrder = appState.isSessionActive ? .mostRecent : .timeSpent
         }
     }
 
