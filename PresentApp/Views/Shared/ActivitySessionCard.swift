@@ -21,6 +21,7 @@ struct ActivitySessionCard: View {
     @State private var sortOrder: ActivitySortOrder = .mostRecent
     @State private var sortInitialized = false
     @State private var expandedActivities: Set<Int64> = []
+    @State private var editingSessionId: Int64?
     @State private var activePreMidnightSeconds: Int?
 
     // MARK: - Body
@@ -238,12 +239,28 @@ struct ActivitySessionCard: View {
                     if isExpanded {
                         // Active session row
                         if let active = activeSession, activeSessionMatchesSearch {
-                            activeSessionRow(session: active, activityTitle: group.activity.title)
+                            if active.id == editingSessionId {
+                                SessionInlineEditForm(session: active, activity: group.activity,
+                                    onSave: { clearEditing(); onReload?() },
+                                    onCancel: { clearEditing() })
+                                    .padding(.horizontal, Constants.spacingCard)
+                                    .padding(.vertical, Constants.spacingCompact)
+                            } else {
+                                activeSessionRow(session: active, activityTitle: group.activity.title)
+                            }
                         }
 
                         // Completed/cancelled sessions
-                        ForEach(group.sessions, id: \.0.id) { session, _ in
-                            completedSessionRow(session: session, activityTitle: group.activity.title)
+                        ForEach(group.sessions, id: \.0.id) { session, activity in
+                            if session.id == editingSessionId {
+                                SessionInlineEditForm(session: session, activity: activity,
+                                    onSave: { clearEditing(); onReload?() },
+                                    onCancel: { clearEditing() })
+                                    .padding(.horizontal, Constants.spacingCard)
+                                    .padding(.vertical, Constants.spacingCompact)
+                            } else {
+                                completedSessionRow(session: session, activityTitle: group.activity.title)
+                            }
                         }
                     }
                 }
@@ -259,24 +276,42 @@ struct ActivitySessionCard: View {
             // Active session at top
             if hasActiveSession, activeSessionMatchesSearch,
                let active = appState.currentSession, let activity = appState.currentActivity {
-                ungroupedActiveSessionRow(session: active, activity: activity)
-                    .padding(.vertical, Constants.spacingCompact)
-                    .padding(.horizontal, Constants.spacingCard)
-                    .background(entries.isEmpty ? Color.clear : Color.gray.opacity(0.08))
-                    .contentShape(Rectangle())
-                    .sessionContextMenu(session: active, activityTitle: activity.title)
+                if active.id == editingSessionId {
+                    SessionInlineEditForm(session: active, activity: activity,
+                        onSave: { clearEditing(); onReload?() },
+                        onCancel: { clearEditing() })
+                        .padding(.horizontal, Constants.spacingCard)
+                        .padding(.vertical, Constants.spacingCompact)
+                } else {
+                    ungroupedActiveSessionRow(session: active, activity: activity)
+                        .padding(.vertical, Constants.spacingCompact)
+                        .padding(.horizontal, Constants.spacingCard)
+                        .background(entries.isEmpty ? Color.clear : Color.gray.opacity(0.08))
+                        .contentShape(Rectangle())
+                        .sessionContextMenu(session: active, activityTitle: activity.title,
+                            onEdit: { beginEditing($0) })
+                }
             }
 
             ForEach(Array(entries.enumerated()), id: \.element.0.id) { index, entry in
                 let adjustedIndex = hasActiveSessionMatchingSearch ? index + 1 : index
-                ungroupedSessionRow(session: entry.0, activity: entry.1)
-                    .padding(.vertical, Constants.spacingCompact)
-                    .padding(.horizontal, Constants.spacingCard)
-                    .background(adjustedIndex.isMultiple(of: 2) ? Color.clear : Color.gray.opacity(0.08))
-                    .contentShape(Rectangle())
-                    .sessionContextMenu(session: entry.0, activityTitle: entry.1.title) {
-                        onReload?()
-                    }
+                if entry.0.id == editingSessionId {
+                    SessionInlineEditForm(session: entry.0, activity: entry.1,
+                        onSave: { clearEditing(); onReload?() },
+                        onCancel: { clearEditing() })
+                        .padding(.horizontal, Constants.spacingCard)
+                        .padding(.vertical, Constants.spacingCompact)
+                } else {
+                    ungroupedSessionRow(session: entry.0, activity: entry.1)
+                        .padding(.vertical, Constants.spacingCompact)
+                        .padding(.horizontal, Constants.spacingCard)
+                        .background(adjustedIndex.isMultiple(of: 2) ? Color.clear : Color.gray.opacity(0.08))
+                        .contentShape(Rectangle())
+                        .sessionContextMenu(session: entry.0, activityTitle: entry.1.title,
+                            onEdit: { beginEditing($0) }) {
+                            onReload?()
+                        }
+                }
             }
         }
         .padding(.bottom, Constants.spacingCard)
@@ -307,7 +342,8 @@ struct ActivitySessionCard: View {
         .padding(.leading, 20)
         .background(Color.gray.opacity(0.04))
         .contentShape(Rectangle())
-        .sessionContextMenu(session: session, activityTitle: activityTitle)
+        .sessionContextMenu(session: session, activityTitle: activityTitle,
+            onEdit: { beginEditing($0) })
     }
 
     /// Active session row for ungrouped view — SpinningClockIcon on left where the dot would be.
@@ -388,8 +424,23 @@ struct ActivitySessionCard: View {
         .padding(.leading, 20)
         .background(Color.gray.opacity(0.04))
         .contentShape(Rectangle())
-        .sessionContextMenu(session: session, activityTitle: activityTitle) {
+        .sessionContextMenu(session: session, activityTitle: activityTitle,
+            onEdit: { beginEditing($0) }) {
             onReload?()
+        }
+    }
+
+    // MARK: - Editing Helpers
+
+    private func beginEditing(_ sessionId: Int64) {
+        withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
+            editingSessionId = sessionId
+        }
+    }
+
+    private func clearEditing() {
+        withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
+            editingSessionId = nil
         }
     }
 

@@ -11,6 +11,7 @@ struct SessionContextMenuModifier: ViewModifier {
 
     let session: Session
     let activityTitle: String
+    var onEdit: ((Int64) -> Void)?
     var onDelete: (() -> Void)?
 
     @State private var showingDeleteConfirm = false
@@ -27,6 +28,14 @@ struct SessionContextMenuModifier: ViewModifier {
                 if isActive {
                     activeSessionControls
                     Divider()
+                }
+
+                if let onEdit {
+                    Button {
+                        if let id = session.id { onEdit(id) }
+                    } label: {
+                        Label("Edit Session", systemImage: "pencil")
+                    }
                 }
 
                 Button {
@@ -176,11 +185,13 @@ extension View {
     func sessionContextMenu(
         session: Session,
         activityTitle: String,
+        onEdit: ((Int64) -> Void)? = nil,
         onDelete: (() -> Void)? = nil
     ) -> some View {
         modifier(SessionContextMenuModifier(
             session: session,
             activityTitle: activityTitle,
+            onEdit: onEdit,
             onDelete: onDelete
         ))
     }
