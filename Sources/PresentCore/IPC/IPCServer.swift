@@ -20,6 +20,11 @@ public final class IPCServer: @unchecked Sendable {
     }
 
     public func start() throws {
+        let sunPathCapacity = MemoryLayout.size(ofValue: sockaddr_un().sun_path)
+        guard socketPath.utf8CString.count <= sunPathCapacity else {
+            throw IPCError.pathTooLong
+        }
+
         // Clean up existing socket
         if FileManager.default.fileExists(atPath: socketPath) {
             try FileManager.default.removeItem(atPath: socketPath)
@@ -35,8 +40,8 @@ public final class IPCServer: @unchecked Sendable {
         addr.sun_family = sa_family_t(AF_UNIX)
         let pathBytes = socketPath.utf8CString
         withUnsafeMutablePointer(to: &addr.sun_path) { ptr in
-            ptr.withMemoryRebound(to: CChar.self, capacity: Int(104)) { dest in
-                for (i, byte) in pathBytes.enumerated() where i < 104 {
+            ptr.withMemoryRebound(to: CChar.self, capacity: sunPathCapacity) { dest in
+                for (i, byte) in pathBytes.enumerated() where i < sunPathCapacity {
                     dest[i] = byte
                 }
             }
@@ -95,4 +100,5 @@ public enum IPCError: Error, Sendable {
     case listenFailed
     case connectionFailed
     case sendFailed
+    case pathTooLong
 }

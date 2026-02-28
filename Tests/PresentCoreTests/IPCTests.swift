@@ -60,7 +60,7 @@ struct IPCTests {
     // MARK: - Client Fails Silently
 
     @Test func clientFailsSilentlyWhenNoServer() {
-        let socketPath = NSTemporaryDirectory() + "present-nonexistent-\(UUID().uuidString).sock"
+        let socketPath = "/tmp/p-none-\(UUID().uuidString).sock"
         let client = IPCClient(socketPath: socketPath)
         // Should not throw or crash
         client.send(.sessionStarted)
@@ -70,7 +70,7 @@ struct IPCTests {
     // MARK: - Server/Client Round-Trip (non-async to allow semaphore)
 
     @Test func serverClientRoundTrip() throws {
-        let socketPath = NSTemporaryDirectory() + "present-test-\(UUID().uuidString).sock"
+        let socketPath = "/tmp/p-rt-\(UUID().uuidString).sock"
         defer { try? FileManager.default.removeItem(atPath: socketPath) }
 
         let received = ReceivedMessages()
@@ -92,7 +92,7 @@ struct IPCTests {
     }
 
     @Test func multipleMessagesDelivered() throws {
-        let socketPath = NSTemporaryDirectory() + "present-multi-\(UUID().uuidString).sock"
+        let socketPath = "/tmp/p-multi-\(UUID().uuidString).sock"
         defer { try? FileManager.default.removeItem(atPath: socketPath) }
 
         let received = ReceivedMessages()
