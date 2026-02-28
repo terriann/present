@@ -208,6 +208,12 @@ CLI Commands ──────────────────────�
 - **Auto-rotating content** (carousels, timed transitions): disable the rotation entirely when reduce motion is on. Read `@Environment(\.accessibilityReduceMotion)` and guard the timer callback.
 - `.contentTransition(.numericText())` respects reduce motion automatically — no wrapper needed.
 
+### Accessibility (VoiceOver)
+- **Icon-only buttons** must have `.accessibilityLabel("Description")`. `.help()` provides a tooltip but is not announced by VoiceOver — always add both.
+- **Decorative icons** (paired with a text label, or redundant with nearby content like a status message) get `.accessibilityHidden(true)`.
+- **Buttons with text labels** need no extra accessibility work — SwiftUI derives the accessible name from the label content automatically.
+- When adding any new icon or image-only control, decide: is it interactive or decorative? Apply the appropriate modifier before committing.
+
 ## Pull Requests
 - Default PR base branch is `main` unless otherwise specified.
 
@@ -275,7 +281,7 @@ When a change spans multiple scopes, use the most significant one. If truly cros
 
 ## Filing Issues & Project Management
 
-**Always delegate bug reports, feature requests, triage, and milestone planning to the PM agent** (`.claude/agents/pm.md`). Do not create GitHub issues directly.
+**Always delegate bug reports, feature requests, triage, and milestone planning to the project manager agent** (`.claude/agents/project-manager.md`). Do not create GitHub issues directly.
 
 This applies when the user:
 - Reports a bug or unexpected behavior
@@ -285,7 +291,7 @@ This applies when the user:
 - Asks to triage, audit, size, or prioritize issues
 - Asks to plan or propose milestones
 
-The PM agent handles issue creation (via the `/issue` skill), triage, labeling, sizing, and milestone management.
+The project manager agent handles issue creation (via the `/issue` skill), triage, labeling, sizing, and milestone management.
 
 ### Milestones
 
@@ -301,4 +307,4 @@ This applies when the user:
 - Asks to "review the code", "audit the codebase", or "check code quality"
 - Wants a pre-release quality check
 
-The code-reviewer agent explores the codebase, produces categorized findings, and delegates issue filing to the PM agent. It does not implement fixes.
+The code-reviewer agent explores the codebase, produces categorized findings, and delegates issue filing to the project manager agent. It does not implement fixes.

@@ -139,6 +139,7 @@ struct MenuBarView: View {
             Image(systemName: "clock")
                 .font(scaledFont(.largeTitle))
                 .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
 
             Text("No active session")
                 .font(scaledFont(.headline, weight: .semibold))
@@ -244,6 +245,7 @@ struct MenuBarView: View {
                 Image(systemName: "magnifyingglass")
                     .font(scaledFont(.body))
                     .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
                 TextField("Search or create...", text: $searchText)
                     .textFieldStyle(.plain)
                     .font(scaledFont(.body))
@@ -299,6 +301,7 @@ struct MenuBarView: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Sort by recent")
                 .help("Sort by recent")
                 .onHover { hovering in isSortRecentHovered = hovering }
 
@@ -313,6 +316,7 @@ struct MenuBarView: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Sort alphabetically")
                 .help("Sort alphabetically")
                 .onHover { hovering in isSortAlphaHovered = hovering }
             }
@@ -530,6 +534,7 @@ struct MenuBarView: View {
                 .contentShape(Capsule())
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Settings")
             .help("Settings")
             .onHover { hovering in
                 if reduceMotion {
@@ -564,6 +569,7 @@ private struct CreateActivityButton: View {
             HStack(spacing: 8) {
                 Image(systemName: isSelected || isHovered ? "plus.circle.fill" : "plus.circle")
                     .foregroundStyle(theme.accent)
+                    .accessibilityHidden(true)
                 Text("Create \"\(title)\"")
                     .font(scaledFont(.body, .regular))
                     .foregroundStyle(.secondary)
@@ -594,6 +600,7 @@ private struct ClearSearchButton: View {
             Image(systemName: "xmark.circle.fill")
                 .foregroundStyle(isHovered ? .primary : .secondary)
                 .font(.caption)
+                .accessibilityLabel("Clear search")
         }
         .buttonStyle(.plain)
         .onHover { hovering in
