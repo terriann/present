@@ -82,7 +82,7 @@ struct ReportsView: View {
                 }
 
                 ActivitySessionCard(
-                    title: "Session Log",
+                    title: "Session Logs",
                     sessionEntries: sessionEntries,
                     activityColorMap: activityColorMap,
                     includeActiveSession: isShowingToday,

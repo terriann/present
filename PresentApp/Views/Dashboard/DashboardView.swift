@@ -386,7 +386,7 @@ struct DashboardView: View {
 
     private var activityBreakdownCard: some View {
         ActivitySessionCard(
-            title: "Today's Activities",
+            title: "Today's Sessions",
             sessionEntries: todaySessions,
             activityColorMap: activityColorMap,
             dayPortions: todayPortions,
