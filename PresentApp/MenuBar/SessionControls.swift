@@ -20,7 +20,7 @@ struct SessionControls: View {
                         Image(systemName: "pause.circle.fill")
                             .font(.controlIcon)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(SessionControlButtonStyle())
                     .accessibilityLabel("Pause session")
                     .help("Pause session")
 
@@ -31,7 +31,7 @@ struct SessionControls: View {
                         Image(systemName: "play.circle.fill")
                             .font(.controlIcon)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(SessionControlButtonStyle())
                     .accessibilityLabel("Resume session")
                     .help("Resume session")
 
@@ -46,7 +46,7 @@ struct SessionControls: View {
                         .font(.controlIcon)
                         .foregroundStyle(theme.alert)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(SessionControlButtonStyle(hoverColor: theme.alert))
                 .accessibilityLabel("Stop session")
                 .help("Stop session")
 
@@ -58,7 +58,7 @@ struct SessionControls: View {
                             .font(.controlIconSmall)
                             .foregroundStyle(.secondary)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(SessionControlButtonStyle())
                     .accessibilityLabel("Discard session")
                     .help("Discard session")
                     .transition(.opacity)
