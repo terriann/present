@@ -42,41 +42,9 @@ struct FloatingAlertView: View {
                 .multilineTextAlignment(.center)
 
             if case .rhythmBreakExpiry(_, _, _, let breakMins) = context.completionType {
-                HStack(spacing: 0) {
-                    Text("0m")
-                        .font(.timerDisplay)
-                        .foregroundStyle(.secondary)
-                    Text(" / \(breakMins)m")
-                        .font(.timerDisplay)
-                        .foregroundStyle(.secondary.opacity(0.5))
-                }
-            } else if context.completionType.isTimeboundBreakExpiry {
-                HStack(spacing: 0) {
-                    Text("\(context.timerMinutes)m")
-                        .font(.timerDisplay)
-                        .foregroundStyle(.secondary)
-                    Text(" / \(context.timerMinutes)m")
-                        .font(.timerDisplay)
-                        .foregroundStyle(.secondary.opacity(0.5))
-                }
-            } else if context.completionType.isFocusExpiry {
-                HStack(spacing: 0) {
-                    Text("\(context.timerMinutes)m")
-                        .font(.timerDisplay)
-                        .foregroundStyle(.secondary)
-                    Text(" / \(context.timerMinutes)m")
-                        .font(.timerDisplay)
-                        .foregroundStyle(.secondary.opacity(0.5))
-                }
+                durationProgress(current: 0, total: breakMins)
             } else {
-                HStack(spacing: 0) {
-                    Text("\(context.timerMinutes)m")
-                        .font(.timerDisplay)
-                        .foregroundStyle(.secondary)
-                    Text(" / \(context.timerMinutes)m")
-                        .font(.timerDisplay)
-                        .foregroundStyle(.secondary.opacity(0.5))
-                }
+                durationProgress(current: context.timerMinutes, total: context.timerMinutes)
             }
         }
     }
@@ -100,6 +68,18 @@ struct FloatingAlertView: View {
             return "Focus Session Complete"
         case .rhythmBreakExpiry, .timeboundBreakExpiry:
             return "Break Complete"
+        }
+    }
+
+    /// Displays elapsed and total duration in `Xm / Ym` format.
+    private func durationProgress(current: Int, total: Int) -> some View {
+        HStack(spacing: 0) {
+            Text("\(current)m")
+                .font(.timerDisplay)
+                .foregroundStyle(.secondary)
+            Text(" / \(total)m")
+                .font(.timerDisplay)
+                .foregroundStyle(.secondary.opacity(0.5))
         }
     }
 
