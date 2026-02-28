@@ -242,11 +242,15 @@ struct ActivitySessionCard: View {
 
     private func ungroupedView(entries: [(Session, Activity)]) -> some View {
         VStack(spacing: 0) {
-            // Active session at top when ungrouped
+            // Active session at top when ungrouped — matches SessionRow layout
             if hasActiveSession, activeSessionMatchesSearch,
                let active = appState.currentSession, let activity = appState.currentActivity {
-                activeSessionRow(session: active, activityTitle: activity.title)
-                    .background(Color.gray.opacity(entries.isEmpty ? 0 : 0.08))
+                ungroupedActiveSessionRow(session: active, activityTitle: activity.title)
+                    .padding(.horizontal, Constants.spacingCard)
+                    .padding(.vertical, Constants.spacingCompact)
+                    .background(entries.isEmpty ? Color.clear : Color.gray.opacity(0.08))
+                    .contentShape(Rectangle())
+                    .sessionContextMenu(session: active, activityTitle: activity.title)
             }
 
             ForEach(Array(entries.enumerated()), id: \.element.0.id) { index, entry in
@@ -266,6 +270,7 @@ struct ActivitySessionCard: View {
 
     // MARK: - Session Rows
 
+    /// Active session row for grouped view — leading SpinningClockIcon, type label, time, live duration.
     @ViewBuilder
     private func activeSessionRow(session: Session, activityTitle: String) -> some View {
         HStack(spacing: Constants.spacingCompact) {
@@ -280,30 +285,43 @@ struct ActivitySessionCard: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            if let preMidnight = activePreMidnightSeconds {
-                HStack(spacing: 0) {
-                    Text(TimeFormatting.formatDuration(seconds: max(0, appState.timerElapsedSeconds - preMidnight)))
-                        .font(.durationDetail)
-                        .foregroundStyle(theme.accent)
-                        .contentTransition(.numericText())
-                    Text(" / \(TimeFormatting.formatDuration(seconds: appState.timerElapsedSeconds))")
-                        .font(.durationDetail)
-                        .foregroundStyle(theme.accent.opacity(0.5))
-                        .contentTransition(.numericText())
-                }
-            } else {
-                Text(TimeFormatting.formatDuration(seconds: appState.timerElapsedSeconds))
-                    .font(.durationDetail)
-                    .foregroundStyle(theme.accent)
-                    .contentTransition(.numericText())
-            }
+            activeDurationLabel
         }
         .padding(.vertical, 6)
         .padding(.horizontal, Constants.spacingCard)
-        .padding(.leading, grouping == .activity ? 20 : 0)
+        .padding(.leading, 20)
         .background(Color.gray.opacity(0.04))
         .contentShape(Rectangle())
         .sessionContextMenu(session: session, activityTitle: activityTitle)
+    }
+
+    /// Active session row for ungrouped view — matches `SessionRow` layout with live duration
+    /// and SpinningClockIcon as the trailing state indicator.
+    @ViewBuilder
+    private func ungroupedActiveSessionRow(session: Session, activityTitle: String) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(activityTitle)
+                    .font(.body.bold())
+
+                HStack(spacing: 8) {
+                    Text(SessionTypeConfig.config(for: session.sessionType).displayName)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+
+                    Text(TimeFormatting.formatTime(session.startedAt))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Spacer()
+
+            activeDurationLabel
+
+            SpinningClockIcon(isRunning: session.state == .running)
+        }
+        .padding(.vertical, 2)
     }
 
     @ViewBuilder
@@ -392,6 +410,28 @@ struct ActivitySessionCard: View {
     }
 
     // MARK: - Duration Helpers
+
+    /// Live duration label for the active session, shared by both grouped and ungrouped row styles.
+    @ViewBuilder
+    private var activeDurationLabel: some View {
+        if let preMidnight = activePreMidnightSeconds {
+            HStack(spacing: 0) {
+                Text(TimeFormatting.formatDuration(seconds: max(0, appState.timerElapsedSeconds - preMidnight)))
+                    .font(.durationDetail)
+                    .foregroundStyle(theme.accent)
+                    .contentTransition(.numericText())
+                Text(" / \(TimeFormatting.formatDuration(seconds: appState.timerElapsedSeconds))")
+                    .font(.durationDetail)
+                    .foregroundStyle(theme.accent.opacity(0.5))
+                    .contentTransition(.numericText())
+            }
+        } else {
+            Text(TimeFormatting.formatDuration(seconds: appState.timerElapsedSeconds))
+                .font(.durationDetail)
+                .foregroundStyle(theme.accent)
+                .contentTransition(.numericText())
+        }
+    }
 
     private func groupTotalSeconds(group: (activity: Activity, sessions: [(Session, Activity)], totalSeconds: Int), activeSession: Session?) -> Int {
         let activityId = group.activity.id ?? -1
