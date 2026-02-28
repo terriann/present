@@ -225,6 +225,7 @@ struct ActivitySessionCard: View {
                     .padding(.vertical, Constants.spacingCompact)
                     .padding(.horizontal, Constants.spacingCard)
                     .background(index.isMultiple(of: 2) ? Color.clear : Color.gray.opacity(0.08))
+                    .hoverHighlight()
                     .contentShape(Rectangle())
                     .onTapGesture {
                         withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
@@ -237,7 +238,9 @@ struct ActivitySessionCard: View {
                     }
 
                     if isExpanded {
-                        // Active session row
+                        let activeVisible = activeSession != nil && activeSessionMatchesSearch
+
+                        // Active session row (sub-row index 0)
                         if let active = activeSession, activeSessionMatchesSearch {
                             if active.id == editingSessionId {
                                 SessionInlineEditForm(session: active, activity: group.activity,
@@ -245,21 +248,28 @@ struct ActivitySessionCard: View {
                                     onCancel: { clearEditing() })
                                     .padding(.horizontal, Constants.spacingCard)
                                     .padding(.vertical, Constants.spacingCompact)
+                                    .background(subRowBackground(index: 0))
                             } else {
                                 activeSessionRow(session: active, activityTitle: group.activity.title)
+                                    .background(subRowBackground(index: 0))
+                                    .hoverHighlight()
                             }
                         }
 
                         // Completed/cancelled sessions
-                        ForEach(group.sessions, id: \.0.id) { session, activity in
-                            if session.id == editingSessionId {
-                                SessionInlineEditForm(session: session, activity: activity,
+                        ForEach(Array(group.sessions.enumerated()), id: \.element.0.id) { subIndex, entry in
+                            let rowIndex = activeVisible ? subIndex + 1 : subIndex
+                            if entry.0.id == editingSessionId {
+                                SessionInlineEditForm(session: entry.0, activity: entry.1,
                                     onSave: { clearEditing(); onReload?() },
                                     onCancel: { clearEditing() })
                                     .padding(.horizontal, Constants.spacingCard)
                                     .padding(.vertical, Constants.spacingCompact)
+                                    .background(subRowBackground(index: rowIndex))
                             } else {
-                                completedSessionRow(session: session, activityTitle: group.activity.title)
+                                completedSessionRow(session: entry.0, activityTitle: group.activity.title)
+                                    .background(subRowBackground(index: rowIndex))
+                                    .hoverHighlight()
                             }
                         }
                     }
@@ -286,7 +296,8 @@ struct ActivitySessionCard: View {
                     ungroupedActiveSessionRow(session: active, activity: activity)
                         .padding(.vertical, Constants.spacingCompact)
                         .padding(.horizontal, Constants.spacingCard)
-                        .background(entries.isEmpty ? Color.clear : Color.gray.opacity(0.08))
+                        .background(Color.clear)
+                        .hoverHighlight()
                         .contentShape(Rectangle())
                         .sessionContextMenu(session: active, activityTitle: activity.title,
                             onEdit: { beginEditing($0) })
@@ -306,6 +317,7 @@ struct ActivitySessionCard: View {
                         .padding(.vertical, Constants.spacingCompact)
                         .padding(.horizontal, Constants.spacingCard)
                         .background(adjustedIndex.isMultiple(of: 2) ? Color.clear : Color.gray.opacity(0.08))
+                        .hoverHighlight()
                         .contentShape(Rectangle())
                         .sessionContextMenu(session: entry.0, activityTitle: entry.1.title,
                             onEdit: { beginEditing($0) }) {
@@ -340,7 +352,6 @@ struct ActivitySessionCard: View {
         .padding(.vertical, 6)
         .padding(.horizontal, Constants.spacingCard)
         .padding(.leading, 20)
-        .background(Color.gray.opacity(0.04))
         .contentShape(Rectangle())
         .sessionContextMenu(session: session, activityTitle: activityTitle,
             onEdit: { beginEditing($0) })
@@ -422,7 +433,6 @@ struct ActivitySessionCard: View {
         .padding(.vertical, 6)
         .padding(.horizontal, Constants.spacingCard)
         .padding(.leading, 20)
-        .background(Color.gray.opacity(0.04))
         .contentShape(Rectangle())
         .sessionContextMenu(session: session, activityTitle: activityTitle,
             onEdit: { beginEditing($0) }) {
@@ -549,6 +559,13 @@ struct ActivitySessionCard: View {
             latest = max(latest, first.0.startedAt)
         }
         return latest
+    }
+
+    /// Alternating background for expanded sub-rows in grouped view.
+    /// Uses a subtler opacity than the parent activity row stripes (0.08) to
+    /// maintain visual hierarchy.
+    private func subRowBackground(index: Int) -> Color {
+        index.isMultiple(of: 2) ? Color.gray.opacity(0.04) : .clear
     }
 
     // MARK: - Session Display Helpers
