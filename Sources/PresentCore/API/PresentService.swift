@@ -17,7 +17,6 @@ public enum PresentError: Error, LocalizedError, Sendable {
     case sessionOverlap
     case cannotModifySystemActivity
     case rhythmNotAllowedForSystemActivity
-    case cannotConvertRhythm
 
     public var errorDescription: String? {
         switch self {
@@ -36,7 +35,6 @@ public enum PresentError: Error, LocalizedError, Sendable {
         case .sessionOverlap: "Session overlaps with an existing session."
         case .cannotModifySystemActivity: "System activities cannot be modified or deleted."
         case .rhythmNotAllowedForSystemActivity: "Rhythm sessions cannot be started on system activities. Use a work or timebound session instead."
-        case .cannotConvertRhythm: "Rhythm sessions cannot be converted to other types."
         }
     }
 }
@@ -265,8 +263,13 @@ public final class PresentService: PresentAPI, Sendable {
     }
 
     public func convertSessionType(_ input: ConvertSessionInput) async throws -> Session {
-        if input.targetType == .timebound, let minutes = input.timerMinutes {
-            try Validation.validateRange(minutes, range: Constants.sessionMinutesRange, fieldName: "Timer duration")
+        if input.targetType == .timebound || input.targetType == .rhythm {
+            if let minutes = input.timerMinutes {
+                try Validation.validateRange(minutes, range: Constants.sessionMinutesRange, fieldName: "Timer duration")
+            }
+        }
+        if input.targetType == .rhythm, let breakMins = input.breakMinutes {
+            try Validation.validateRange(breakMins, range: Constants.breakDurationRange, fieldName: "Break duration")
         }
 
         return try await dbWriter.write { db in
@@ -277,17 +280,19 @@ public final class PresentService: PresentAPI, Sendable {
                 throw PresentError.noActiveSession
             }
 
-            // Rhythm sessions cannot be converted
-            if session.sessionType == .rhythm {
-                throw PresentError.cannotConvertRhythm
-            }
-            if input.targetType == .rhythm {
-                throw PresentError.cannotConvertRhythm
-            }
-
             // Target type must differ from current
             guard input.targetType != session.sessionType else {
                 throw PresentError.invalidInput("Session is already \(SessionTypeConfig.config(for: session.sessionType).displayName.lowercased()).")
+            }
+
+            // System activities cannot use rhythm
+            if input.targetType == .rhythm {
+                guard let activity = try Activity.fetchOne(db, key: session.activityId) else {
+                    throw PresentError.activityNotFound(session.activityId)
+                }
+                if activity.isSystem {
+                    throw PresentError.rhythmNotAllowedForSystemActivity
+                }
             }
 
             // Compute elapsed seconds from segments
@@ -318,12 +323,41 @@ public final class PresentService: PresentAPI, Sendable {
                     throw PresentError.invalidInput("Timer duration is required when converting to timebound.")
                 }
                 session.timerLengthMinutes = minutes
-                session.countdownBaseSeconds = elapsedSeconds
+                session.countdownBaseSeconds = input.includeElapsed
+                    ? elapsedSeconds - (elapsedSeconds % (minutes * 60))
+                    : elapsedSeconds
+                // Clear rhythm fields
+                session.rhythmSessionIndex = nil
+                session.breakMinutes = nil
+
             case .work:
                 // Keep timerLengthMinutes as historical artifact
                 session.countdownBaseSeconds = 0
+                // Clear rhythm fields
+                session.rhythmSessionIndex = nil
+                session.breakMinutes = nil
+
             case .rhythm:
-                break // Already guarded above
+                guard let minutes = input.timerMinutes, minutes > 0 else {
+                    throw PresentError.invalidInput("Timer duration is required when converting to rhythm.")
+                }
+                guard let breakMins = input.breakMinutes, breakMins > 0 else {
+                    throw PresentError.invalidInput("Break duration is required when converting to rhythm.")
+                }
+                session.timerLengthMinutes = minutes
+                session.breakMinutes = breakMins
+                session.countdownBaseSeconds = input.includeElapsed
+                    ? elapsedSeconds - (elapsedSeconds % (minutes * 60))
+                    : elapsedSeconds
+
+                // Determine rhythm cycle position from last completed rhythm session
+                let lastRhythm = try Session
+                    .filter(Session.Columns.sessionType == SessionType.rhythm.rawValue)
+                    .filter(Session.Columns.state == SessionState.completed.rawValue)
+                    .order(Session.Columns.id.desc)
+                    .fetchOne(db)
+                let lastIndex = lastRhythm?.rhythmSessionIndex ?? 0
+                session.rhythmSessionIndex = (lastIndex % 4) + 1
             }
 
             try session.update(db)

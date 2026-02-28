@@ -284,6 +284,10 @@ final class AppState {
 
     func convertSession(_ input: ConvertSessionInput) async {
         do {
+            // If converting away from rhythm, abandon the rhythm cycle
+            if currentSession?.sessionType == .rhythm, input.targetType != .rhythm {
+                breakPrecedingContext = nil
+            }
             let session = try await sessionMgr.convertSessionType(input)
             currentSession = session
             timer.currentSession = session

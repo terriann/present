@@ -91,12 +91,20 @@ public struct UpdateSessionInput: Sendable {
 
 public struct ConvertSessionInput: Sendable {
     public let targetType: SessionType
-    /// Required when converting to timebound. Ignored for work.
+    /// Required when converting to timebound or rhythm (focus duration).
     public let timerMinutes: Int?
+    /// Required when converting to rhythm (break duration).
+    public let breakMinutes: Int?
+    /// When true, already-elapsed time counts toward the first focus/timebound segment.
+    /// The countdown starts at `focusDuration - effectiveElapsed` instead of the full duration.
+    /// When elapsed exceeds the focus duration, `effectiveElapsed = elapsed % focusDuration`.
+    public let includeElapsed: Bool
 
-    public init(targetType: SessionType, timerMinutes: Int? = nil) {
+    public init(targetType: SessionType, timerMinutes: Int? = nil, breakMinutes: Int? = nil, includeElapsed: Bool = false) {
         self.targetType = targetType
         self.timerMinutes = timerMinutes
+        self.breakMinutes = breakMinutes
+        self.includeElapsed = includeElapsed
     }
 }
 

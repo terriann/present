@@ -19,7 +19,6 @@ struct MenuBarView: View {
     @State private var isLaunchHovered = false
     @State private var isSettingsHovered = false
     @State private var showConvertPicker = false
-    @State private var convertMinutes: Int = 25
 
     private var zoomScale: CGFloat { appState.zoomScale }
 
@@ -80,58 +79,16 @@ struct MenuBarView: View {
                         .font(scaledFont(.headline, weight: .semibold))
                         .lineLimit(1)
 
-                    if session.sessionType == .rhythm {
-                        Text(SessionTypeConfig.config(for: session.sessionType).displayName)
-                            .font(scaledFont(.caption))
-                            .foregroundStyle(.secondary)
-                    } else {
-                        Button {
-                            withAdaptiveAnimation(.easeInOut(duration: 0.15)) {
-                                showConvertPicker.toggle()
-                            }
-                        } label: {
-                            HStack(spacing: 2) {
-                                Text(SessionTypeConfig.config(for: session.sessionType).displayName)
-                                Image(systemName: "chevron.down")
-                                    .font(.system(size: 7 * zoomScale, weight: .semibold))
-                            }
-                            .font(scaledFont(.caption))
-                            .foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.plain)
-                    }
+                    SessionTypeConvertLabel(
+                        session: session,
+                        isSystemActivity: activity.isSystem,
+                        showConvertPicker: $showConvertPicker
+                    )
 
-                    if showConvertPicker, session.sessionType == .work {
-                        HStack(spacing: 4 * zoomScale) {
-                            TextField("", value: $convertMinutes, format: .number)
-                                .textFieldStyle(.roundedBorder)
-                                .frame(width: 48 * zoomScale)
-                                .font(scaledFont(.caption))
-                            Text("min")
-                                .font(scaledFont(.caption))
-                                .foregroundStyle(.secondary)
-                            Button("Convert to Timebound") {
-                                showConvertPicker = false
-                                Task {
-                                    await appState.convertSession(
-                                        ConvertSessionInput(targetType: .timebound, timerMinutes: convertMinutes)
-                                    )
-                                }
-                            }
-                            .font(scaledFont(.caption, weight: .medium))
-                            .buttonStyle(.plain)
-                            .foregroundStyle(theme.accent)
-                        }
-                    }
-
-                    if showConvertPicker, session.sessionType == .timebound {
-                        Button("Convert to Work Session") {
+                    if showConvertPicker {
+                        SessionTypeConvertControls(session: session) {
                             showConvertPicker = false
-                            Task { await appState.convertSession(ConvertSessionInput(targetType: .work)) }
                         }
-                        .font(scaledFont(.caption, weight: .medium))
-                        .buttonStyle(.plain)
-                        .foregroundStyle(theme.accent)
                     }
                 }
 
@@ -417,9 +374,7 @@ struct MenuBarView: View {
         }
         .onAppear {
             Task {
-                let defaultMinutes = (try? await appState.service.getPreference(key: PreferenceKey.defaultTimeboundMinutes)).flatMap(Int.init) ?? Constants.defaultTimeboundMinutes
-                timeboundMinutes = defaultMinutes
-                convertMinutes = defaultMinutes
+                timeboundMinutes = (try? await appState.service.getPreference(key: PreferenceKey.defaultTimeboundMinutes)).flatMap(Int.init) ?? Constants.defaultTimeboundMinutes
                 activitySort = (try? await appState.service.getPreference(key: PreferenceKey.menuBarActivitySort)) ?? "recent"
             }
         }

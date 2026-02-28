@@ -50,7 +50,7 @@ struct SessionContextMenuModifier: ViewModifier {
                 )
             }
             .sheet(isPresented: $showingConvertSheet) {
-                ConvertToTimeboundSheet()
+                ConvertSessionSheet(session: session)
             }
             .alert("Delete Session?", isPresented: $showingDeleteConfirm) {
                 Button("Delete", role: .destructive) {
@@ -88,18 +88,28 @@ struct SessionContextMenuModifier: ViewModifier {
             }
         }
 
-        // Conversion options (not available for rhythm)
-        if session.sessionType == .work {
+        // Conversion options
+        if session.sessionType != .work {
+            Button {
+                Task { await appState.convertSession(ConvertSessionInput(targetType: .work)) }
+            } label: {
+                Label("Convert to Work Session", systemImage: "infinity")
+            }
+        }
+
+        if session.sessionType != .timebound {
             Button {
                 showingConvertSheet = true
             } label: {
                 Label("Convert to Timebound...", systemImage: "timer")
             }
-        } else if session.sessionType == .timebound {
+        }
+
+        if session.sessionType != .rhythm {
             Button {
-                Task { await appState.convertSession(ConvertSessionInput(targetType: .work)) }
+                showingConvertSheet = true
             } label: {
-                Label("Convert to Work Session", systemImage: "infinity")
+                Label("Convert to Rhythm...", systemImage: "arrow.triangle.2.circlepath")
             }
         }
 

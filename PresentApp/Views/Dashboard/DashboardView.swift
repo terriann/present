@@ -10,7 +10,6 @@ struct DashboardView: View {
     /// Tracks the current date for greeting/date text; updated at period boundaries.
     @State private var greetingDate = Date()
     @State private var showConvertPicker = false
-    @State private var convertMinutes: Int = 25
 
     /// Shared color mapping so today timeline and weekly chart use the same color per activity.
     ///
@@ -85,7 +84,6 @@ struct DashboardView: View {
         .task(id: appState.isSessionActive) {
             if appState.isSessionActive {
                 quickRestartSuggestions = []
-                convertMinutes = (try? await appState.service.getPreference(key: PreferenceKey.defaultTimeboundMinutes)).flatMap(Int.init) ?? Constants.defaultTimeboundMinutes
             } else {
                 showConvertPicker = false
                 await loadQuickRestarts()
@@ -274,58 +272,16 @@ struct DashboardView: View {
                             .font(.headline)
                             .lineLimit(1)
 
-                        if session.sessionType == .rhythm {
-                            Text(SessionTypeConfig.config(for: session.sessionType).displayName)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        } else {
-                            Button {
-                                withAdaptiveAnimation(.easeInOut(duration: 0.15)) {
-                                    showConvertPicker.toggle()
-                                }
-                            } label: {
-                                HStack(spacing: 2) {
-                                    Text(SessionTypeConfig.config(for: session.sessionType).displayName)
-                                    Image(systemName: "chevron.down")
-                                        .font(.system(size: 7, weight: .semibold))
-                                }
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            }
-                            .buttonStyle(.plain)
-                        }
+                        SessionTypeConvertLabel(
+                            session: session,
+                            isSystemActivity: activity.isSystem,
+                            showConvertPicker: $showConvertPicker
+                        )
 
-                        if showConvertPicker, session.sessionType == .work {
-                            HStack(spacing: 4) {
-                                TextField("", value: $convertMinutes, format: .number)
-                                    .textFieldStyle(.roundedBorder)
-                                    .frame(width: 48)
-                                    .font(.caption)
-                                Text("min")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                Button("Convert to Timebound") {
-                                    showConvertPicker = false
-                                    Task {
-                                        await appState.convertSession(
-                                            ConvertSessionInput(targetType: .timebound, timerMinutes: convertMinutes)
-                                        )
-                                    }
-                                }
-                                .font(.caption.weight(.medium))
-                                .buttonStyle(.plain)
-                                .foregroundStyle(theme.accent)
-                            }
-                        }
-
-                        if showConvertPicker, session.sessionType == .timebound {
-                            Button("Convert to Work Session") {
+                        if showConvertPicker {
+                            SessionTypeConvertControls(session: session) {
                                 showConvertPicker = false
-                                Task { await appState.convertSession(ConvertSessionInput(targetType: .work)) }
                             }
-                            .font(.caption.weight(.medium))
-                            .buttonStyle(.plain)
-                            .foregroundStyle(theme.accent)
                         }
                     }
                 }
