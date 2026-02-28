@@ -17,7 +17,7 @@ struct ConvertSessionSheet: View {
     @State private var targetType: SessionType = .work
     @State private var timeboundMinutes: Int = 25
     @State private var rhythmOption: RhythmOption?
-    @State private var includeElapsed = false
+    @State private var includeElapsed = true
 
     private var targets: [SessionType] {
         SessionType.allCases.filter { $0 != session.sessionType }

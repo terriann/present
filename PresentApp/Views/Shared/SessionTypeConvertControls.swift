@@ -16,7 +16,7 @@ struct SessionTypeConvertControls: View {
     @State private var targetType: SessionType = .work
     @State private var timeboundMinutes: Int = 25
     @State private var rhythmOption: RhythmOption?
-    @State private var includeElapsed = false
+    @State private var includeElapsed = true
 
     var body: some View {
         let targets = SessionType.allCases.filter { $0 != session.sessionType }
@@ -145,37 +145,48 @@ struct SessionTypeConvertControls: View {
 
 // MARK: - Session Type Convert Label
 
-/// The session type label with a chevron for convertible sessions.
+/// The session type label with an edit icon for convertible sessions.
+/// The edit icon appears on hover; an X shows when the picker is open.
 /// System activities show a faded, non-interactive label.
 struct SessionTypeConvertLabel: View {
     let session: Session
     let isSystemActivity: Bool
     @Binding var showConvertPicker: Bool
 
+    @State private var isHovered = false
+
+    private var showIcon: Bool {
+        isHovered || showConvertPicker
+    }
+
     var body: some View {
         if isSystemActivity {
-            HStack(spacing: 2) {
-                Text(SessionTypeConfig.config(for: session.sessionType).displayName)
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 7, weight: .semibold))
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary.opacity(0.35))
+            Text(SessionTypeConfig.config(for: session.sessionType).displayName)
+                .font(.caption)
+                .foregroundStyle(.secondary.opacity(0.35))
         } else {
             Button {
                 withAdaptiveAnimation(.easeInOut(duration: 0.15)) {
                     showConvertPicker.toggle()
                 }
             } label: {
-                HStack(spacing: 2) {
-                    Text(SessionTypeConfig.config(for: session.sessionType).displayName)
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 7, weight: .semibold))
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                Text(SessionTypeConfig.config(for: session.sessionType).displayName)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .overlay(alignment: .trailing) {
+                        Image(systemName: showConvertPicker ? "xmark.circle.fill" : "square.and.pencil")
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundStyle(.secondary)
+                            .contentTransition(.symbolEffect(.replace))
+                            .opacity(showIcon ? 1 : 0)
+                            .offset(x: 14)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .onHover { hovering in isHovered = hovering }
         }
     }
 }
