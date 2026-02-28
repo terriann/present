@@ -249,12 +249,136 @@ public final class PresentService: PresentAPI, Sendable {
                 throw PresentError.sessionNotFound
             }
 
+            let isActive = session.state == .running || session.state == .paused
+
+            // Note change
             if noteChange.apply {
                 session.note = noteChange.value
             }
+
+            // Link change
             if linkChange.apply {
                 session.link = linkChange.link
                 session.ticketId = linkChange.ticketId
+            }
+
+            // Activity reassignment
+            if let newActivityId = input.activityId, newActivityId != session.activityId {
+                guard let activity = try Activity.fetchOne(db, key: newActivityId) else {
+                    throw PresentError.activityNotFound(newActivityId)
+                }
+                if activity.isArchived {
+                    throw PresentError.activityIsArchived(newActivityId)
+                }
+                session.activityId = newActivityId
+            }
+
+            // Start time change
+            if let newStart = input.startedAt, newStart != session.startedAt {
+                let effectiveEnd = session.endedAt ?? Date()
+                guard newStart < effectiveEnd else {
+                    throw PresentError.invalidInput("Start time must be before end time.")
+                }
+
+                // Validate new start is before the first segment's end
+                if let firstSegment = try SessionSegment
+                    .filter(SessionSegment.Columns.sessionId == id)
+                    .order(SessionSegment.Columns.startedAt.asc)
+                    .fetchOne(db),
+                   let segEnd = firstSegment.endedAt, newStart >= segEnd {
+                    throw PresentError.invalidInput("Start time must be before first segment end.")
+                }
+
+                session.startedAt = newStart
+
+                // Adjust first segment's startedAt
+                if var firstSegment = try SessionSegment
+                    .filter(SessionSegment.Columns.sessionId == id)
+                    .order(SessionSegment.Columns.startedAt.asc)
+                    .fetchOne(db) {
+                    firstSegment.startedAt = newStart
+                    try firstSegment.update(db)
+                }
+            }
+
+            // End time change
+            if let newEnd = input.endedAt, newEnd != session.endedAt {
+                if isActive {
+                    throw PresentError.invalidInput("Cannot change end time of an active session.")
+                }
+                guard newEnd > session.startedAt else {
+                    throw PresentError.invalidInput("End time must be after start time.")
+                }
+
+                // Validate new end is after the last segment's start
+                if let lastSegment = try SessionSegment
+                    .filter(SessionSegment.Columns.sessionId == id)
+                    .order(SessionSegment.Columns.startedAt.desc)
+                    .fetchOne(db), newEnd <= lastSegment.startedAt {
+                    throw PresentError.invalidInput("End time must be after last segment start.")
+                }
+
+                session.endedAt = newEnd
+
+                // Adjust last segment's endedAt
+                if var lastSegment = try SessionSegment
+                    .filter(SessionSegment.Columns.sessionId == id)
+                    .order(SessionSegment.Columns.startedAt.desc)
+                    .fetchOne(db) {
+                    lastSegment.endedAt = newEnd
+                    try lastSegment.update(db)
+                }
+            }
+
+            // Overlap validation (when start or end changed)
+            if input.startedAt != nil || input.endedAt != nil {
+                let checkStart = session.startedAt
+                let checkEnd = session.endedAt
+
+                // Check against completed sessions (exclude self)
+                let overlapSQL = """
+                    SELECT COUNT(*) FROM session
+                    WHERE state = ?
+                      AND id != ?
+                      AND startedAt < ? AND endedAt > ?
+                    """
+                if let checkEnd {
+                    let overlapCount = try Int.fetchOne(db, sql: overlapSQL, arguments: [
+                        SessionState.completed.rawValue, id,
+                        checkEnd, checkStart
+                    ]) ?? 0
+                    if overlapCount > 0 {
+                        throw PresentError.sessionOverlap
+                    }
+                }
+
+                // Check against active sessions (exclude self)
+                let activeSQL = """
+                    SELECT COUNT(*) FROM session
+                    WHERE state IN (?, ?)
+                      AND id != ?
+                      AND startedAt < ?
+                    """
+                let activeEnd = checkEnd ?? Date()
+                let activeOverlap = try Int.fetchOne(db, sql: activeSQL, arguments: [
+                    SessionState.running.rawValue, SessionState.paused.rawValue,
+                    id, activeEnd
+                ]) ?? 0
+                if activeOverlap > 0 {
+                    throw PresentError.sessionOverlap
+                }
+            }
+
+            // Duration recalculation for completed sessions
+            if !isActive && (input.startedAt != nil || input.endedAt != nil) {
+                let segments = try SessionSegment
+                    .filter(SessionSegment.Columns.sessionId == id)
+                    .fetchAll(db)
+                let totalDuration = segments.reduce(0) { sum, seg in
+                    guard let end = seg.endedAt else { return sum }
+                    return sum + Int(end.timeIntervalSince(seg.startedAt))
+                }
+                session.durationSeconds = totalDuration
             }
 
             try session.update(db)
@@ -323,9 +447,7 @@ public final class PresentService: PresentAPI, Sendable {
                     throw PresentError.invalidInput("Timer duration is required when converting to timebound.")
                 }
                 session.timerLengthMinutes = minutes
-                session.countdownBaseSeconds = input.includeElapsed
-                    ? elapsedSeconds - (elapsedSeconds % (minutes * 60))
-                    : elapsedSeconds
+                session.countdownBaseSeconds = elapsedSeconds
                 // Clear rhythm fields
                 session.rhythmSessionIndex = nil
                 session.breakMinutes = nil
@@ -346,9 +468,7 @@ public final class PresentService: PresentAPI, Sendable {
                 }
                 session.timerLengthMinutes = minutes
                 session.breakMinutes = breakMins
-                session.countdownBaseSeconds = input.includeElapsed
-                    ? elapsedSeconds - (elapsedSeconds % (minutes * 60))
-                    : elapsedSeconds
+                session.countdownBaseSeconds = elapsedSeconds
 
                 // Determine rhythm cycle position from last completed rhythm session
                 let lastRhythm = try Session

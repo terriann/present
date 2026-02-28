@@ -82,10 +82,25 @@ public struct UpdateSessionInput: Sendable {
     public var note: String?
     /// New link URL. `nil` = no change, empty string = clear.
     public var link: String?
+    /// Reassign session to a different activity. `nil` = no change.
+    public var activityId: Int64?
+    /// Adjust session start time. `nil` = no change.
+    public var startedAt: Date?
+    /// Adjust session end time. `nil` = no change. Not allowed for active sessions.
+    public var endedAt: Date?
 
-    public init(note: String? = nil, link: String? = nil) {
+    public init(
+        note: String? = nil,
+        link: String? = nil,
+        activityId: Int64? = nil,
+        startedAt: Date? = nil,
+        endedAt: Date? = nil
+    ) {
         self.note = note
         self.link = link
+        self.activityId = activityId
+        self.startedAt = startedAt
+        self.endedAt = endedAt
     }
 }
 
@@ -95,16 +110,11 @@ public struct ConvertSessionInput: Sendable {
     public let timerMinutes: Int?
     /// Required when converting to rhythm (break duration).
     public let breakMinutes: Int?
-    /// When true, already-elapsed time counts toward the first focus/timebound segment.
-    /// The countdown starts at `focusDuration - effectiveElapsed` instead of the full duration.
-    /// When elapsed exceeds the focus duration, `effectiveElapsed = elapsed % focusDuration`.
-    public let includeElapsed: Bool
 
-    public init(targetType: SessionType, timerMinutes: Int? = nil, breakMinutes: Int? = nil, includeElapsed: Bool = false) {
+    public init(targetType: SessionType, timerMinutes: Int? = nil, breakMinutes: Int? = nil) {
         self.targetType = targetType
         self.timerMinutes = timerMinutes
         self.breakMinutes = breakMinutes
-        self.includeElapsed = includeElapsed
     }
 }
 
