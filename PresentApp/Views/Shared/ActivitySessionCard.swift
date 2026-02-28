@@ -105,11 +105,11 @@ struct ActivitySessionCard: View {
             // Search field fills available space
             HStack {
                 Image(systemName: "magnifyingglass")
-                    .font(.caption)
+                    .font(.body)
                     .foregroundStyle(.secondary)
                 TextField("Search...", text: $searchText)
                     .textFieldStyle(.plain)
-                    .font(.subheadline)
+                    .font(.body)
                     .onKeyPress(.escape) {
                         searchText = ""
                         return .handled
@@ -119,7 +119,7 @@ struct ActivitySessionCard: View {
                         searchText = ""
                     } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .font(.caption)
+                            .font(.body)
                             .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
@@ -129,7 +129,7 @@ struct ActivitySessionCard: View {
             // Sort dropdown with label above
             VStack(alignment: .leading, spacing: 2) {
                 Text("Sort")
-                    .font(.caption)
+                    .font(.caption.bold())
                     .foregroundStyle(.secondary)
                 Picker("Sort", selection: $sortOrder) {
                     ForEach(ActivitySortOrder.allCases, id: \.self) { order in
@@ -144,7 +144,7 @@ struct ActivitySessionCard: View {
             // Group-by dropdown with label above
             VStack(alignment: .leading, spacing: 2) {
                 Text("Group")
-                    .font(.caption)
+                    .font(.caption.bold())
                     .foregroundStyle(.secondary)
                 Picker("Group", selection: $grouping) {
                     ForEach(SessionGrouping.allCases, id: \.self) { mode in
