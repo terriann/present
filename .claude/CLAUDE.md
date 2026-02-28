@@ -214,6 +214,17 @@ CLI Commands ──────────────────────�
 - **Buttons with text labels** need no extra accessibility work — SwiftUI derives the accessible name from the label content automatically.
 - When adding any new icon or image-only control, decide: is it interactive or decorative? Apply the appropriate modifier before committing.
 
+### Scripts
+
+- **`Scripts/preview-icons.sh`**: Renders Icon Composer (`.icon`) files at all standard macOS sizes into an HTML preview. Uses `ictool` (bundled with Xcode's Icon Composer). Renders Default and Dark renditions at 16–512pt (1x and 2x). When multiple files are passed, includes a side-by-side comparison section. Opens the HTML in the default browser.
+  ```bash
+  bash Scripts/preview-icons.sh local-assets/*.icon
+  bash Scripts/preview-icons.sh file1.icon file2.icon file3.icon
+  ```
+  Note: `ictool` does not add the transparent margin macOS applies to Dock/Finder icons — previews will appear slightly larger than in production.
+
+- **`Scripts/generate-cli-docs.sh`**: Regenerates `docs/cli-reference.md` from the CLI binary. Run after any CLI command change.
+
 ## Pull Requests
 - Default PR base branch is `main` unless otherwise specified.
 
