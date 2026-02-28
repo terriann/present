@@ -5,7 +5,7 @@ import PresentCore
 ///
 /// - **Active sessions** (running/paused): pause, resume, stop, and delete controls.
 ///   Deleting an active session stops it first, then removes it.
-/// - **Completed/cancelled sessions**: delete only.
+/// - **Completed/cancelled sessions**: edit, repeat, and delete.
 struct SessionContextMenuModifier: ViewModifier {
     @Environment(AppState.self) private var appState
 
@@ -35,6 +35,22 @@ struct SessionContextMenuModifier: ViewModifier {
                     } label: {
                         Label("Edit Session", systemImage: "pencil")
                     }
+                }
+
+                if !isActive {
+                    Button {
+                        Task {
+                            await appState.startSession(
+                                activityId: session.activityId,
+                                type: session.sessionType,
+                                timerMinutes: session.timerLengthMinutes,
+                                breakMinutes: session.breakMinutes
+                            )
+                        }
+                    } label: {
+                        Label("Repeat \(session.typeDescription)", systemImage: "arrow.counterclockwise")
+                    }
+                    .disabled(appState.currentSession != nil)
                 }
 
                 Divider()
