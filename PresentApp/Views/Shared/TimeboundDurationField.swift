@@ -59,7 +59,9 @@ struct TimeboundDurationField: View {
                 .accessibilityLabel("Duration in minutes")
                 .onAppear {
                     if autoFocus {
-                        isFocused = true
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                            isFocused = true
+                        }
                     }
                 }
 
