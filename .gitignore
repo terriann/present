@@ -30,6 +30,12 @@ build/
 # AI
 .claude/settings.local.json
 
+# Benchmark results (local, per-machine)
+benchmarks/
+
+# Occasional agent plan Files (not tracked)
+plans/
+
 # Local data
 .data/
 
