@@ -53,14 +53,8 @@ struct SessionTypeConvertControls: View {
                 .foregroundStyle(theme.accent)
 
             case .timebound:
-                HStack(spacing: 4) {
-                    TextField("", value: $timeboundMinutes, format: .number)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 48)
-                        .font(.caption)
-                    Text("min")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                HStack(spacing: Constants.spacingTight) {
+                    TimeboundDurationField(minutes: $timeboundMinutes, size: .compact)
                     Button("Convert to Timebound") {
                         onConvert()
                         Task {

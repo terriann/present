@@ -221,19 +221,8 @@ struct MenuBarView: View {
                     }
                     .padding(.bottom, 6 * zoomScale)
                 } else if selectedSessionType == .timebound {
-                    HStack(spacing: 4) {
-                        Text("Duration:")
-                            .font(scaledFont(.caption))
-                            .foregroundStyle(.secondary)
-                        TextField("", value: $timeboundMinutes, format: .number)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(width: 48 * zoomScale)
-                            .font(scaledFont(.caption))
-                        Text("min")
-                            .font(scaledFont(.caption))
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(.bottom, 6 * zoomScale)
+                    TimeboundDurationField(minutes: $timeboundMinutes, size: .compact, zoomScale: zoomScale)
+                        .padding(.bottom, 6 * zoomScale)
                 }
             }
             .frame(maxWidth: .infinity)

@@ -54,15 +54,7 @@ struct ConvertSessionSheet: View {
             // Target-specific controls
             switch targetType {
             case .timebound:
-                HStack(spacing: Constants.spacingCompact) {
-                    Text("Duration:")
-                        .font(.body)
-                    TextField("", value: $timeboundMinutes, format: .number)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 64)
-                    Text("minutes")
-                        .foregroundStyle(.secondary)
-                }
+                TimeboundDurationField(minutes: $timeboundMinutes, size: .regular)
 
             case .rhythm:
                 VStack(alignment: .leading, spacing: Constants.spacingCompact) {
