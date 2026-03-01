@@ -154,12 +154,16 @@ ensures each result maps to a specific commit.
 # Compare against the most recent previous result
 bash Scripts/benchmark.sh --compare latest
 
+# Compare against a specific commit hash
+bash Scripts/benchmark.sh --compare 5608ede
+
 # Compare against a specific result file
 bash Scripts/benchmark.sh --compare benchmarks/2026-02-28-5608ede.json
 ```
 
-The comparison shows per-test, per-metric percentage changes. Regressions
-over 10% are flagged with `!!!`.
+The comparison outputs a GitHub-flavored markdown table showing clock time,
+CPU time, and peak memory for each benchmark with percentage changes.
+Visual indicators flag regressions and improvements at a glance.
 
 ### Result Format
 
