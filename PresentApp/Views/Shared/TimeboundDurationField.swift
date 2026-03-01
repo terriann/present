@@ -15,6 +15,9 @@ struct TimeboundDurationField: View {
     @Binding var minutes: Int
     var size: Size = .regular
     var zoomScale: CGFloat = 1.0
+    var autoFocus: Bool = false
+
+    @FocusState private var isFocused: Bool
 
     enum Size {
         /// Caption font, 48pt width, no visible label.
@@ -52,7 +55,13 @@ struct TimeboundDurationField: View {
                 .textFieldStyle(.roundedBorder)
                 .frame(width: fieldWidth)
                 .font(font)
+                .focused($isFocused)
                 .accessibilityLabel("Duration in minutes")
+                .onAppear {
+                    if autoFocus {
+                        isFocused = true
+                    }
+                }
 
             Text("min")
                 .font(font)

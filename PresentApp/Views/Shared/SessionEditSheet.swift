@@ -13,6 +13,7 @@ struct SessionEditSheet: View {
     @State private var noteText: String = ""
     @State private var linkText: String = ""
     @State private var isSaving = false
+    @FocusState private var isNoteFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: Constants.spacingPage) {
@@ -30,6 +31,7 @@ struct SessionEditSheet: View {
                     .font(.dataLabel)
 
                 TextEditor(text: $noteText)
+                    .focused($isNoteFocused)
                     .font(.body)
                     .frame(minHeight: 80, maxHeight: 160)
                     .scrollContentBackground(.hidden)
@@ -81,6 +83,7 @@ struct SessionEditSheet: View {
         .onAppear {
             noteText = session.note ?? ""
             linkText = session.link ?? ""
+            isNoteFocused = true
         }
     }
 
