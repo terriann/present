@@ -9,6 +9,7 @@ struct ActivitiesListView: View {
     @State private var showArchived = false
     @State private var selectedActivity: Activity?
     @State private var searchText = ""
+    @FocusState private var isSearchFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -20,6 +21,7 @@ struct ActivitiesListView: View {
                         .foregroundStyle(.secondary)
                     TextField("Search activities...", text: $searchText)
                         .textFieldStyle(.plain)
+                        .focused($isSearchFocused)
                 }
                 .padding(6)
                 .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
@@ -111,6 +113,7 @@ struct ActivitiesListView: View {
             // No need to re-fetch — displayedActivities filters locally
         }
         .onAppear {
+            isSearchFocused = true
             handleNavigationRequest()
         }
         .onChange(of: appState.navigateToActivityId) {
