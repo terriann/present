@@ -84,7 +84,7 @@ struct DashboardView: View {
         .navigationTitle("Dashboard")
         .task { await loadTodaySessions() }
         .task { await refreshGreetingAtBoundary() }
-        .onChange(of: appState.todayActivities.map { $0.activity.id }) {
+        .onChange(of: appState.todayActivities) {
             Task { await loadTodaySessions() }
         }
         .task(id: appState.isSessionActive) {
