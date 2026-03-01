@@ -16,6 +16,7 @@ struct SessionContextMenuModifier: ViewModifier {
 
     @State private var showingDeleteConfirm = false
     @State private var showingConvertSheet = false
+    @State private var convertTargetType: SessionType = .timebound
 
     private var isActive: Bool {
         session.state == .running || session.state == .paused
@@ -62,7 +63,7 @@ struct SessionContextMenuModifier: ViewModifier {
                 }
             }
             .sheet(isPresented: $showingConvertSheet) {
-                ConvertSessionSheet(session: session)
+                ConvertSessionSheet(session: session, initialTargetType: convertTargetType)
             }
             .alert("Delete Session?", isPresented: $showingDeleteConfirm) {
                 Button("Delete", role: .destructive) {
@@ -111,6 +112,7 @@ struct SessionContextMenuModifier: ViewModifier {
 
         if session.sessionType != .timebound {
             Button {
+                convertTargetType = .timebound
                 showingConvertSheet = true
             } label: {
                 Label("Convert to Timebound...", systemImage: "timer")
@@ -119,6 +121,7 @@ struct SessionContextMenuModifier: ViewModifier {
 
         if session.sessionType != .rhythm {
             Button {
+                convertTargetType = .rhythm
                 showingConvertSheet = true
             } label: {
                 Label("Convert to Rhythm...", systemImage: "arrow.triangle.2.circlepath")

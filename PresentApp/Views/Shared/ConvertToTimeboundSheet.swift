@@ -13,6 +13,7 @@ struct ConvertSessionSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     let session: Session
+    var initialTargetType: SessionType?
 
     @State private var targetType: SessionType = .work
     @State private var timeboundMinutes: Int = 25
@@ -99,7 +100,7 @@ struct ConvertSessionSheet: View {
         .padding(Constants.spacingPage)
         .frame(minWidth: 340)
         .task {
-            targetType = targets.first ?? .work
+            targetType = initialTargetType ?? targets.first ?? .work
             timeboundMinutes = (try? await appState.service.getPreference(key: PreferenceKey.defaultTimeboundMinutes)).flatMap(Int.init) ?? Constants.defaultTimeboundMinutes
             rhythmOption = appState.rhythmDurationOptions.first
         }
