@@ -15,40 +15,30 @@ struct DashboardView: View {
 
     /// Shared color mapping so today timeline and weekly chart use the same color per activity.
     ///
-    /// On-page activities get first pick from the palette to minimize overlap for
-    /// visible data. Remaining non-archived activities are appended so a
-    /// just-started session always has a color slot — even before the weekly
-    /// summary refreshes (which previously caused a Swift Charts crash).
+    /// Uses a deterministic hash (djb2) so each activity title always maps to the
+    /// same palette slot — independent of load order, dataset size, or which
+    /// activities are currently loaded. This removes the need to fetch all
+    /// activities just for stable color assignment.
     private var activityColorMap: [String: Color] {
         let palette = ThemeManager.chartColors(for: theme.activePalette)
 
-        // 1. Activities currently visible on the dashboard get priority colors.
-        var onPage = Set<String>()
+        // Collect titles visible on the dashboard.
+        var titles = Set<String>()
         for summary in appState.todayActivities {
-            onPage.insert(summary.activity.title)
+            titles.insert(summary.activity.title)
         }
         if let weekly = appState.weeklySummary {
             for summary in weekly.activities {
-                onPage.insert(summary.activity.title)
+                titles.insert(summary.activity.title)
             }
         }
-        // Include active session's activity so cross-midnight sessions get a chart color.
-        // Skip system activities (Break) — they don't need chart representation.
         if let current = appState.currentActivity, !current.isSystem {
-            onPage.insert(current.title)
+            titles.insert(current.title)
         }
-        let sortedOnPage = onPage.sorted()
 
-        // 2. All other non-archived, non-system activities fill remaining palette slots.
-        let remaining = appState.allActivities
-            .filter { !$0.isArchived && !$0.isSystem && !onPage.contains($0.title) }
-            .map(\.title)
-            .sorted()
-
-        let allTitles = sortedOnPage + remaining
         var map: [String: Color] = [:]
-        for (index, title) in allTitles.enumerated() {
-            map[title] = palette[index % palette.count]
+        for title in titles {
+            map[title] = stableColor(for: title, palette: palette)
         }
         return map
     }
