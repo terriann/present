@@ -147,7 +147,8 @@ final class AppState {
             await self?.handleTimerCompletion()
         }
         sessionMgr = SessionManager(service: service)
-        dataRefresh = DataRefreshCoordinator(service: service)
+        let changeNotifier = DatabaseChangeNotifier(writer: dbManager.writer)
+        dataRefresh = DataRefreshCoordinator(service: service, changeNotifier: changeNotifier)
         dataRefresh.onRefreshNeeded = { [weak self] in
             await self?.refreshAll()
         }
