@@ -1,0 +1,19 @@
+#!/bin/sh
+# post-checkout — regenerate Xcode project when project.yml changes between branches
+#
+# Arguments: $1 = previous HEAD, $2 = new HEAD, $3 = checkout type (1 = branch, 0 = file)
+
+# Only run on branch checkouts, not file checkouts
+if [ "$3" != "1" ]; then
+  exit 0
+fi
+
+# Regenerate if project.yml changed between the two refs
+if git diff --name-only "$1" "$2" | grep -q 'project.yml'; then
+  echo "project.yml changed — running xcodegen generate..."
+  if command -v xcodegen >/dev/null 2>&1; then
+    xcodegen generate
+  else
+    echo "warning: xcodegen not found — install with 'brew install xcodegen'"
+  fi
+fi
