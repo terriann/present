@@ -56,10 +56,11 @@ final class BenchmarkSeeder {
         }
 
         // 3. Create backdated sessions spread across daysSpan days.
+        //    Starts from yesterday (never today) to avoid future timestamps in CI.
         //    Each day gets 2-hour time slots to prevent overlaps.
         //    Max duration is 104 minutes, which fits within a 2-hour slot.
         for i in 0..<sessionCount {
-            let dayOffset = -(i % Self.daysSpan)
+            let dayOffset = -(1 + (i % Self.daysSpan))
             let baseDate = calendar.date(byAdding: .day, value: dayOffset, to: now)
                 ?? now
             let startOfDay = calendar.startOfDay(for: baseDate)
