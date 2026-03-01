@@ -19,6 +19,7 @@ struct MenuBarView: View {
     @State private var isLaunchHovered = false
     @State private var isSettingsHovered = false
     @State private var showConvertPicker = false
+    @FocusState private var isSearchFocused: Bool
 
     private var zoomScale: CGFloat { appState.zoomScale }
 
@@ -238,6 +239,7 @@ struct MenuBarView: View {
                 TextField("Search or create...", text: $searchText)
                     .textFieldStyle(.plain)
                     .font(scaledFont(.body))
+                    .focused($isSearchFocused)
                     .onKeyPress(.downArrow) {
                         let maxIndex = selectableItemCount - 1
                         guard maxIndex >= 0 else { return .ignored }
@@ -366,6 +368,10 @@ struct MenuBarView: View {
             }
         }
         .onAppear {
+            // Defer focus to next run loop — NSPopover's window isn't key yet during onAppear
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                isSearchFocused = true
+            }
             Task {
                 timeboundMinutes = (try? await appState.service.getPreference(key: PreferenceKey.defaultTimeboundMinutes)).flatMap(Int.init) ?? Constants.defaultTimeboundMinutes
                 activitySort = (try? await appState.service.getPreference(key: PreferenceKey.menuBarActivitySort)) ?? "recent"
