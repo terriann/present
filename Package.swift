@@ -47,5 +47,12 @@ let package = Package(
             ],
             path: "Tests/PresentCLITests"
         ),
+        .testTarget(
+            name: "PresentBenchmarks",
+            dependencies: [
+                "PresentCore",
+            ],
+            path: "Tests/PresentBenchmarks"
+        ),
     ]
 )

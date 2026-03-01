@@ -12,6 +12,7 @@ contributing.
   - [App (via Xcode)](#app-via-xcode)
 - [Testing](#testing)
   - [Test Suites](#test-suites)
+- [Benchmarks](#benchmarks)
 - [CI](#ci)
   - [CLI Reference Docs](#cli-reference-docs)
 - [Project Layout](#project-layout)
@@ -125,6 +126,74 @@ swift test --filter DatabaseManagerTests
 | PresentCoreTests | DatabaseManagerTests | 4 | Schema creation, migrations, default preferences |
 | PresentCLITests | CLITests | 16 | CLI workflows, error cases, session type validation |
 
+## Benchmarks
+
+The project includes XCTest performance benchmarks that measure clock time,
+CPU time, and memory usage on hot paths. Benchmarks run against in-memory
+SQLite seeded with realistic data (50 activities, 10 tags, 1,000 sessions).
+
+Results are stored locally in `benchmarks/` (gitignored) and named by date
+and commit hash for reproducibility.
+
+### Running Benchmarks
+
+```bash
+# Run benchmarks and save results
+bash Scripts/benchmark.sh
+
+# Preview without executing
+bash Scripts/benchmark.sh --dry-run
+```
+
+The script refuses to run if there are uncommitted `.swift` files. This
+ensures each result maps to a specific commit.
+
+### Comparing Results
+
+```bash
+# Compare against the most recent previous result
+bash Scripts/benchmark.sh --compare latest
+
+# Compare against a specific commit hash
+bash Scripts/benchmark.sh --compare 5608ede
+
+# Compare against a specific result file
+bash Scripts/benchmark.sh --compare benchmarks/2026-02-28-5608ede.json
+```
+
+The comparison outputs a GitHub-flavored markdown table showing clock time,
+CPU time, and peak memory for each benchmark with percentage changes.
+Visual indicators flag regressions and improvements at a glance.
+
+### Result Format
+
+Results are saved as sorted JSON (`benchmarks/yyyy-mm-dd-<GITHASH>.json`)
+for easy diffing. Each file contains the commit hash, date, and metrics for
+every benchmark test.
+
+### Adding a Benchmark
+
+Add a new `func test<Name>Performance()` method to
+`Tests/PresentBenchmarks/ServiceBenchmarks.swift`:
+
+```swift
+func testNewQueryPerformance() {
+    let svc = service!
+
+    measure(metrics: benchmarkMetrics) {
+        let exp = expectation(description: "newQuery")
+        Task {
+            _ = try await svc.someServiceMethod()
+            exp.fulfill()
+        }
+        wait(for: [exp], timeout: 10)
+    }
+}
+```
+
+Benchmarks use XCTest (not Swift Testing) because `measure(metrics:)` is
+XCTest-only.
+
 ## CI
 
 The project uses GitHub Actions for continuous integration. The workflow runs
@@ -184,9 +253,9 @@ a Python script to produce `docs/cli-reference.md`. Requires Python 3
   - `Notifications/` -- `NotificationManager` for system notifications.
 - **`Tests/`** -- Swift Testing test suites (see [Testing](#testing)).
 - **`Scripts/`** -- Shell scripts for building, notarizing, installing,
-  doc generation, and data management (`build-dmg.sh`, `notarize.sh`,
-  `install-cli.sh`, `generate-cli-docs.sh`, `generate-sample-data.sh`,
-  `delete-data.sh`).
+  doc generation, benchmarking, and data management (`build-dmg.sh`,
+  `notarize.sh`, `install-cli.sh`, `generate-cli-docs.sh`, `benchmark.sh`,
+  `generate-sample-data.sh`, `delete-data.sh`).
 
 ## Database
 

@@ -32,7 +32,7 @@ jobs:
           xcodebuild build -project Present.xcodeproj -scheme Present -destination 'platform=macOS'
 
       - name: Run unit tests (SPM)
-        run: swift test
+        run: swift test --skip PresentBenchmarks
 
       - name: Build CLI (release)
         run: swift build -c release --product present-cli
