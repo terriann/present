@@ -21,6 +21,7 @@ struct MarkdownEditor: NSViewRepresentable {
         textView.textColor = NSColor.textColor
         textView.backgroundColor = NSColor.textBackgroundColor
         textView.textContainerInset = NSSize(width: 8, height: 8)
+        textView.isAutomaticLinkDetectionEnabled = false
 
         textView.string = text
         context.coordinator.applyHighlighting(to: textView)
@@ -174,9 +175,9 @@ struct MarkdownEditor: NSViewRepresentable {
                             .font: NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
                         ])
 
-            // Links [text](url)
-            applyPattern(#"\[([^\]]+)\]\([^\)]+\)"#, to: textStorage, in: lines,
-                        attributes: [.foregroundColor: NSColor.linkColor])
+            // Links [text](url) — apply .link attribute for clickable links
+            textStorage.removeAttribute(.link, range: fullRange)
+            applyLinkAttributes(to: textStorage, in: lines)
 
             // Checklist items - [ ] and - [x]
             applyPattern(#"^- \[[ xX]\]"#, to: textStorage, in: lines,
@@ -196,6 +197,26 @@ struct MarkdownEditor: NSViewRepresentable {
                         attributes: [.foregroundColor: NSColor.secondaryLabelColor])
 
             textStorage.endEditing()
+        }
+
+        func textView(_ textView: NSTextView, clickedOnLink link: Any, at charIndex: Int) -> Bool {
+            guard let url = link as? URL else { return false }
+            NSWorkspace.shared.open(url)
+            return true
+        }
+
+        private func applyLinkAttributes(to textStorage: NSTextStorage, in string: NSString) {
+            let pattern = #"\[([^\]]+)\]\(([^\)]+)\)"#
+            guard let regex = try? NSRegularExpression(pattern: pattern, options: [.anchorsMatchLines]) else { return }
+            let fullRange = NSRange(location: 0, length: string.length)
+            regex.enumerateMatches(in: string as String, range: fullRange) { match, _, _ in
+                guard let matchRange = match?.range,
+                      let urlRange = match?.range(at: 2) else { return }
+                let urlString = string.substring(with: urlRange)
+                if let url = URL(string: urlString) {
+                    textStorage.addAttribute(.link, value: url, range: matchRange)
+                }
+            }
         }
 
         private func applyPattern(_ pattern: String, to textStorage: NSTextStorage, in string: NSString,

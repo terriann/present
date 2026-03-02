@@ -25,7 +25,8 @@ struct SessionRow: View {
                 }
             }
 
-            ticketBadge
+            linkBadge
+            noteIndicator
 
             Spacer()
 
@@ -40,10 +41,10 @@ struct SessionRow: View {
         .padding(.vertical, 2)
     }
 
-    // MARK: - Ticket Badge
+    // MARK: - Metadata Indicators
 
     @ViewBuilder
-    private var ticketBadge: some View {
+    private var linkBadge: some View {
         if let ticketId = session.ticketId, let link = session.link, let url = URL(string: link) {
             Button {
                 openURL(url)
@@ -71,10 +72,17 @@ struct SessionRow: View {
             }
             .buttonStyle(.plain)
             .help(link)
-        } else if session.note != nil {
+        }
+    }
+
+    @ViewBuilder
+    private var noteIndicator: some View {
+        if let note = session.note {
             Image(systemName: "doc.text")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .accessibilityLabel("Has note")
+                .help(note)
         }
     }
 

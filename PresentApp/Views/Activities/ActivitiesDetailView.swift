@@ -4,6 +4,7 @@ import PresentCore
 struct ActivitiesDetailView: View {
     @Environment(AppState.self) private var appState
     @Environment(ThemeManager.self) private var theme
+    @Environment(\.openURL) private var openURL
     @State private var activity: Activity
     @State private var notes: String
     @State private var tags: [Tag] = []
@@ -24,6 +25,9 @@ struct ActivitiesDetailView: View {
 
     @State private var editExternalId: String = ""
     @State private var editLink: String = ""
+
+    private enum LinkField { case externalId, link }
+    @FocusState private var focusedLinkField: LinkField?
 
     var body: some View {
         GeometryReader { geo in
@@ -256,7 +260,7 @@ struct ActivitiesDetailView: View {
                         if !activity.isArchived || activity.externalId != nil {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("External ID")
-                                    .font(.subheadline)
+                                    .font(.fieldLabel)
                                     .foregroundStyle(.secondary)
 
                                 if activity.isArchived {
@@ -267,13 +271,18 @@ struct ActivitiesDetailView: View {
                                         TextField("Add external ID", text: $editExternalId)
                                             .textFieldStyle(.roundedBorder)
                                             .font(.body)
+                                            .focused($focusedLinkField, equals: .externalId)
+                                            .onSubmit { Task { await saveLinks() } }
 
                                         if let url = resolvedExternalURL(for: editExternalId), !editExternalId.isEmpty {
-                                            Link(destination: url) {
+                                            Button {
+                                                openURL(url)
+                                            } label: {
                                                 Image(systemName: "arrow.up.right")
                                                     .font(.body)
                                                     .foregroundStyle(theme.accent)
                                             }
+                                            .buttonStyle(.plain)
                                             .accessibilityLabel("Open external ID link")
                                         }
                                     }
@@ -285,19 +294,22 @@ struct ActivitiesDetailView: View {
                         if !activity.isArchived || activity.link != nil {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Link")
-                                    .font(.subheadline)
+                                    .font(.fieldLabel)
                                     .foregroundStyle(.secondary)
 
                                 if activity.isArchived {
                                     if let link = activity.link, !link.isEmpty,
                                        let url = URL(string: link) {
-                                        Link(destination: url) {
+                                        Button {
+                                            openURL(url)
+                                        } label: {
                                             Text(link)
                                                 .underline()
                                                 .font(.body)
                                                 .foregroundStyle(theme.accent)
                                                 .lineLimit(1)
                                         }
+                                        .buttonStyle(.plain)
                                     } else {
                                         Text(activity.link ?? "")
                                             .font(.body)
@@ -307,49 +319,37 @@ struct ActivitiesDetailView: View {
                                         TextField("Add link URL", text: $editLink)
                                             .textFieldStyle(.roundedBorder)
                                             .font(.body)
+                                            .focused($focusedLinkField, equals: .link)
+                                            .onSubmit { Task { await saveLinks() } }
 
                                         if let url = URL(string: editLink), url.scheme != nil, url.host != nil, !editLink.isEmpty {
-                                            Link(destination: url) {
+                                            Button {
+                                                openURL(url)
+                                            } label: {
                                                 Image(systemName: "arrow.up.right")
                                                     .font(.body)
                                                     .foregroundStyle(theme.accent)
                                             }
+                                            .buttonStyle(.plain)
                                             .accessibilityLabel("Open link")
                                         }
                                     }
                                 }
                             }
                         }
-
-                        // Save/Cancel when changes exist
-                        if !activity.isArchived && hasLinkChanges {
-                            HStack {
-                                Spacer()
-
-                                Button {
-                                    editExternalId = activity.externalId ?? ""
-                                    editLink = activity.link ?? ""
-                                } label: {
-                                    Image(systemName: "xmark")
-                                        .font(.caption.weight(.semibold))
-                                }
-                                .buttonStyle(.bordered)
-                                .tint(theme.alert)
-                                .accessibilityLabel("Cancel link changes")
-
-                                Button {
-                                    Task { await saveLinks() }
-                                } label: {
-                                    Image(systemName: "checkmark")
-                                        .font(.caption.weight(.semibold))
-                                }
-                                .buttonStyle(.bordered)
-                                .tint(theme.success)
-                                .accessibilityLabel("Save links")
-                            }
-                        }
                     }
                     .padding(Constants.spacingTight)
+                    .onKeyPress(.escape) {
+                        editExternalId = activity.externalId ?? ""
+                        editLink = activity.link ?? ""
+                        focusedLinkField = nil
+                        return .handled
+                    }
+                    .onChange(of: focusedLinkField) { _, newValue in
+                        if newValue == nil && hasLinkChanges {
+                            Task { await saveLinks() }
+                        }
+                    }
                 } label: {
                     Label("Links", systemImage: "link")
                 }

@@ -33,8 +33,13 @@ struct ActivitiesFormSheet: View {
 
                 TextField("Link (URL)", text: $link)
 
-                TextField("Notes", text: $notes, axis: .vertical)
-                    .lineLimit(3...6)
+                VStack(alignment: .leading, spacing: 4) {
+                    TextField("Notes", text: $notes, axis: .vertical)
+                        .lineLimit(3...6)
+                    Text("Supports Markdown formatting")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
             .formStyle(.grouped)
 
