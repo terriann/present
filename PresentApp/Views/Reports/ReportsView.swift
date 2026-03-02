@@ -447,6 +447,14 @@ struct ReportsView: View {
         for entry in barEntries {
             titles.insert(entry.activity)
         }
+        // Include activities from tag summaries — tagActivitySummary is a separate
+        // service call that can return activities absent from the period summary
+        // (e.g. monthly summary aggregates weekly boundaries differently).
+        for tag in displayTagActivitySummaries {
+            for summary in tag.activities {
+                titles.insert(summary.activity.title)
+            }
+        }
         return titles.sorted()
     }
 

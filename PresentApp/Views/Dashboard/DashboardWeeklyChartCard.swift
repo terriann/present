@@ -21,28 +21,31 @@ struct DashboardWeeklyChartCard: View {
     @State private var pulseState = ActivePulseState()
 
     var body: some View {
-        let entries = weeklyBarEntries()
-        let domain = weekdayLabels()
-        let tooltipLabels = weeklyTooltipLabels(weekStartDay: appState.weekStartDay, referenceDate: Date())
+        // Guard: chartForegroundStyleScale crashes on empty domain (FB…).
+        if !chartColorDomain.isEmpty {
+            let entries = weeklyBarEntries()
+            let domain = weekdayLabels()
+            let tooltipLabels = weeklyTooltipLabels(weekStartDay: appState.weekStartDay, referenceDate: Date())
 
-        ChartCard(title: "Your Week", subtitle: weekRangeTitle) {
-            weeklyBarChart(entries: entries, domain: domain, activities: weekly.activities, tooltipLabels: tooltipLabels)
-            weeklyBarChartLegend
-        }
-        .onChange(of: hasActiveTodaySession) {
-            if hasActiveTodaySession {
-                pulseState.start(reduceMotion: reduceMotion)
-            } else {
+            ChartCard(title: "Your Week", subtitle: weekRangeTitle) {
+                weeklyBarChart(entries: entries, domain: domain, activities: weekly.activities, tooltipLabels: tooltipLabels)
+                weeklyBarChartLegend
+            }
+            .onChange(of: hasActiveTodaySession) {
+                if hasActiveTodaySession {
+                    pulseState.start(reduceMotion: reduceMotion)
+                } else {
+                    pulseState.stop()
+                }
+            }
+            .onAppear {
+                if hasActiveTodaySession {
+                    pulseState.start(reduceMotion: reduceMotion)
+                }
+            }
+            .onDisappear {
                 pulseState.stop()
             }
-        }
-        .onAppear {
-            if hasActiveTodaySession {
-                pulseState.start(reduceMotion: reduceMotion)
-            }
-        }
-        .onDisappear {
-            pulseState.stop()
         }
     }
 

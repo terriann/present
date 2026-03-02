@@ -24,24 +24,45 @@ struct ReportActivityPieChart: View {
     }
 
     var body: some View {
-        ChartCard(title: "Activity Distribution") {
-            activityDonutChart
-            activityDonutLegend
-        }
-        .onChange(of: hasActiveEntry) {
-            if hasActiveEntry {
-                pulseState.start(reduceMotion: reduceMotion)
-            } else {
+        // DEBUG: chart crash investigation
+        let _ = {
+            let activityTitles = Set(activities.map(\.activity.title))
+            let domainSet = Set(chartColorDomain)
+            let missing = activityTitles.subtracting(domainSet)
+            if !missing.isEmpty {
+                print("⚠️ [PieChart] activities NOT in domain: \(missing)")
+                print("  domain: \(chartColorDomain)")
+                print("  activityTitles: \(activityTitles.sorted())")
+            }
+            if chartColorDomain.count != chartColorRange.count {
+                print("⚠️ [PieChart] domain/range COUNT MISMATCH: domain=\(chartColorDomain.count) range=\(chartColorRange.count)")
+            }
+            if !activities.isEmpty {
+                print("📊 [PieChart] rendering: \(activities.count) activities, domain=\(chartColorDomain)")
+            }
+        }()
+
+        // Guard: chartForegroundStyleScale crashes on empty domain (FB…).
+        if !chartColorDomain.isEmpty {
+            ChartCard(title: "Activity Distribution") {
+                activityDonutChart
+                activityDonutLegend
+            }
+            .onChange(of: hasActiveEntry) {
+                if hasActiveEntry {
+                    pulseState.start(reduceMotion: reduceMotion)
+                } else {
+                    pulseState.stop()
+                }
+            }
+            .onAppear {
+                if hasActiveEntry {
+                    pulseState.start(reduceMotion: reduceMotion)
+                }
+            }
+            .onDisappear {
                 pulseState.stop()
             }
-        }
-        .onAppear {
-            if hasActiveEntry {
-                pulseState.start(reduceMotion: reduceMotion)
-            }
-        }
-        .onDisappear {
-            pulseState.stop()
         }
     }
 
