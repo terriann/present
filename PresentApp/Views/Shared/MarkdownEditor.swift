@@ -7,8 +7,29 @@ struct MarkdownEditor: NSViewRepresentable {
     var onCommit: (() -> Void)?
 
     func makeNSView(context: Context) -> NSScrollView {
-        let scrollView = NSTextView.scrollablePlainDocumentContentTextView()
-        guard let textView = scrollView.documentView as? NSTextView else { return scrollView }
+        // Build scroll view + text view from scratch so we can use our CommittableTextView subclass.
+        // NSTextView.scrollablePlainDocumentContentTextView() creates a standard NSTextView that
+        // can't be swapped out, so we replicate its setup here.
+        let scrollView = NSScrollView()
+        scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = false
+        scrollView.autohidesScrollers = true
+        scrollView.drawsBackground = false
+
+        let textStorage = NSTextStorage()
+        let layoutManager = NSLayoutManager()
+        textStorage.addLayoutManager(layoutManager)
+
+        let textContainer = NSTextContainer()
+        textContainer.widthTracksTextView = true
+        textContainer.heightTracksTextView = false
+        layoutManager.addTextContainer(textContainer)
+
+        let textView = CommittableTextView(frame: .zero, textContainer: textContainer)
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.autoresizingMask = [.width]
+        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
 
         textView.delegate = context.coordinator
         textView.isEditable = isEditable
@@ -23,8 +44,13 @@ struct MarkdownEditor: NSViewRepresentable {
         textView.backgroundColor = NSColor.textBackgroundColor
         textView.textContainerInset = NSSize(width: 8, height: 8)
         textView.isAutomaticLinkDetectionEnabled = false
+        let coordinator = context.coordinator
+        textView.onResignFirstResponder = { [weak coordinator] in
+            coordinator?.onCommit?()
+        }
 
         textView.string = text
+        scrollView.documentView = textView
         context.coordinator.applyHighlighting(to: textView)
 
         return scrollView
@@ -33,6 +59,12 @@ struct MarkdownEditor: NSViewRepresentable {
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         guard let textView = scrollView.documentView as? NSTextView else { return }
         context.coordinator.onCommit = onCommit
+        if let committable = textView as? CommittableTextView {
+            let coordinator = context.coordinator
+            committable.onResignFirstResponder = { [weak coordinator] in
+                coordinator?.onCommit?()
+            }
+        }
         if textView.string != text {
             let selectedRanges = textView.selectedRanges
             textView.string = text
@@ -59,10 +91,6 @@ struct MarkdownEditor: NSViewRepresentable {
             guard let textView = notification.object as? NSTextView else { return }
             text.wrappedValue = textView.string
             applyHighlighting(to: textView)
-        }
-
-        func textDidEndEditing(_ notification: Notification) {
-            onCommit?()
         }
 
         // MARK: - List Auto-Continuation
@@ -237,6 +265,60 @@ struct MarkdownEditor: NSViewRepresentable {
                 }
             }
         }
+    }
+}
+
+// MARK: - CommittableTextView
+
+/// NSTextView subclass that fires a callback when it loses first responder (blur).
+///
+/// In macOS, clicking on non-interactive SwiftUI areas (backgrounds, labels) doesn't cause
+/// the current first responder to resign. This subclass installs a click-outside monitor
+/// when it becomes first responder, forcing a resign when the user clicks outside the
+/// editor's scroll area.
+private final class CommittableTextView: NSTextView {
+    var onResignFirstResponder: (() -> Void)?
+    private var clickMonitor: Any?
+
+    override func becomeFirstResponder() -> Bool {
+        let became = super.becomeFirstResponder()
+        if became { installClickOutsideMonitor() }
+        return became
+    }
+
+    override func resignFirstResponder() -> Bool {
+        let resigned = super.resignFirstResponder()
+        if resigned {
+            removeClickOutsideMonitor()
+            onResignFirstResponder?()
+        }
+        return resigned
+    }
+
+    private func installClickOutsideMonitor() {
+        removeClickOutsideMonitor()
+        clickMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown]) { [weak self] event in
+            guard let self else { return event }
+            // Use the enclosing scroll view bounds so clicks on scrollbar or empty
+            // space below text don't count as "outside" the editor area.
+            let container = self.enclosingScrollView ?? self
+            let point = container.convert(event.locationInWindow, from: nil)
+            if !container.bounds.contains(point) {
+                self.window?.makeFirstResponder(nil)
+            }
+            return event
+        }
+    }
+
+    private func removeClickOutsideMonitor() {
+        if let monitor = clickMonitor {
+            NSEvent.removeMonitor(monitor)
+            clickMonitor = nil
+        }
+    }
+
+    deinit {
+        removeClickOutsideMonitor()
     }
 }
 

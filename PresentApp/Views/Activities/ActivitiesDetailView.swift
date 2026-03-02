@@ -253,6 +253,12 @@ struct ActivitiesDetailView: View {
         } label: {
             HStack {
                 Label("Notes", systemImage: "doc.text")
+                if activity.link != nil {
+                    TicketBadge(
+                        ticketId: activity.externalId,
+                        link: activity.link
+                    )
+                }
                 Spacer()
                 Text("Markdown")
                     .font(.subheadline)
@@ -418,6 +424,7 @@ struct ActivitiesDetailView: View {
                 id: activityId,
                 UpdateActivityInput(notes: notes)
             )
+            await appState.refreshAll()
         } catch {
             appState.showError(error, context: "Could not save notes")
         }
