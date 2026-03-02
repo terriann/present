@@ -52,6 +52,7 @@ struct ReportsView: View {
                         activities: activities,
                         chartColorDomain: chartColorDomain,
                         chartColorRange: chartColorRange,
+                        activityColorMap: activityColorMap,
                         weekendDayLabels: weekendDayLabels
                     )
                     HStack(alignment: .top, spacing: 16) {
@@ -60,6 +61,7 @@ struct ReportsView: View {
                             totalSeconds: displayTotalSeconds,
                             chartColorDomain: chartColorDomain,
                             chartColorRange: chartColorRange,
+                            activityColorMap: activityColorMap,
                             activeActivityTitle: activeActivityTitle
                         )
                         .frame(maxWidth: .infinity)
@@ -69,6 +71,7 @@ struct ReportsView: View {
                                 activities: displayActivities,
                                 chartColorDomain: chartColorDomain,
                                 chartColorRange: chartColorRange,
+                                activityColorMap: activityColorMap,
                                 activeTagNames: activeTagNames
                             )
                             .frame(maxWidth: .infinity)

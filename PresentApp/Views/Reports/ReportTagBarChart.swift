@@ -7,6 +7,7 @@ struct ReportTagBarChart: View {
     let activities: [ActivitySummary]
     let chartColorDomain: [String]
     let chartColorRange: [Color]
+    let activityColorMap: [String: Color]
     /// Tag names that include active session data. Matching bars pulse.
     var activeTagNames: Set<String> = []
 
@@ -140,7 +141,6 @@ struct ReportTagBarChart: View {
 
     private func tagTooltip(forTag tagName: String?, summaries: [TagActivitySummary]) -> some View {
         let matching = summaries.first { $0.tagName == tagName }
-        let palette = ThemeManager.chartColors(for: theme.activePalette)
         let isActive = tagName.map { activeTagNames.contains($0) } ?? false
 
         return ChartTooltip {
@@ -150,10 +150,8 @@ struct ReportTagBarChart: View {
 
                 ForEach(tag.activities, id: \.activity.id) { summary in
                     HStack(spacing: 6) {
-                        let color = activities.firstIndex(where: { $0.activity.title == summary.activity.title })
-                            .map { palette[$0 % palette.count] } ?? .secondary
                         Circle()
-                            .fill(color)
+                            .fill(activityColorMap[summary.activity.title] ?? .secondary)
                             .frame(width: 8, height: 8)
                         Text(summary.activity.title)
                             .font(.caption)

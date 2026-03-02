@@ -7,6 +7,7 @@ struct ReportActivityPieChart: View {
     let totalSeconds: Int
     let chartColorDomain: [String]
     let chartColorRange: [Color]
+    let activityColorMap: [String: Color]
     /// Title of the active session's activity, if any. Matching sector pulses.
     var activeActivityTitle: String?
 
@@ -23,11 +24,9 @@ struct ReportActivityPieChart: View {
     }
 
     var body: some View {
-        let palette = ThemeManager.chartColors(for: theme.activePalette)
-
         ChartCard(title: "Activity Distribution") {
             activityDonutChart
-            activityDonutLegend(palette: palette)
+            activityDonutLegend
         }
         .onChange(of: hasActiveEntry) {
             if hasActiveEntry {
@@ -103,10 +102,10 @@ struct ReportActivityPieChart: View {
 
     // MARK: - Legend
 
-    private func activityDonutLegend(palette: [Color]) -> some View {
+    private var activityDonutLegend: some View {
         HoverableChartLegend(
-            items: activities.enumerated().map { index, summary in
-                (label: summary.activity.title, color: palette[index % palette.count])
+            items: chartColorDomain.map { title in
+                (label: title, color: activityColorMap[title] ?? .secondary)
             },
             hoveredLabel: $hoveredActivityName,
             onHoverStart: { label in

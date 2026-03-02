@@ -17,10 +17,7 @@ struct DashboardView: View {
     ///
     /// Assigns chart colors sequentially to activities sorted alphabetically.
     /// Alphabetical order keeps colors stable across loads without hash collisions.
-    private var activityColorMap: [String: Color] {
-        let palette = ThemeManager.chartColors(for: theme.activePalette)
-
-        // Collect titles visible on the dashboard.
+    private var chartColorDomain: [String] {
         var titles = Set<String>()
         for summary in appState.todayActivities {
             titles.insert(summary.activity.title)
@@ -33,11 +30,20 @@ struct DashboardView: View {
         if let current = appState.currentActivity, !current.isSystem {
             titles.insert(current.title)
         }
+        return titles.sorted()
+    }
 
-        let sorted = titles.sorted()
-        return Dictionary(uniqueKeysWithValues: sorted.enumerated().map { index, title in
-            (title, palette[index % palette.count])
-        })
+    private var chartColorRange: [Color] {
+        let palette = ThemeManager.chartColors(for: theme.activePalette)
+        return chartColorDomain.indices.map { palette[$0 % palette.count] }
+    }
+
+    /// Shared color mapping so today timeline and weekly chart use the same color per activity.
+    ///
+    /// Assigns chart colors sequentially to activities sorted alphabetically.
+    /// Alphabetical order keeps colors stable across loads without hash collisions.
+    private var activityColorMap: [String: Color] {
+        Dictionary(uniqueKeysWithValues: zip(chartColorDomain, chartColorRange))
     }
 
     var body: some View {
@@ -50,6 +56,8 @@ struct DashboardView: View {
                 if let weekly = appState.weeklySummary, !weekly.activities.isEmpty || hasActiveTodaySession {
                     DashboardWeeklyChartCard(
                         activityColorMap: activityColorMap,
+                        chartColorDomain: chartColorDomain,
+                        chartColorRange: chartColorRange,
                         weekly: weekly,
                         hasActiveTodaySession: hasActiveTodaySession,
                         todayPortionSeconds: todayPortionSeconds,
