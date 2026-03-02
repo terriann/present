@@ -5,6 +5,7 @@ struct MarkdownEditor: NSViewRepresentable {
     @Binding var text: String
     var isEditable: Bool = true
     var onCommit: (() -> Void)?
+    var onEscape: (() -> Void)?
 
     func makeNSView(context: Context) -> NSScrollView {
         // Build scroll view + text view from scratch so we can use our CommittableTextView subclass.
@@ -59,6 +60,7 @@ struct MarkdownEditor: NSViewRepresentable {
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         guard let textView = scrollView.documentView as? NSTextView else { return }
         context.coordinator.onCommit = onCommit
+        context.coordinator.onEscape = onEscape
         if let committable = textView as? CommittableTextView {
             let coordinator = context.coordinator
             committable.onResignFirstResponder = { [weak coordinator] in
@@ -75,16 +77,18 @@ struct MarkdownEditor: NSViewRepresentable {
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text, onCommit: onCommit)
+        Coordinator(text: $text, onCommit: onCommit, onEscape: onEscape)
     }
 
     final class Coordinator: NSObject, NSTextViewDelegate {
         var text: Binding<String>
         var onCommit: (() -> Void)?
+        var onEscape: (() -> Void)?
 
-        init(text: Binding<String>, onCommit: (() -> Void)?) {
+        init(text: Binding<String>, onCommit: (() -> Void)?, onEscape: (() -> Void)?) {
             self.text = text
             self.onCommit = onCommit
+            self.onEscape = onEscape
         }
 
         func textDidChange(_ notification: Notification) {
@@ -96,6 +100,13 @@ struct MarkdownEditor: NSViewRepresentable {
         // MARK: - List Auto-Continuation
 
         func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+            if commandSelector == #selector(NSResponder.cancelOperation(_:)) {
+                if let onEscape {
+                    onEscape()
+                    return true
+                }
+                return false
+            }
             guard commandSelector == #selector(NSResponder.insertNewline(_:)) else {
                 return false
             }

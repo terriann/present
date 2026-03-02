@@ -111,7 +111,13 @@ struct SessionInlineEditForm: View {
                 Text("Note")
                     .font(.fieldLabel)
                     .foregroundStyle(noteLabelColor)
-                MarkdownEditor(text: $noteText, onCommit: { saveNote() })
+                MarkdownEditor(text: $noteText, onCommit: { saveNote() }, onEscape: {
+                    if hasPendingChanges {
+                        revertAll()
+                    } else {
+                        onCancel()
+                    }
+                })
                     .frame(minHeight: 60, maxHeight: 100)
 
                 if let extracted = liveTicketExtraction {
