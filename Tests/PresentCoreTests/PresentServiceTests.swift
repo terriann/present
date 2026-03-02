@@ -487,6 +487,120 @@ struct PresentServiceTests {
         }
     }
 
+    // MARK: - Auto-extraction from Notes
+
+    @Test func createActivityAutoExtractsLinkFromNotes() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(
+            title: "Test",
+            notes: "Working on https://myorg.atlassian.net/browse/PROJ-42 today"
+        ))
+        #expect(activity.link == "https://myorg.atlassian.net/browse/PROJ-42")
+        #expect(activity.externalId == "PROJ-42")
+    }
+
+    @Test func createActivityExplicitLinkSkipsAutoExtraction() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(
+            title: "Test",
+            externalId: "MY-ID",
+            link: "https://example.com",
+            notes: "Working on https://myorg.atlassian.net/browse/PROJ-42"
+        ))
+        #expect(activity.link == "https://example.com")
+        #expect(activity.externalId == "MY-ID")
+    }
+
+    @Test func createActivityNoTicketUrlInNotesLeavesFieldsNil() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(
+            title: "Test",
+            notes: "Just some plain notes"
+        ))
+        #expect(activity.link == nil)
+        #expect(activity.externalId == nil)
+    }
+
+    @Test func updateActivityAutoExtractsLinkFromNotes() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Test"))
+        let updated = try await service.updateActivity(id: activity.id!, UpdateActivityInput(
+            notes: "See https://github.com/org/repo/issues/99"
+        ))
+        #expect(updated.link == "https://github.com/org/repo/issues/99")
+        #expect(updated.externalId == "org/repo#99")
+    }
+
+    @Test func updateActivityClearsLinkWhenNotesCleared() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(
+            title: "Test",
+            notes: "See https://github.com/org/repo/issues/99"
+        ))
+        #expect(activity.link != nil)
+        let updated = try await service.updateActivity(id: activity.id!, UpdateActivityInput(notes: ""))
+        #expect(updated.link == nil)
+        #expect(updated.externalId == nil)
+    }
+
+    @Test func updateActivityClearsLinkWhenTicketUrlRemovedFromNotes() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(
+            title: "Test",
+            notes: "See https://github.com/org/repo/issues/99"
+        ))
+        #expect(activity.link != nil)
+        let updated = try await service.updateActivity(id: activity.id!, UpdateActivityInput(
+            notes: "Updated notes without any URLs"
+        ))
+        #expect(updated.link == nil)
+        #expect(updated.externalId == nil)
+    }
+
+    @Test func updateActivityExplicitLinkSkipsAutoExtraction() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Test"))
+        let updated = try await service.updateActivity(id: activity.id!, UpdateActivityInput(
+            link: "https://example.com",
+            notes: "See https://github.com/org/repo/issues/99"
+        ))
+        #expect(updated.link == "https://example.com")
+    }
+
+    @Test func updateSessionAutoExtractsLinkFromNote() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Test"))
+        let session = try await service.startSession(activityId: activity.id!, type: .work)
+        _ = try await service.stopSession()
+        let updated = try await service.updateSession(id: session.id!, UpdateSessionInput(
+            note: "Working on https://linear.app/team/issue/LIN-42"
+        ))
+        #expect(updated.link == "https://linear.app/team/issue/LIN-42")
+        #expect(updated.ticketId == "LIN-42")
+    }
+
+    @Test func updateSessionClearsLinkWhenNoteCleared() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Test"))
+        let session = try await service.startSession(activityId: activity.id!, type: .work, link: "https://linear.app/team/issue/LIN-42")
+        _ = try await service.stopSession()
+        let updated = try await service.updateSession(id: session.id!, UpdateSessionInput(note: ""))
+        #expect(updated.link == nil)
+        #expect(updated.ticketId == nil)
+    }
+
+    @Test func updateSessionExplicitLinkSkipsAutoExtraction() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Test"))
+        let session = try await service.startSession(activityId: activity.id!, type: .work)
+        _ = try await service.stopSession()
+        let updated = try await service.updateSession(id: session.id!, UpdateSessionInput(
+            note: "See https://github.com/org/repo/issues/99",
+            link: "https://example.com"
+        ))
+        #expect(updated.link == "https://example.com")
+    }
+
     @Test func tagNameTooLong() async throws {
         let service = try makeService()
         let longName = String(repeating: "t", count: Constants.maxTagNameLength + 1)
