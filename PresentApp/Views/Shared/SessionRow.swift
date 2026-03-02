@@ -3,7 +3,6 @@ import PresentCore
 
 struct SessionRow: View {
     @Environment(ThemeManager.self) private var theme
-    @Environment(\.openURL) private var openURL
 
     let session: Session
     let activityTitle: String
@@ -25,7 +24,7 @@ struct SessionRow: View {
                 }
             }
 
-            linkBadge
+            TicketBadge(ticketId: session.ticketId, link: session.link)
             noteIndicator
 
             Spacer()
@@ -42,38 +41,6 @@ struct SessionRow: View {
     }
 
     // MARK: - Metadata Indicators
-
-    @ViewBuilder
-    private var linkBadge: some View {
-        if let ticketId = session.ticketId, let link = session.link, let url = URL(string: link) {
-            Button {
-                openURL(url)
-            } label: {
-                Text(ticketId)
-                    .font(.caption)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(theme.accent.opacity(0.12), in: Capsule())
-                    .foregroundStyle(theme.accent)
-            }
-            .buttonStyle(.plain)
-            .help(link)
-        } else if let link = session.link, let url = URL(string: link) {
-            Button {
-                openURL(url)
-            } label: {
-                Text(url.host ?? link)
-                    .font(.caption)
-                    .lineLimit(1)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(theme.accent.opacity(0.12), in: Capsule())
-                    .foregroundStyle(theme.accent)
-            }
-            .buttonStyle(.plain)
-            .help(link)
-        }
-    }
 
     @ViewBuilder
     private var noteIndicator: some View {
