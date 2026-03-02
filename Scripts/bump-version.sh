@@ -18,7 +18,7 @@ set -euo pipefail
 #   2. Computes the new marketing version (bump type or explicit semver)
 #   3. Increments the build number by 1
 #   4. Writes both values back to Info.plist via plutil
-#   5. Updates Constants.cliVersion in Constants.swift
+#   5. Updates Constants.appVersion in Constants.swift
 #   6. Stages the changed files and creates a commit + git tag
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -92,7 +92,7 @@ echo "Updated Info.plist"
 # ── Update Constants.swift ────────────────────────────────────────────────────
 
 sed -i '' \
-    "s/public static let cliVersion = \".*\"/public static let cliVersion = \"$NEW_VERSION ($NEW_BUILD)\"/" \
+    "s/public static let appVersion = \".*\"/public static let appVersion = \"$NEW_VERSION ($NEW_BUILD)\"/" \
     "$CONSTANTS_SWIFT"
 echo "Updated Constants.swift"
 

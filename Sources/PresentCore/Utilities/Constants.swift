@@ -71,7 +71,7 @@ public enum Constants {
     /// Pause (seconds) at the low point before fading back up.
     public static let activePulseDelay: Double = 1.0
 
-    // MARK: - CLI
+    // MARK: - Version
 
-    public static let cliVersion = "0.3.0-dev"
+    public static let appVersion = "0.2.0-dev"
 }
