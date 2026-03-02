@@ -48,10 +48,10 @@ public final class ThemeManager {
         let isDark = NSApp?.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
         systemIsDark = isDark
 
-        appearanceObservation = NSApp?.observe(\.effectiveAppearance, options: [.new]) { [weak self] app, _ in
-            let nowDark = app.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        appearanceObservation = NSApp?.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
             Task { @MainActor [weak self] in
-                self?.systemIsDark = nowDark
+                let nowDark = NSApp?.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+                self?.systemIsDark = nowDark ?? false
             }
         }
     }
