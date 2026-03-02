@@ -50,7 +50,7 @@ struct SessionInlineEditForm: View {
                 // Activity picker
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Activity")
-                        .font(.caption.bold())
+                        .font(.dataLabel)
                         .foregroundStyle(errorFields.contains(.activity) ? theme.alert : .secondary)
                     Picker("Activity", selection: $selectedActivityId) {
                         ForEach(appState.popoverActivities) { activity in
@@ -64,7 +64,7 @@ struct SessionInlineEditForm: View {
                 // Start time
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Start")
-                        .font(.caption.bold())
+                        .font(.dataLabel)
                         .foregroundStyle(errorFields.contains(.start) ? theme.alert : .secondary)
                     DatePicker("Start", selection: $startTime)
                         .datePickerStyle(.stepperField)
@@ -75,7 +75,7 @@ struct SessionInlineEditForm: View {
                 // End time
                 VStack(alignment: .leading, spacing: 2) {
                     Text("End")
-                        .font(.caption.bold())
+                        .font(.dataLabel)
                         .foregroundStyle(errorFields.contains(.end) ? theme.alert : .secondary)
                     DatePicker("End", selection: $endTime, in: ...Date())
                         .datePickerStyle(.stepperField)
@@ -88,7 +88,7 @@ struct SessionInlineEditForm: View {
                 if session.totalPausedSeconds > 0 {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Paused")
-                            .font(.caption.bold())
+                            .font(.dataLabel)
                             .foregroundStyle(.secondary)
                         Text(TimeFormatting.formatDuration(seconds: session.totalPausedSeconds))
                             .font(.body)
@@ -106,7 +106,7 @@ struct SessionInlineEditForm: View {
             HStack(alignment: .top, spacing: Constants.spacingCard) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Note")
-                        .font(.caption.bold())
+                        .font(.dataLabel)
                         .foregroundStyle(noteLabelColor)
                     TextField("Add a note...", text: $noteText)
                         .textFieldStyle(.roundedBorder)
@@ -115,7 +115,7 @@ struct SessionInlineEditForm: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Link")
-                        .font(.caption.bold())
+                        .font(.dataLabel)
                         .foregroundStyle(linkLabelColor)
                     TextField("https://...", text: $linkText)
                         .textFieldStyle(.roundedBorder)
