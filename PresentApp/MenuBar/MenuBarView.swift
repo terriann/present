@@ -240,6 +240,7 @@ struct MenuBarView: View {
                     .textFieldStyle(.plain)
                     .font(scaledFont(.body))
                     .focused($isSearchFocused)
+                    .accessibilityLabel("Search activities")
                     .onKeyPress(.downArrow) {
                         let maxIndex = selectableItemCount - 1
                         guard maxIndex >= 0 else { return .ignored }

@@ -19,9 +19,11 @@ struct ActivitiesListView: View {
                 HStack {
                     Image(systemName: "magnifyingglass")
                         .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
                     TextField("Search activities...", text: $searchText)
                         .textFieldStyle(.plain)
                         .focused($isSearchFocused)
+                        .accessibilityLabel("Search activities")
                 }
                 .padding(6)
                 .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
