@@ -433,12 +433,12 @@ struct ReportsView: View {
     // MARK: - Chart Colors
 
     private var chartColorDomain: [String] {
-        var titles = activities.map(\.activity.title)
+        var titles = Set(activities.map(\.activity.title))
         // Include active activity so chart color scale covers it when injected into entries.
-        if let activity = activeActivity, !titles.contains(activity.title) {
-            titles.append(activity.title)
+        if let activity = activeActivity {
+            titles.insert(activity.title)
         }
-        return titles
+        return titles.sorted()
     }
 
     private var chartColorRange: [Color] {

@@ -15,10 +15,8 @@ struct DashboardView: View {
 
     /// Shared color mapping so today timeline and weekly chart use the same color per activity.
     ///
-    /// Uses a deterministic hash (djb2) so each activity title always maps to the
-    /// same palette slot — independent of load order, dataset size, or which
-    /// activities are currently loaded. This removes the need to fetch all
-    /// activities just for stable color assignment.
+    /// Assigns chart colors sequentially to activities sorted alphabetically.
+    /// Alphabetical order keeps colors stable across loads without hash collisions.
     private var activityColorMap: [String: Color] {
         let palette = ThemeManager.chartColors(for: theme.activePalette)
 
@@ -36,11 +34,10 @@ struct DashboardView: View {
             titles.insert(current.title)
         }
 
-        var map: [String: Color] = [:]
-        for title in titles {
-            map[title] = stableColor(for: title, palette: palette)
-        }
-        return map
+        let sorted = titles.sorted()
+        return Dictionary(uniqueKeysWithValues: sorted.enumerated().map { index, title in
+            (title, palette[index % palette.count])
+        })
     }
 
     var body: some View {
