@@ -4,7 +4,7 @@ import PresentCore
 /// Inline form that replaces a session row for editing activity, start time, and end time.
 ///
 /// Renders inside `ActivitySessionCard` when "Edit Session" is selected from the context menu.
-/// Only one session can be edited at a time.
+/// Only one session can be edited at a time. Each field saves independently on blur/change.
 struct SessionInlineEditForm: View {
     let session: Session
     let activity: Activity
@@ -18,14 +18,12 @@ struct SessionInlineEditForm: View {
     @State private var startTime: Date
     @State private var endTime: Date
     @State private var noteText: String
-    @State private var linkText: String
-    @State private var isSaving = false
     @State private var errorMessage: String?
     @State private var errorFields: Set<ErrorField> = []
     @FocusState private var focusedField: FocusField?
 
-    private enum ErrorField { case activity, start, end, note, link }
-    private enum FocusField { case note, link }
+    private enum ErrorField: Hashable { case activity, start, end, note }
+    private enum FocusField: Hashable { case note }
 
     private var isActive: Bool {
         session.state == .running || session.state == .paused
@@ -40,7 +38,6 @@ struct SessionInlineEditForm: View {
         _startTime = State(initialValue: session.startedAt)
         _endTime = State(initialValue: session.endedAt ?? Date())
         _noteText = State(initialValue: session.note ?? "")
-        _linkText = State(initialValue: session.link ?? "")
     }
 
     var body: some View {
@@ -98,39 +95,31 @@ struct SessionInlineEditForm: View {
 
                 Spacer()
             }
-            .onChange(of: selectedActivityId) { clearError() }
-            .onChange(of: startTime) { clearError() }
-            .onChange(of: endTime) { clearError() }
+            .onChange(of: selectedActivityId) { oldValue, newValue in
+                guard newValue != session.activityId else { return }
+                saveField { UpdateSessionInput(activityId: newValue) }
+            }
+            .onChange(of: startTime) { oldValue, newValue in
+                guard newValue != session.startedAt else { return }
+                saveField { UpdateSessionInput(startedAt: newValue) }
+            }
+            .onChange(of: endTime) { oldValue, newValue in
+                guard !isActive, newValue != session.endedAt else { return }
+                saveField { UpdateSessionInput(endedAt: newValue) }
+            }
 
-            // Note and Link row
-            HStack(alignment: .top, spacing: Constants.spacingCard) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Note")
-                        .font(.fieldLabel)
-                        .foregroundStyle(noteLabelColor)
-                    TextField("Add a note...", text: $noteText)
-                        .textFieldStyle(.roundedBorder)
-                        .focused($focusedField, equals: .note)
-                }
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Link")
-                        .font(.fieldLabel)
-                        .foregroundStyle(linkLabelColor)
-                    TextField("https://...", text: $linkText)
-                        .textFieldStyle(.roundedBorder)
-                        .focused($focusedField, equals: .link)
-                    if let ticketId = liveTicketId {
-                        HStack(spacing: Constants.spacingTight) {
-                            Image(systemName: "ticket")
-                                .font(.caption)
-                                .accessibilityHidden(true)
-                            Text(ticketId)
-                                .font(.caption)
-                        }
-                        .foregroundStyle(theme.accent)
-                    }
-                }
+            // Note row
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Note")
+                    .font(.fieldLabel)
+                    .foregroundStyle(noteLabelColor)
+                TextField("Add a note...", text: $noteText)
+                    .textFieldStyle(.roundedBorder)
+                    .focused($focusedField, equals: .note)
+                    .onSubmit { saveNote() }
+            }
+            .onChange(of: focusedField) { _, newValue in
+                if newValue != .note { saveNote() }
             }
 
             // Error display
@@ -139,21 +128,6 @@ struct SessionInlineEditForm: View {
                     .font(.body)
                     .foregroundStyle(theme.alert)
             }
-
-            // Actions
-            HStack(spacing: Constants.spacingCompact) {
-                Button("Cancel") {
-                    onCancel()
-                }
-                .buttonStyle(.bordered)
-
-                Button("Save") {
-                    save()
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(theme.accent)
-                .disabled(isSaving || !hasChanges)
-            }
         }
         .padding(Constants.spacingCard)
         .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
@@ -161,12 +135,11 @@ struct SessionInlineEditForm: View {
             focusedField = .note
         }
         .onKeyPress(.escape) {
+            if hasPendingChanges {
+                revertAll()
+                return .handled
+            }
             onCancel()
-            return .handled
-        }
-        .onKeyPress(.return) {
-            guard !isSaving && hasChanges else { return .ignored }
-            save()
             return .handled
         }
     }
@@ -179,62 +152,45 @@ struct SessionInlineEditForm: View {
         return .secondary
     }
 
-    private var linkLabelColor: Color {
-        if errorFields.contains(.link) { return theme.alert }
-        if focusedField == .link { return theme.accent }
-        return .secondary
-    }
-
-    private var hasChanges: Bool {
+    private var hasPendingChanges: Bool {
         selectedActivityId != session.activityId
             || startTime != session.startedAt
             || (!isActive && endTime != (session.endedAt ?? Date()))
             || noteText.trimmingCharacters(in: .whitespacesAndNewlines) != (session.note ?? "")
-            || linkText.trimmingCharacters(in: .whitespacesAndNewlines) != (session.link ?? "")
     }
 
-    private var liveTicketId: String? {
-        let trimmed = linkText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-        return TicketExtractor.extractTicketId(from: trimmed)
+    private func revertAll() {
+        selectedActivityId = session.activityId
+        startTime = session.startedAt
+        endTime = session.endedAt ?? Date()
+        noteText = session.note ?? ""
+        errorMessage = nil
+        errorFields = []
     }
 
-    private func save() {
+    private func saveNote() {
+        let trimmed = noteText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed != (session.note ?? "") else { return }
+        saveField { UpdateSessionInput(note: trimmed) }
+    }
+
+    private func saveField(_ inputBuilder: @escaping () -> UpdateSessionInput) {
         guard let sessionId = session.id else { return }
-        isSaving = true
         errorMessage = nil
         errorFields = []
 
-        // Build input with only changed fields
-        let trimmedNote = noteText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let trimmedLink = linkText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let noteChanged = trimmedNote != (session.note ?? "")
-        let linkChanged = trimmedLink != (session.link ?? "")
-
-        let input = UpdateSessionInput(
-            note: noteChanged ? trimmedNote : nil,
-            link: linkChanged ? trimmedLink : nil,
-            activityId: selectedActivityId != session.activityId ? selectedActivityId : nil,
-            startedAt: startTime != session.startedAt ? startTime : nil,
-            endedAt: !isActive && endTime != session.endedAt ? endTime : nil
-        )
-
         Task {
             do {
-                try await appState.updateSession(id: sessionId, input)
+                try await appState.updateSession(id: sessionId, inputBuilder())
                 onSave()
             } catch {
                 errorMessage = error.localizedDescription
                 errorFields = errorFieldsFrom(error)
-                isSaving = false
             }
         }
     }
 
-    private func clearError() {
-        errorMessage = nil
-        errorFields = []
-    }
+    // MARK: - Error Mapping
 
     /// Which fields the user actually changed — used to scope error highlights.
     private var changedTimeFields: Set<ErrorField> {
@@ -250,20 +206,14 @@ struct SessionInlineEditForm: View {
             case .activityNotFound, .activityIsArchived:
                 return [.activity]
             case .sessionOverlap:
-                // Only highlight the time fields that were actually changed
                 let changed = changedTimeFields
                 return changed.isEmpty ? [.start, .end] : changed
             case .invalidInput(let msg):
-                if msg.localizedCaseInsensitiveContains("link") {
-                    return [.link]
-                }
                 if msg.localizedCaseInsensitiveContains("note") {
                     return [.note]
                 }
                 let mentionsStart = msg.localizedCaseInsensitiveContains("start time")
                 let mentionsEnd = msg.localizedCaseInsensitiveContains("end time")
-                // "Start time must be before end time" or "End time must be after start time"
-                // mention both — highlight both fields
                 if mentionsStart && mentionsEnd {
                     return [.start, .end]
                 } else if mentionsStart {
