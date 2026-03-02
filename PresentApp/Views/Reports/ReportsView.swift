@@ -441,6 +441,12 @@ struct ReportsView: View {
         if let activity = activeActivity {
             titles.insert(activity.title)
         }
+        // Include any activity that appears in bar entries — dailyBreakdown can contain
+        // activities not present in the top-level summary (e.g. cross-week boundaries).
+        // Without this, chartForegroundStyleScale crashes on an unknown domain value.
+        for entry in barEntries {
+            titles.insert(entry.activity)
+        }
         return titles.sorted()
     }
 
