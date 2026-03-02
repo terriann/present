@@ -19,6 +19,7 @@ contributing.
 - [Database](#database)
 - [IPC](#ipc)
 - [Code Style](#code-style)
+- [Git Hooks](#git-hooks)
 - [Colors](#colors)
 - [Releasing](#releasing)
 - [Data Utilities](#data-utilities)
@@ -49,6 +50,9 @@ contributing.
 # Clone the repo
 git clone https://github.com/terriann/present.git
 cd present
+
+# Enable source-controlled git hooks
+git config core.hooksPath Scripts/hooks
 
 # Resolve SPM dependencies (fetches GRDB, swift-argument-parser, swift-testing)
 swift package resolve
@@ -305,6 +309,21 @@ these conventions when contributing:
   `Sources/PresentCLI/Commands/`, one file per command.
 - **Error handling:** Prefer typed errors. CLI commands surface user-facing
   error messages via `ValidationError`.
+
+## Git Hooks
+
+Source-controlled hooks live in `Scripts/hooks/` and are activated during
+[Setup](#setup) via `git config core.hooksPath Scripts/hooks`.
+
+| Hook | Trigger | What it does |
+|------|---------|--------------|
+| `post-checkout` | `git switch`, `git checkout` (branch) | Runs `xcodegen generate` when `project.yml` changed between the old and new branch |
+
+If you cloned before this was added, run once:
+
+```bash
+git config core.hooksPath Scripts/hooks
+```
 
 ## Colors
 

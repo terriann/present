@@ -80,8 +80,8 @@ struct IPCTests {
         #expect(serverFD >= 0)
         defer { close(serverFD) }
 
-        // Give server time to start
-        Thread.sleep(forTimeInterval: 0.05)
+        // Give server time to start (CI runners need more headroom)
+        Thread.sleep(forTimeInterval: 0.15)
 
         let client = IPCClient(socketPath: socketPath)
         client.send(.sessionStarted)
@@ -102,7 +102,8 @@ struct IPCTests {
         #expect(serverFD >= 0)
         defer { close(serverFD) }
 
-        Thread.sleep(forTimeInterval: 0.05)
+        // Give server time to start (CI runners need more headroom)
+        Thread.sleep(forTimeInterval: 0.15)
 
         let client = IPCClient(socketPath: socketPath)
         client.send(.sessionStarted)

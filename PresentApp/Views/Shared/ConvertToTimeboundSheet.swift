@@ -13,6 +13,7 @@ struct ConvertSessionSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     let session: Session
+    var initialTargetType: SessionType?
 
     @State private var targetType: SessionType = .work
     @State private var timeboundMinutes: Int = 25
@@ -54,15 +55,7 @@ struct ConvertSessionSheet: View {
             // Target-specific controls
             switch targetType {
             case .timebound:
-                HStack(spacing: Constants.spacingCompact) {
-                    Text("Duration:")
-                        .font(.body)
-                    TextField("", value: $timeboundMinutes, format: .number)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 64)
-                    Text("minutes")
-                        .foregroundStyle(.secondary)
-                }
+                TimeboundDurationField(minutes: $timeboundMinutes, size: .regular, autoFocus: true)
 
             case .rhythm:
                 VStack(alignment: .leading, spacing: Constants.spacingCompact) {
@@ -107,7 +100,7 @@ struct ConvertSessionSheet: View {
         .padding(Constants.spacingPage)
         .frame(minWidth: 340)
         .task {
-            targetType = targets.first ?? .work
+            targetType = initialTargetType ?? targets.first ?? .work
             timeboundMinutes = (try? await appState.service.getPreference(key: PreferenceKey.defaultTimeboundMinutes)).flatMap(Int.init) ?? Constants.defaultTimeboundMinutes
             rhythmOption = appState.rhythmDurationOptions.first
         }

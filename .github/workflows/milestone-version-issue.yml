@@ -62,7 +62,7 @@ jobs:
           ### Checklist
 
           - [ ] \`MARKETING_VERSION\` in \`project.yml\`
-          - [ ] \`cliVersion\` in \`Sources/PresentCore/Utilities/Constants.swift\`
+          - [ ] \`appVersion\` in \`Sources/PresentCore/Utilities/Constants.swift\`
           - [ ] Regenerate \`docs/cli-reference.md\` (\`bash Scripts/generate-cli-docs.sh\`)
           - [ ] Rebuild app in Xcode to verify version in About tab
           - [ ] Reinstall CLI binary (\`swift build -c release && cp .build/release/present-cli /usr/local/bin/present-cli\`)"

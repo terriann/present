@@ -181,18 +181,7 @@ struct ActivitiesDetailView: View {
                             }
                         }
                     } else if selectedSessionType == .timebound {
-                        HStack(spacing: 4) {
-                            Text("Duration:")
-                                .font(.callout)
-                                .foregroundStyle(.secondary)
-                            TextField("", value: $timeboundMinutes, format: .number)
-                                .textFieldStyle(.roundedBorder)
-                                .frame(width: 48)
-                                .font(.callout)
-                            Text("min")
-                                .font(.callout)
-                                .foregroundStyle(.secondary)
-                        }
+                        TimeboundDurationField(minutes: $timeboundMinutes, size: .regular)
                     }
 
                     Button("Start Session") {

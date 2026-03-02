@@ -6,7 +6,7 @@ struct ReportsView: View {
     @Environment(ThemeManager.self) private var theme
     @State private var selectedPeriod: ReportPeriod = .daily
     @State private var selectedDate: Date = Date()
-    @State private var hideArchived = false
+    @State private var showArchived = true
     @State private var activities: [ActivitySummary] = []
     @State private var totalSeconds: Int = 0
     @State private var sessionCount: Int = 0
@@ -118,7 +118,7 @@ struct ReportsView: View {
         .onChange(of: selectedDate) {
             reloadReport()
         }
-        .onChange(of: hideArchived) {
+        .onChange(of: showArchived) {
             reloadReport()
         }
         .onChange(of: isShowingToday) {
@@ -139,17 +139,18 @@ struct ReportsView: View {
 
     private var controlsBar: some View {
         HStack {
-            Picker(selection: $selectedPeriod, label: EmptyView()) {
+            Picker("Report period", selection: $selectedPeriod) {
                 ForEach(ReportPeriod.allCases, id: \.self) { period in
                     Text(period.rawValue).tag(period)
                 }
             }
+            .labelsHidden()
             .pickerStyle(.segmented)
             .fixedSize()
 
             Spacer()
 
-            Toggle("Hide archived", isOn: $hideArchived)
+            Toggle("Show archived", isOn: $showArchived)
                 .toggleStyle(ThemedToggleStyle(tintColor: theme.accent))
 
             if appState.isSessionActive {
@@ -650,13 +651,13 @@ struct ReportsView: View {
 
             switch selectedPeriod {
             case .daily:
-                let summary = try await appState.service.dailySummary(date: selectedDate, includeArchived: !hideArchived, roundToMinute: true)
+                let summary = try await appState.service.dailySummary(date: selectedDate, includeArchived: showArchived, roundToMinute: true)
                 let startOfDay = calendar.startOfDay(for: selectedDate)
                 let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? selectedDate
-                let tags = try await appState.service.tagActivitySummary(from: startOfDay, to: endOfDay, includeArchived: !hideArchived, roundToMinute: true)
+                let tags = try await appState.service.tagActivitySummary(from: startOfDay, to: endOfDay, includeArchived: showArchived, roundToMinute: true)
                 try Task.checkCancellation()
                 // Batch all state updates together to avoid mid-render inconsistencies
-                let sessions = try await appState.service.listSessions(from: startOfDay, to: endOfDay, type: nil, activityId: nil, includeArchived: !hideArchived)
+                let sessions = try await appState.service.listSessions(from: startOfDay, to: endOfDay, type: nil, activityId: nil, includeArchived: showArchived)
                 try Task.checkCancellation()
                 let sessionIds = sessions.compactMap { $0.0.id }
                 let segments = try await appState.service.segmentsForSessions(sessionIds: sessionIds)
@@ -671,12 +672,12 @@ struct ReportsView: View {
                 sessionSegments = segments
 
             case .weekly:
-                let summary = try await appState.service.weeklySummary(weekOf: selectedDate, includeArchived: !hideArchived, weekStartDay: effectiveWeekStartDay, roundToMinute: true)
+                let summary = try await appState.service.weeklySummary(weekOf: selectedDate, includeArchived: showArchived, weekStartDay: effectiveWeekStartDay, roundToMinute: true)
                 let wStart = weekStart(for: selectedDate)
                 let weekEnd = calendar.date(byAdding: .day, value: 7, to: wStart) ?? selectedDate
-                let tags = try await appState.service.tagActivitySummary(from: wStart, to: weekEnd, includeArchived: !hideArchived, roundToMinute: true)
+                let tags = try await appState.service.tagActivitySummary(from: wStart, to: weekEnd, includeArchived: showArchived, roundToMinute: true)
                 try Task.checkCancellation()
-                let sessions = try await appState.service.listSessions(from: wStart, to: weekEnd, type: nil, activityId: nil, includeArchived: !hideArchived)
+                let sessions = try await appState.service.listSessions(from: wStart, to: weekEnd, type: nil, activityId: nil, includeArchived: showArchived)
                 try Task.checkCancellation()
                 weekStartDay = effectiveWeekStartDay
                 weeklySummaryData = summary
@@ -687,11 +688,11 @@ struct ReportsView: View {
                 sessionEntries = sessions
 
             case .monthly:
-                let summary = try await appState.service.monthlySummary(monthOf: selectedDate, includeArchived: !hideArchived, weekStartDay: effectiveWeekStartDay, roundToMinute: true)
+                let summary = try await appState.service.monthlySummary(monthOf: selectedDate, includeArchived: showArchived, weekStartDay: effectiveWeekStartDay, roundToMinute: true)
                 guard let monthInterval = calendar.dateInterval(of: .month, for: selectedDate) else { return }
-                let tags = try await appState.service.tagActivitySummary(from: monthInterval.start, to: monthInterval.end, includeArchived: !hideArchived, roundToMinute: true)
+                let tags = try await appState.service.tagActivitySummary(from: monthInterval.start, to: monthInterval.end, includeArchived: showArchived, roundToMinute: true)
                 try Task.checkCancellation()
-                let sessions = try await appState.service.listSessions(from: monthInterval.start, to: monthInterval.end, type: nil, activityId: nil, includeArchived: !hideArchived)
+                let sessions = try await appState.service.listSessions(from: monthInterval.start, to: monthInterval.end, type: nil, activityId: nil, includeArchived: showArchived)
                 try Task.checkCancellation()
                 weekStartDay = effectiveWeekStartDay
                 monthlySummaryData = summary

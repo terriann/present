@@ -19,10 +19,10 @@ final class AppState {
     var weekStartDay: Int { dataRefresh.weekStartDay }
     var recentActivities: [Activity] { dataRefresh.recentActivities }
     var popoverActivities: [Activity] { dataRefresh.popoverActivities }
-    var allActivities: [Activity] { dataRefresh.allActivities }
     var allTags: [Tag] { dataRefresh.allTags }
     var recentSessionSuggestion: (session: Session, activity: Activity)? { dataRefresh.recentSessionSuggestion }
     var rhythmDurationOptions: [RhythmOption] { dataRefresh.rhythmDurationOptions }
+    var refreshCounter: Int { dataRefresh.refreshCounter }
 
     // MARK: - Timer (forwarded from TimerManager)
 

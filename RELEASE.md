@@ -63,7 +63,7 @@ must be clean before running.
 2. Computes the new marketing version (bump type or explicit semver).
 3. Increments the build number by 1.
 4. Writes both values back to `Info.plist` via `plutil`.
-5. Updates `Constants.cliVersion` in
+5. Updates `Constants.appVersion` in
    `Sources/PresentCore/Utilities/Constants.swift`.
 6. Collects commits since the last tag, groups them by conventional
    commit type, and prepends a new section to `CHANGELOG.md`.

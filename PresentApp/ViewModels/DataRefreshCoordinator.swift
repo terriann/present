@@ -11,11 +11,14 @@ final class DataRefreshCoordinator {
     var weeklySummary: WeeklySummary?
     var weekStartDay: Int = 1
     var recentActivities: [Activity] = []
-    var allActivities: [Activity] = []
     var popoverActivities: [Activity] = []
     var allTags: [Tag] = []
     var recentSessionSuggestion: (session: Session, activity: Activity)?
     var rhythmDurationOptions: [RhythmOption] = Constants.defaultRhythmDurationOptions
+
+    /// Incremented after each `refreshData()` cycle. Views that manage their
+    /// own data can watch this counter to know when to re-fetch.
+    var refreshCounter: Int = 0
 
     // MARK: - Observation, Visibility & IPC
 
@@ -95,9 +98,6 @@ final class DataRefreshCoordinator {
         let newPopover = try await service.listActivitiesForPopover()
         if popoverActivities != newPopover { popoverActivities = newPopover }
 
-        let newAll = try await service.listActivities(includeArchived: true, includeSystem: true)
-        if allActivities != newAll { allActivities = newAll }
-
         let newTags = try await service.listTags()
         if allTags != newTags { allTags = newTags }
 
@@ -106,6 +106,8 @@ final class DataRefreshCoordinator {
             let newOptions = parsed.isEmpty ? Constants.defaultRhythmDurationOptions : parsed
             if rhythmDurationOptions != newOptions { rhythmDurationOptions = newOptions }
         }
+
+        refreshCounter += 1
     }
 
     /// Compare optional session suggestion tuples (tuples don't auto-conform to Equatable).

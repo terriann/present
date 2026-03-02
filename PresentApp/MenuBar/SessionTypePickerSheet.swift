@@ -35,13 +35,7 @@ struct SessionTypePickerSheet: View {
                 }
                 .pickerStyle(.segmented)
             } else if selectedType == .timebound {
-                HStack {
-                    Text("Duration:")
-                    TextField("Minutes", value: $timeboundMinutes, format: .number)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 80)
-                    Text("min")
-                }
+                TimeboundDurationField(minutes: $timeboundMinutes, size: .regular)
             }
 
             HStack {

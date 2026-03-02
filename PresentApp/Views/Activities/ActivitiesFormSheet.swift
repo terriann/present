@@ -18,6 +18,7 @@ struct ActivitiesFormSheet: View {
     @State private var link = ""
     @State private var notes = ""
     @State private var errorMessage: String?
+    @FocusState private var isTitleFocused: Bool
 
     var body: some View {
         VStack(spacing: 16) {
@@ -26,6 +27,7 @@ struct ActivitiesFormSheet: View {
 
             Form {
                 TextField("Title", text: $title)
+                    .focused($isTitleFocused)
 
                 TextField("External ID", text: $externalId)
 
@@ -63,6 +65,7 @@ struct ActivitiesFormSheet: View {
                 link = activity.link ?? ""
                 notes = activity.notes ?? ""
             }
+            isTitleFocused = true
         }
     }
 

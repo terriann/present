@@ -4,10 +4,12 @@ import PresentCore
 struct ActivitiesListView: View {
     @Environment(AppState.self) private var appState
     @Environment(ThemeManager.self) private var theme
+    @State private var activities: [Activity] = []
     @State private var showingCreateSheet = false
     @State private var showArchived = false
     @State private var selectedActivity: Activity?
     @State private var searchText = ""
+    @FocusState private var isSearchFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -17,8 +19,11 @@ struct ActivitiesListView: View {
                 HStack {
                     Image(systemName: "magnifyingglass")
                         .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
                     TextField("Search activities...", text: $searchText)
                         .textFieldStyle(.plain)
+                        .focused($isSearchFocused)
+                        .accessibilityLabel("Search activities")
                 }
                 .padding(6)
                 .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
@@ -102,13 +107,15 @@ struct ActivitiesListView: View {
         .sheet(isPresented: $showingCreateSheet) {
             ActivitiesFormSheet(mode: .create)
         }
-        .task {
-            await appState.refreshAll()
+        .task { await loadActivities() }
+        .onChange(of: appState.refreshCounter) {
+            Task { await loadActivities() }
         }
         .onChange(of: showArchived) {
-            Task { await appState.refreshAll() }
+            // No need to re-fetch — displayedActivities filters locally
         }
         .onAppear {
+            isSearchFocused = true
             handleNavigationRequest()
         }
         .onChange(of: appState.navigateToActivityId) {
@@ -116,22 +123,46 @@ struct ActivitiesListView: View {
         }
     }
 
-    private func handleNavigationRequest() {
-        if let targetId = appState.navigateToActivityId {
-            selectedActivity = appState.allActivities.first { $0.id == targetId }
-            appState.navigateToActivityId = nil
+    // MARK: - Data Loading
+
+    private func loadActivities() async {
+        do {
+            activities = try await appState.service.listActivities(
+                includeArchived: true, includeSystem: true
+            )
+        } catch {
+            // Fail silently — list stays as-is
         }
     }
 
+    // MARK: - Navigation
+
+    private func handleNavigationRequest() {
+        guard let targetId = appState.navigateToActivityId else { return }
+        appState.navigateToActivityId = nil
+        // Try local list first, fall back to direct DB lookup
+        if let match = activities.first(where: { $0.id == targetId }) {
+            selectedActivity = match
+        } else {
+            Task {
+                if let activity = try? await appState.service.getActivity(id: targetId) {
+                    selectedActivity = activity
+                }
+            }
+        }
+    }
+
+    // MARK: - Filtering
+
     private var displayedActivities: [Activity] {
-        var activities = appState.allActivities
+        var filtered = activities
         if !showArchived {
-            activities = activities.filter { !$0.isArchived }
+            filtered = filtered.filter { !$0.isArchived }
         }
         if !searchText.isEmpty {
-            activities = activities.filter { $0.title.localizedCaseInsensitiveContains(searchText) }
+            filtered = filtered.filter { $0.title.localizedCaseInsensitiveContains(searchText) }
         }
-        return activities
+        return filtered
     }
 }
 

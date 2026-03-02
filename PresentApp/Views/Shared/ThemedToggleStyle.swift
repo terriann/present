@@ -12,21 +12,23 @@ struct ThemedToggleStyle: ToggleStyle {
         HStack(spacing: 8) {
             configuration.label
 
-            RoundedRectangle(cornerRadius: 16, style: .circular)
-                .fill(configuration.isOn ? tintColor : Color.secondary.opacity(0.3))
-                .frame(width: 44, height: 26)
-                .overlay(
-                    Circle()
-                        .fill(.white)
-                        .shadow(color: .black.opacity(0.15), radius: 1, y: 1)
-                        .padding(2)
-                        .offset(x: configuration.isOn ? 9 : -9)
-                )
-                .onTapGesture {
-                    withAdaptiveAnimation(.snappy(duration: 0.15)) {
-                        configuration.isOn.toggle()
-                    }
+            Button {
+                withAdaptiveAnimation(.snappy(duration: 0.15)) {
+                    configuration.isOn.toggle()
                 }
+            } label: {
+                RoundedRectangle(cornerRadius: 16, style: .circular)
+                    .fill(configuration.isOn ? tintColor : Color.secondary.opacity(0.3))
+                    .frame(width: 44, height: 26)
+                    .overlay(
+                        Circle()
+                            .fill(.white)
+                            .shadow(color: .black.opacity(0.15), radius: 1, y: 1)
+                            .padding(2)
+                            .offset(x: configuration.isOn ? 9 : -9)
+                    )
+            }
+            .buttonStyle(.plain)
         }
     }
 }

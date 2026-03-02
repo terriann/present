@@ -117,9 +117,11 @@ struct ActivitySessionCard: View {
                 Image(systemName: "magnifyingglass")
                     .font(.body)
                     .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
                 TextField("Search...", text: $searchText)
                     .textFieldStyle(.plain)
                     .font(.body)
+                    .accessibilityLabel("Search sessions")
                     .onKeyPress(.escape) {
                         searchText = ""
                         return .handled
