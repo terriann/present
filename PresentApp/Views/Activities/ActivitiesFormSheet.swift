@@ -82,8 +82,9 @@ struct ActivitiesFormSheet: View {
     private func save() async {
         do {
             if case .edit(let activity) = mode {
+                guard let activityId = activity.id else { return }
                 _ = try await appState.service.updateActivity(
-                    id: activity.id!,
+                    id: activityId,
                     UpdateActivityInput(
                         title: title,
                         externalId: externalId,

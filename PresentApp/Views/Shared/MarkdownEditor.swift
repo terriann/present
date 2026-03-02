@@ -7,7 +7,7 @@ struct MarkdownEditor: NSViewRepresentable {
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSTextView.scrollablePlainDocumentContentTextView()
-        let textView = scrollView.documentView as! NSTextView
+        guard let textView = scrollView.documentView as? NSTextView else { return scrollView }
 
         textView.delegate = context.coordinator
         textView.isEditable = isEditable
@@ -103,7 +103,7 @@ struct MarkdownEditor: NSViewRepresentable {
         private func matchListPrefix(_ line: String) -> ListMatch? {
             // Checkbox: "- [ ] " or "- [x] " or "- [X] "
             if let range = line.range(of: #"^(\s*)- \[[ xX]\] "#, options: .regularExpression) {
-                let indent = String(line[line.startIndex..<line.firstIndex(of: "-")!])
+                let indent = String(line.prefix(while: { $0 == " " || $0 == "\t" }))
                 let content = String(line[range.upperBound...])
                 return ListMatch(contentAfterPrefix: content, nextPrefix: "\(indent)- [ ] ")
             }

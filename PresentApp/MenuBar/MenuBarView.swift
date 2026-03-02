@@ -157,8 +157,9 @@ struct MenuBarView: View {
                     session: suggestion.session
                 ) {
                     Task {
+                        guard let activityId = suggestion.activity.id else { return }
                         await appState.startSession(
-                            activityId: suggestion.activity.id!,
+                            activityId: activityId,
                             type: suggestion.session.sessionType,
                             timerMinutes: suggestion.session.timerLengthMinutes,
                             breakMinutes: suggestion.session.breakMinutes
@@ -382,7 +383,7 @@ struct MenuBarView: View {
     }
 
     private func startSessionForType(activity: Activity) async {
-        let activityId = activity.id!
+        guard let activityId = activity.id else { return }
         // System activities cannot use rhythm sessions — fall back to work
         let effectiveType = (activity.isSystem && selectedSessionType == .rhythm) ? .work : selectedSessionType
 
