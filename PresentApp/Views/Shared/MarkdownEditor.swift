@@ -338,7 +338,9 @@ private final class CommittableTextView: NSTextView {
     }
 
     deinit {
-        removeClickOutsideMonitor()
+        MainActor.assumeIsolated {
+            removeClickOutsideMonitor()
+        }
     }
 }
 
