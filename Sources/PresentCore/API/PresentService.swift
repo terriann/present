@@ -1621,26 +1621,8 @@ public final class PresentService: PresentAPI, Sendable {
             current = nextWeek
         }
 
-        // Aggregate
-        var activityMap: [Int64: ActivitySummary] = [:]
-        var totalSeconds = 0
-        var totalSessions = 0
-
-        for weekly in weeklyBreakdown {
-            totalSeconds += weekly.totalSeconds
-            totalSessions += weekly.sessionCount
-            for actSummary in weekly.activities {
-                if var existing = activityMap[actSummary.activity.id!] {
-                    existing.totalSeconds += actSummary.totalSeconds
-                    existing.sessionCount += actSummary.sessionCount
-                    activityMap[actSummary.activity.id!] = existing
-                } else {
-                    activityMap[actSummary.activity.id!] = actSummary
-                }
-            }
-        }
-
-        // Flatten daily breakdowns from weekly summaries, filtered to this calendar month
+        // Flatten daily breakdowns from weekly summaries, filtered to this calendar month.
+        // This must happen first so totals and activities are derived from month-only data.
         var seenDates: Set<Date> = []
         var dailyBreakdown: [DailySummary] = []
         for weekly in weeklyBreakdown {
@@ -1652,6 +1634,26 @@ public final class PresentService: PresentAPI, Sendable {
             }
         }
         dailyBreakdown.sort { $0.date < $1.date }
+
+        // Aggregate totals and activities from filtered daily breakdowns only —
+        // weekly summaries can spill across month boundaries and inflate the numbers.
+        var activityMap: [Int64: ActivitySummary] = [:]
+        var totalSeconds = 0
+        var totalSessions = 0
+
+        for daily in dailyBreakdown {
+            totalSeconds += daily.totalSeconds
+            totalSessions += daily.sessionCount
+            for actSummary in daily.activities {
+                if var existing = activityMap[actSummary.activity.id!] {
+                    existing.totalSeconds += actSummary.totalSeconds
+                    existing.sessionCount += actSummary.sessionCount
+                    activityMap[actSummary.activity.id!] = existing
+                } else {
+                    activityMap[actSummary.activity.id!] = actSummary
+                }
+            }
+        }
 
         let activities = activityMap.values.sorted {
             if $0.totalSeconds != $1.totalSeconds { return $0.totalSeconds > $1.totalSeconds }
