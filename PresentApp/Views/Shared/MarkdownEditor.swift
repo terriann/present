@@ -4,6 +4,7 @@ import AppKit
 struct MarkdownEditor: NSViewRepresentable {
     @Binding var text: String
     var isEditable: Bool = true
+    var onCommit: (() -> Void)?
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSTextView.scrollablePlainDocumentContentTextView()
@@ -31,6 +32,7 @@ struct MarkdownEditor: NSViewRepresentable {
 
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         guard let textView = scrollView.documentView as? NSTextView else { return }
+        context.coordinator.onCommit = onCommit
         if textView.string != text {
             let selectedRanges = textView.selectedRanges
             textView.string = text
@@ -41,20 +43,26 @@ struct MarkdownEditor: NSViewRepresentable {
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text)
+        Coordinator(text: $text, onCommit: onCommit)
     }
 
     final class Coordinator: NSObject, NSTextViewDelegate {
         var text: Binding<String>
+        var onCommit: (() -> Void)?
 
-        init(text: Binding<String>) {
+        init(text: Binding<String>, onCommit: (() -> Void)?) {
             self.text = text
+            self.onCommit = onCommit
         }
 
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
             text.wrappedValue = textView.string
             applyHighlighting(to: textView)
+        }
+
+        func textDidEndEditing(_ notification: Notification) {
+            onCommit?()
         }
 
         // MARK: - List Auto-Continuation
