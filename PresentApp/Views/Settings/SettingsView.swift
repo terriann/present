@@ -123,12 +123,37 @@ struct GeneralSettingsTab: View {
             }
 
             Section("Appearance") {
-                Picker("Mode", selection: $appearanceMode) {
+                HStack(spacing: 0) {
                     ForEach(AppearanceMode.allCases, id: \.self) { mode in
-                        Text(mode.displayName).tag(mode)
+                        Button {
+                            appearanceMode = mode
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: mode.iconName)
+                                Text(mode.displayName)
+                            }
+                            .font(.subheadline)
+                            .padding(.vertical, 6)
+                            .frame(maxWidth: .infinity)
+                            .background {
+                                if appearanceMode == mode {
+                                    RoundedRectangle(cornerRadius: 5)
+                                        .fill(Color(nsColor: .controlBackgroundColor))
+                                        .shadow(color: .black.opacity(0.1), radius: 1, y: 0.5)
+                                        .padding(1)
+                                }
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(appearanceMode == mode ? .primary : .secondary)
                     }
                 }
-                .pickerStyle(.segmented)
+                .padding(2)
+                .background(
+                    RoundedRectangle(cornerRadius: 7)
+                        .fill(Color(nsColor: .separatorColor).opacity(0.2))
+                )
                 .onAppear { loadAppearanceMode() }
                 .onChange(of: appearanceMode) {
                     theme.appearanceMode = appearanceMode
