@@ -125,7 +125,7 @@ struct GeneralSettingsTab: View {
             Section("Appearance") {
                 Picker("Mode", selection: $appearanceMode) {
                     ForEach(AppearanceMode.allCases, id: \.self) { mode in
-                        Text(mode.displayName).tag(mode)
+                        Label(mode.displayName, systemImage: mode.iconName).tag(mode)
                     }
                 }
                 .pickerStyle(.segmented)
@@ -139,7 +139,9 @@ struct GeneralSettingsTab: View {
                         )
                     }
                 }
+            }
 
+            Section("Color Palette") {
                 ForEach(ColorPalette.allCases, id: \.self) { palette in
                     PaletteRow(
                         palette: palette,
