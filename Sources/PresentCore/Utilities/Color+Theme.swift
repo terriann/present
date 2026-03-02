@@ -16,11 +16,20 @@ public final class ThemeManager {
 
     public var appearanceMode: AppearanceMode = .system
 
-    /// Returns the `ColorScheme` override for `.preferredColorScheme()`.
-    /// `nil` means follow the system setting.
+    /// Whether the system is currently using dark mode.
+    /// Tracked by Observation so `preferredColorScheme` updates when the system toggles.
+    private(set) var systemIsDark: Bool = false
+
+    @ObservationIgnored
+    private var appearanceObservation: NSKeyValueObservation?
+
+    /// Returns the `ColorScheme` for `.preferredColorScheme()`.
+    /// Always explicit — never `nil` — to avoid the macOS transition glitch
+    /// where the title bar updates before the SwiftUI content when switching
+    /// between a forced mode and system default.
     public var preferredColorScheme: ColorScheme? {
         switch appearanceMode {
-        case .system: return nil
+        case .system: return systemIsDark ? .dark : .light
         case .light: return .light
         case .dark: return .dark
         }
@@ -35,7 +44,17 @@ public final class ThemeManager {
         }
     }
 
-    public init() {}
+    public init() {
+        let isDark = NSApp?.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        systemIsDark = isDark
+
+        appearanceObservation = NSApp?.observe(\.effectiveAppearance, options: [.new]) { [weak self] app, _ in
+            let nowDark = app.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            Task { @MainActor [weak self] in
+                self?.systemIsDark = nowDark
+            }
+        }
+    }
 
     // MARK: - Semantic Tokens
 
