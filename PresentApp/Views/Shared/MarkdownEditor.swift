@@ -4,6 +4,7 @@ import AppKit
 struct MarkdownEditor: NSViewRepresentable {
     @Binding var text: String
     var isEditable: Bool = true
+    var focusOnAppear: Bool = false
     var onCommit: (() -> Void)?
     var onEscape: (() -> Void)?
 
@@ -74,6 +75,13 @@ struct MarkdownEditor: NSViewRepresentable {
             context.coordinator.applyHighlighting(to: textView)
         }
         textView.isEditable = isEditable
+
+        if focusOnAppear && !context.coordinator.didFocus {
+            context.coordinator.didFocus = true
+            DispatchQueue.main.async {
+                textView.window?.makeFirstResponder(textView)
+            }
+        }
     }
 
     func makeCoordinator() -> Coordinator {
@@ -84,6 +92,7 @@ struct MarkdownEditor: NSViewRepresentable {
         var text: Binding<String>
         var onCommit: (() -> Void)?
         var onEscape: (() -> Void)?
+        var didFocus = false
 
         init(text: Binding<String>, onCommit: (() -> Void)?, onEscape: (() -> Void)?) {
             self.text = text

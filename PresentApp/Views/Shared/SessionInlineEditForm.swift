@@ -111,7 +111,7 @@ struct SessionInlineEditForm: View {
                 Text("Note")
                     .font(.fieldLabel)
                     .foregroundStyle(noteLabelColor)
-                MarkdownEditor(text: $noteText, onCommit: { saveNote() }, onEscape: {
+                MarkdownEditor(text: $noteText, focusOnAppear: true, onCommit: { saveNote() }, onEscape: {
                     if hasPendingChanges {
                         revertAll()
                     } else {
