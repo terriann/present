@@ -20,10 +20,8 @@ struct SessionInlineEditForm: View {
     @State private var noteText: String
     @State private var errorMessage: String?
     @State private var errorFields: Set<ErrorField> = []
-    @FocusState private var focusedField: FocusField?
 
     private enum ErrorField: Hashable { case activity, start, end, note }
-    private enum FocusField: Hashable { case note }
 
     private var isActive: Bool {
         session.state == .running || session.state == .paused
@@ -113,13 +111,12 @@ struct SessionInlineEditForm: View {
                 Text("Note")
                     .font(.fieldLabel)
                     .foregroundStyle(noteLabelColor)
-                TextField("Add a note...", text: $noteText)
-                    .textFieldStyle(.roundedBorder)
-                    .focused($focusedField, equals: .note)
-                    .onSubmit { saveNote() }
-            }
-            .onChange(of: focusedField) { _, newValue in
-                if newValue != .note { saveNote() }
+                MarkdownEditor(text: $noteText, onCommit: { saveNote() })
+                    .frame(minHeight: 60, maxHeight: 100)
+
+                if let extracted = liveTicketExtraction {
+                    TicketBadge(ticketId: extracted.ticketId, link: extracted.url)
+                }
             }
 
             // Error display
@@ -131,9 +128,6 @@ struct SessionInlineEditForm: View {
         }
         .padding(Constants.spacingCard)
         .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
-        .onAppear {
-            focusedField = .note
-        }
         .onKeyPress(.escape) {
             if hasPendingChanges {
                 revertAll()
@@ -147,9 +141,11 @@ struct SessionInlineEditForm: View {
     // MARK: - Helpers
 
     private var noteLabelColor: Color {
-        if errorFields.contains(.note) { return theme.alert }
-        if focusedField == .note { return theme.accent }
-        return .secondary
+        errorFields.contains(.note) ? theme.alert : .secondary
+    }
+
+    private var liveTicketExtraction: (url: String, ticketId: String)? {
+        TicketExtractor.extractFirstTicketURL(from: noteText)
     }
 
     private var hasPendingChanges: Bool {
