@@ -31,6 +31,11 @@ struct ReportExternalIdChart: View {
 
     var body: some View {
         let groups = externalIdGroups
+        // DEBUG: chart crash investigation
+        if !groups.isEmpty {
+            let extDomain = groups.map(\.externalId)
+            print("📊 [ExternalId] rendering: \(groups.count) groups, domain=\(extDomain)")
+        }
         guard !groups.isEmpty else { return AnyView(EmptyView()) }
         let combinedTotal = groups.reduce(0) { $0 + $1.totalSeconds }
         let palette = ThemeManager.chartColors(for: theme.activePalette)

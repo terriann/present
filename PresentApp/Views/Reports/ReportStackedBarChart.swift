@@ -10,6 +10,7 @@ struct ReportStackedBarChart: View {
     let activities: [ActivitySummary]
     let chartColorDomain: [String]
     let chartColorRange: [Color]
+    let activityColorMap: [String: Color]
     let weekendDayLabels: Set<String>
 
     @Environment(ThemeManager.self) private var theme
@@ -44,24 +45,48 @@ struct ReportStackedBarChart: View {
     }
 
     var body: some View {
-        ChartCard(title: "Time by \(selectedPeriod.timeLabel)") {
-            stackedBarChart
-            barChartLegend
-        }
-        .onChange(of: hasActiveEntries) {
-            if hasActiveEntries {
-                pulseState.start(reduceMotion: reduceMotion)
-            } else {
+        // DEBUG: chart crash investigation
+        let _ = {
+            let entryActivities = Set(entries.map(\.activity))
+            let domainSet = Set(chartColorDomain)
+            let missing = entryActivities.subtracting(domainSet)
+            if !missing.isEmpty {
+                print("⚠️ [StackedBar] entries have activities NOT in domain: \(missing)")
+                print("  domain(\(chartColorDomain.count)): \(chartColorDomain)")
+                print("  range(\(chartColorRange.count)): \(chartColorRange.count) colors")
+                print("  entryActivities: \(entryActivities.sorted())")
+            }
+            if chartColorDomain.count != chartColorRange.count {
+                print("⚠️ [StackedBar] domain/range COUNT MISMATCH: domain=\(chartColorDomain.count) range=\(chartColorRange.count)")
+            }
+            if !entries.isEmpty {
+                print("📊 [StackedBar] rendering: \(entries.count) entries, domain=\(chartColorDomain), range=\(chartColorRange.count) colors")
+            }
+        }()
+
+        // Guard: chartForegroundStyleScale crashes on empty domain (FB…).
+        // During reload transitions the parent may clear state, leaving domain empty
+        // while the attribute graph still evaluates this view.
+        if !chartColorDomain.isEmpty {
+            ChartCard(title: "Time by \(selectedPeriod.timeLabel)") {
+                stackedBarChart
+                barChartLegend
+            }
+            .onChange(of: hasActiveEntries) {
+                if hasActiveEntries {
+                    pulseState.start(reduceMotion: reduceMotion)
+                } else {
+                    pulseState.stop()
+                }
+            }
+            .onAppear {
+                if hasActiveEntries {
+                    pulseState.start(reduceMotion: reduceMotion)
+                }
+            }
+            .onDisappear {
                 pulseState.stop()
             }
-        }
-        .onAppear {
-            if hasActiveEntries {
-                pulseState.start(reduceMotion: reduceMotion)
-            }
-        }
-        .onDisappear {
-            pulseState.stop()
         }
     }
 
@@ -153,9 +178,8 @@ struct ReportStackedBarChart: View {
     // MARK: - Legend
 
     private var barChartLegend: some View {
-        let palette = ThemeManager.chartColors(for: theme.activePalette)
-        let items = activities.enumerated().map { index, summary in
-            (label: summary.activity.title, color: palette[index % palette.count])
+        let items = chartColorDomain.map { title in
+            (label: title, color: activityColorMap[title] ?? .secondary)
         }
         return HoverableChartLegend(
             items: items,
@@ -184,7 +208,6 @@ struct ReportStackedBarChart: View {
     private func barTooltip(for label: String) -> some View {
         let matching = entries.filter { $0.label == label }
         let bucketTotal = matching.reduce(0.0) { $0 + $1.value }
-        let palette = ThemeManager.chartColors(for: theme.activePalette)
 
         return ChartTooltip {
             Text(tooltipLabels[label] ?? label)
@@ -192,10 +215,8 @@ struct ReportStackedBarChart: View {
 
             ForEach(matching, id: \.id) { entry in
                 HStack(spacing: 6) {
-                    let color = activities.firstIndex(where: { $0.activity.title == entry.activity })
-                        .map { palette[$0 % palette.count] } ?? .secondary
                     Circle()
-                        .fill(color)
+                        .fill(activityColorMap[entry.activity] ?? .secondary)
                         .frame(width: 8, height: 8)
                     Text(entry.activity)
                         .font(.caption)

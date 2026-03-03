@@ -348,6 +348,8 @@ struct ActivitySessionCard: View {
                     .foregroundStyle(.secondary)
             }
 
+            sessionMetadataBadges(session)
+
             Spacer()
             activeDurationLabel
         }
@@ -378,6 +380,8 @@ struct ActivitySessionCard: View {
                 .foregroundStyle(.secondary)
             }
 
+            sessionMetadataBadges(session)
+
             Spacer()
 
             activeDurationLabel
@@ -406,6 +410,8 @@ struct ActivitySessionCard: View {
                 .foregroundStyle(.secondary)
             }
 
+            sessionMetadataBadges(session)
+
             Spacer()
 
             sessionDurationLabel(session)
@@ -427,6 +433,8 @@ struct ActivitySessionCard: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
+
+            sessionMetadataBadges(session)
 
             Spacer()
 
@@ -621,6 +629,20 @@ struct ActivitySessionCard: View {
                 .flatMap { target in session.durationSeconds.map { $0 >= target * 60 } } ?? false
         default:
             return false
+        }
+    }
+
+    /// Ticket badge and note indicator shown between session details and the duration label.
+    @ViewBuilder
+    private func sessionMetadataBadges(_ session: Session) -> some View {
+        TicketBadge(ticketId: session.ticketId, link: session.link)
+
+        if session.note != nil {
+            Image(systemName: "doc.text")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .accessibilityLabel("Has note")
+                .help(session.note ?? "")
         }
     }
 

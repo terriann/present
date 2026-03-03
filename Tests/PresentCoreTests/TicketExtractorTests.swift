@@ -160,4 +160,54 @@ struct TicketExtractorTests {
         let result = TicketExtractor.extractTicketId(from: "  https://linear.app/team/issue/LIN-99  ")
         #expect(result == "LIN-99")
     }
+
+    // MARK: - extractFirstTicketURL (text scanning)
+
+    @Test func extractFirstTicketURLPlainUrl() {
+        let text = "Working on https://myorg.atlassian.net/browse/PROJ-42 today"
+        let result = TicketExtractor.extractFirstTicketURL(from: text)
+        #expect(result?.url == "https://myorg.atlassian.net/browse/PROJ-42")
+        #expect(result?.ticketId == "PROJ-42")
+    }
+
+    @Test func extractFirstTicketURLMarkdownLink() {
+        let text = "See [issue](https://github.com/org/repo/issues/99) for details"
+        let result = TicketExtractor.extractFirstTicketURL(from: text)
+        #expect(result?.url == "https://github.com/org/repo/issues/99")
+        #expect(result?.ticketId == "org/repo#99")
+    }
+
+    @Test func extractFirstTicketURLMultipleUrlsFirstWins() {
+        let text = """
+        Links:
+        https://linear.app/team/issue/LIN-1
+        https://myorg.atlassian.net/browse/PROJ-2
+        """
+        let result = TicketExtractor.extractFirstTicketURL(from: text)
+        #expect(result?.ticketId == "LIN-1")
+    }
+
+    @Test func extractFirstTicketURLNoUrls() {
+        let text = "Just some plain notes about work"
+        let result = TicketExtractor.extractFirstTicketURL(from: text)
+        #expect(result == nil)
+    }
+
+    @Test func extractFirstTicketURLOnlyNonTicketUrls() {
+        let text = "Check out https://example.com and https://google.com"
+        let result = TicketExtractor.extractFirstTicketURL(from: text)
+        #expect(result == nil)
+    }
+
+    @Test func extractFirstTicketURLEmptyText() {
+        let result = TicketExtractor.extractFirstTicketURL(from: "")
+        #expect(result == nil)
+    }
+
+    @Test func extractFirstTicketURLSkipsNonTicketUrl() {
+        let text = "See https://example.com and https://github.com/org/repo/issues/42"
+        let result = TicketExtractor.extractFirstTicketURL(from: text)
+        #expect(result?.url == "https://github.com/org/repo/issues/42")
+        #expect(result?.ticketId == "org/repo#42")
+    }
 }

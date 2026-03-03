@@ -251,8 +251,10 @@ public final class PresentService: PresentAPI, Sendable {
             noteChange = (false, nil)
         }
 
+        // Resolve link: explicit link wins, otherwise auto-extract from note
         let linkChange: (apply: Bool, link: String?, ticketId: String?)
         if let link = input.link {
+            // Link explicitly provided
             if link.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 linkChange = (true, nil, nil)
             } else {
@@ -260,6 +262,14 @@ public final class PresentService: PresentAPI, Sendable {
                 try Validation.validateLink(sanitized)
                 let extracted = TicketExtractor.extractTicketId(from: sanitized)
                 linkChange = (true, sanitized, extracted)
+            }
+        } else if noteChange.apply {
+            // Link not provided but note changed — auto-extract from note
+            if let noteValue = noteChange.value, let extracted = TicketExtractor.extractFirstTicketURL(from: noteValue) {
+                linkChange = (true, extracted.url, extracted.ticketId)
+            } else {
+                // Note cleared or no ticket URL found — clear link and ticketId
+                linkChange = (true, nil, nil)
             }
         } else {
             linkChange = (false, nil, nil)
@@ -782,13 +792,23 @@ public final class PresentService: PresentAPI, Sendable {
 
     public func createActivity(_ input: CreateActivityInput) async throws -> Activity {
         let title = try Validation.sanitize(input.title, fieldName: "Activity title", maxLength: Constants.maxTitleLength)
-        let externalId = try Validation.sanitizeOptional(input.externalId, fieldName: "External ID", maxLength: Constants.maxExternalIdLength)
         let notes = try Validation.sanitizeOptional(input.notes, fieldName: "Notes", maxLength: Constants.maxNotesLength)
 
-        if let link = input.link, !link.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            try Validation.validateLink(link)
+        // Resolve link and externalId: explicit link wins, otherwise auto-extract from notes
+        let resolvedLink: String?
+        let resolvedExternalId: String?
+        if let explicitLink = input.link, !explicitLink.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            try Validation.validateLink(explicitLink)
+            resolvedLink = try Validation.sanitizeOptional(explicitLink, fieldName: "Link", maxLength: Constants.maxLinkLength)
+            resolvedExternalId = try Validation.sanitizeOptional(input.externalId, fieldName: "External ID", maxLength: Constants.maxExternalIdLength)
+        } else if input.link == nil, let notes, let extracted = TicketExtractor.extractFirstTicketURL(from: notes) {
+            // Auto-extract from notes when link is not explicitly provided
+            resolvedLink = extracted.url
+            resolvedExternalId = extracted.ticketId
+        } else {
+            resolvedLink = nil
+            resolvedExternalId = try Validation.sanitizeOptional(input.externalId, fieldName: "External ID", maxLength: Constants.maxExternalIdLength)
         }
-        let link = try Validation.sanitizeOptional(input.link, fieldName: "Link", maxLength: Constants.maxLinkLength)
 
         return try await dbWriter.write { db in
             let activeCount = try Activity
@@ -802,8 +822,8 @@ public final class PresentService: PresentAPI, Sendable {
             let now = Date()
             var activity = Activity(
                 title: title,
-                externalId: externalId,
-                link: link,
+                externalId: resolvedExternalId,
+                link: resolvedLink,
                 notes: notes,
                 createdAt: now,
                 updatedAt: now
@@ -829,23 +849,44 @@ public final class PresentService: PresentAPI, Sendable {
         } else {
             nil
         }
-        if let link = input.link, !link.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            try Validation.validateLink(link)
-        }
-        let validatedExternalId: String?? = if let externalId = input.externalId {
-            try Validation.sanitizeOptional(externalId, fieldName: "External ID", maxLength: Constants.maxExternalIdLength)
-        } else {
-            nil as String??
-        }
-        let validatedLink: String?? = if let link = input.link {
-            try Validation.sanitizeOptional(link, fieldName: "Link", maxLength: Constants.maxLinkLength)
-        } else {
-            nil as String??
-        }
         let validatedNotes: String?? = if let notes = input.notes {
             try Validation.sanitizeOptional(notes, fieldName: "Notes", maxLength: Constants.maxNotesLength)
         } else {
             nil as String??
+        }
+
+        // Resolve link and externalId: explicit link wins, otherwise auto-extract from notes
+        let resolvedLink: String??
+        let resolvedExternalId: String??
+        if let explicitLink = input.link {
+            // Link explicitly provided (possibly empty to clear)
+            if !explicitLink.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                try Validation.validateLink(explicitLink)
+            }
+            resolvedLink = try Validation.sanitizeOptional(explicitLink, fieldName: "Link", maxLength: Constants.maxLinkLength)
+            resolvedExternalId = if let externalId = input.externalId {
+                try Validation.sanitizeOptional(externalId, fieldName: "External ID", maxLength: Constants.maxExternalIdLength)
+            } else {
+                nil as String??
+            }
+        } else if let notesOuter = validatedNotes {
+            // Link not provided — auto-extract from notes if notes changed
+            if let notes = notesOuter, let extracted = TicketExtractor.extractFirstTicketURL(from: notes) {
+                resolvedLink = extracted.url as String?
+                resolvedExternalId = extracted.ticketId as String?
+            } else {
+                // Notes cleared or no ticket URL found — clear link and externalId
+                resolvedLink = nil as String?
+                resolvedExternalId = nil as String?
+            }
+        } else {
+            // Neither link nor notes changed — don't touch them
+            resolvedLink = nil as String??
+            resolvedExternalId = if let externalId = input.externalId {
+                try Validation.sanitizeOptional(externalId, fieldName: "External ID", maxLength: Constants.maxExternalIdLength)
+            } else {
+                nil as String??
+            }
         }
 
         return try await dbWriter.write { db in
@@ -859,10 +900,10 @@ public final class PresentService: PresentAPI, Sendable {
             if let title = validatedTitle {
                 activity.title = title
             }
-            if let externalId = validatedExternalId {
+            if let externalId = resolvedExternalId {
                 activity.externalId = externalId
             }
-            if let link = validatedLink {
+            if let link = resolvedLink {
                 activity.link = link
             }
             if let notes = validatedNotes {
@@ -1580,26 +1621,8 @@ public final class PresentService: PresentAPI, Sendable {
             current = nextWeek
         }
 
-        // Aggregate
-        var activityMap: [Int64: ActivitySummary] = [:]
-        var totalSeconds = 0
-        var totalSessions = 0
-
-        for weekly in weeklyBreakdown {
-            totalSeconds += weekly.totalSeconds
-            totalSessions += weekly.sessionCount
-            for actSummary in weekly.activities {
-                if var existing = activityMap[actSummary.activity.id!] {
-                    existing.totalSeconds += actSummary.totalSeconds
-                    existing.sessionCount += actSummary.sessionCount
-                    activityMap[actSummary.activity.id!] = existing
-                } else {
-                    activityMap[actSummary.activity.id!] = actSummary
-                }
-            }
-        }
-
-        // Flatten daily breakdowns from weekly summaries, filtered to this calendar month
+        // Flatten daily breakdowns from weekly summaries, filtered to this calendar month.
+        // This must happen first so totals and activities are derived from month-only data.
         var seenDates: Set<Date> = []
         var dailyBreakdown: [DailySummary] = []
         for weekly in weeklyBreakdown {
@@ -1611,6 +1634,26 @@ public final class PresentService: PresentAPI, Sendable {
             }
         }
         dailyBreakdown.sort { $0.date < $1.date }
+
+        // Aggregate totals and activities from filtered daily breakdowns only —
+        // weekly summaries can spill across month boundaries and inflate the numbers.
+        var activityMap: [Int64: ActivitySummary] = [:]
+        var totalSeconds = 0
+        var totalSessions = 0
+
+        for daily in dailyBreakdown {
+            totalSeconds += daily.totalSeconds
+            totalSessions += daily.sessionCount
+            for actSummary in daily.activities {
+                if var existing = activityMap[actSummary.activity.id!] {
+                    existing.totalSeconds += actSummary.totalSeconds
+                    existing.sessionCount += actSummary.sessionCount
+                    activityMap[actSummary.activity.id!] = existing
+                } else {
+                    activityMap[actSummary.activity.id!] = actSummary
+                }
+            }
+        }
 
         let activities = activityMap.values.sorted {
             if $0.totalSeconds != $1.totalSeconds { return $0.totalSeconds > $1.totalSeconds }

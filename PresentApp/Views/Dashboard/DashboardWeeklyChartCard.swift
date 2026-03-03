@@ -4,6 +4,8 @@ import PresentCore
 
 struct DashboardWeeklyChartCard: View {
     let activityColorMap: [String: Color]
+    let chartColorDomain: [String]
+    let chartColorRange: [Color]
     let weekly: WeeklySummary
     let hasActiveTodaySession: Bool
     let todayPortionSeconds: Int
@@ -18,39 +20,32 @@ struct DashboardWeeklyChartCard: View {
     /// Drives the gentle pulse on the active session's bar segment.
     @State private var pulseState = ActivePulseState()
 
-    private var legendColorInfo: (domain: [String], range: [Color]) {
-        let entries = weeklyBarEntries()
-        var allTitles = Set(weekly.activities.map(\.activity.title))
-        for entry in entries { allTitles.insert(entry.activity) }
-        let domain = allTitles.sorted()
-        let range = domain.map { activityColorMap[$0] ?? .secondary }
-        return (domain, range)
-    }
-
     var body: some View {
-        let entries = weeklyBarEntries()
-        let domain = weekdayLabels()
-        let tooltipLabels = weeklyTooltipLabels(weekStartDay: appState.weekStartDay, referenceDate: Date())
-        let colorInfo = legendColorInfo
+        // Guard: chartForegroundStyleScale crashes on empty domain (FB…).
+        if !chartColorDomain.isEmpty {
+            let entries = weeklyBarEntries()
+            let domain = weekdayLabels()
+            let tooltipLabels = weeklyTooltipLabels(weekStartDay: appState.weekStartDay, referenceDate: Date())
 
-        ChartCard(title: "Your Week", subtitle: weekRangeTitle) {
-            weeklyBarChart(entries: entries, domain: domain, activities: weekly.activities, tooltipLabels: tooltipLabels)
-            weeklyBarChartLegend(colorDomain: colorInfo.domain, colorRange: colorInfo.range)
-        }
-        .onChange(of: hasActiveTodaySession) {
-            if hasActiveTodaySession {
-                pulseState.start(reduceMotion: reduceMotion)
-            } else {
+            ChartCard(title: "Your Week", subtitle: weekRangeTitle) {
+                weeklyBarChart(entries: entries, domain: domain, activities: weekly.activities, tooltipLabels: tooltipLabels)
+                weeklyBarChartLegend
+            }
+            .onChange(of: hasActiveTodaySession) {
+                if hasActiveTodaySession {
+                    pulseState.start(reduceMotion: reduceMotion)
+                } else {
+                    pulseState.stop()
+                }
+            }
+            .onAppear {
+                if hasActiveTodaySession {
+                    pulseState.start(reduceMotion: reduceMotion)
+                }
+            }
+            .onDisappear {
                 pulseState.stop()
             }
-        }
-        .onAppear {
-            if hasActiveTodaySession {
-                pulseState.start(reduceMotion: reduceMotion)
-            }
-        }
-        .onDisappear {
-            pulseState.stop()
         }
     }
 
@@ -68,15 +63,6 @@ struct DashboardWeeklyChartCard: View {
     // MARK: - Bar Chart
 
     private func weeklyBarChart(entries: [DashboardBarEntry], domain: [String], activities: [ActivitySummary], tooltipLabels: [String: String]) -> some View {
-        // Include activity titles from entries too — a just-started session may
-        // inject a bar entry before the weekly summary refreshes.
-        var allTitles = Set(activities.map(\.activity.title))
-        for entry in entries {
-            allTitles.insert(entry.activity)
-        }
-        let colorDomain = allTitles.sorted()
-        let colorRange = colorDomain.map { activityColorMap[$0] ?? .secondary }
-
         // Compute y-axis domain
         var labelTotals: [String: Double] = [:]
         for entry in entries {
@@ -108,7 +94,7 @@ struct DashboardWeeklyChartCard: View {
                 .opacity(weeklyBarEntryOpacity(entry: entry))
             }
         }
-        .chartForegroundStyleScale(domain: colorDomain, range: colorRange)
+        .chartForegroundStyleScale(domain: chartColorDomain, range: chartColorRange)
         .chartXScale(domain: domain)
         .chartYScale(domain: yDomain)
         .chartYAxis {
@@ -219,8 +205,8 @@ struct DashboardWeeklyChartCard: View {
 
     // MARK: - Legend
 
-    private func weeklyBarChartLegend(colorDomain: [String], colorRange: [Color]) -> some View {
-        let items = zip(colorDomain, colorRange).map { (label: $0, color: $1) }
+    private var weeklyBarChartLegend: some View {
+        let items = zip(chartColorDomain, chartColorRange).map { (label: $0, color: $1) }
         return HoverableChartLegend(
             items: items,
             hoveredLabel: $hoveredBarActivity

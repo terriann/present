@@ -3,7 +3,6 @@ import PresentCore
 
 struct SessionRow: View {
     @Environment(ThemeManager.self) private var theme
-    @Environment(\.openURL) private var openURL
 
     let session: Session
     let activityTitle: String
@@ -25,7 +24,8 @@ struct SessionRow: View {
                 }
             }
 
-            ticketBadge
+            TicketBadge(ticketId: session.ticketId, link: session.link)
+            noteIndicator
 
             Spacer()
 
@@ -40,41 +40,16 @@ struct SessionRow: View {
         .padding(.vertical, 2)
     }
 
-    // MARK: - Ticket Badge
+    // MARK: - Metadata Indicators
 
     @ViewBuilder
-    private var ticketBadge: some View {
-        if let ticketId = session.ticketId, let link = session.link, let url = URL(string: link) {
-            Button {
-                openURL(url)
-            } label: {
-                Text(ticketId)
-                    .font(.caption)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(theme.accent.opacity(0.12), in: Capsule())
-                    .foregroundStyle(theme.accent)
-            }
-            .buttonStyle(.plain)
-            .help(link)
-        } else if let link = session.link, let url = URL(string: link) {
-            Button {
-                openURL(url)
-            } label: {
-                Text(url.host ?? link)
-                    .font(.caption)
-                    .lineLimit(1)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(theme.accent.opacity(0.12), in: Capsule())
-                    .foregroundStyle(theme.accent)
-            }
-            .buttonStyle(.plain)
-            .help(link)
-        } else if session.note != nil {
+    private var noteIndicator: some View {
+        if let note = session.note {
             Image(systemName: "doc.text")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .accessibilityLabel("Has note")
+                .help(note)
         }
     }
 

@@ -52,6 +52,7 @@ struct ReportsView: View {
                         activities: activities,
                         chartColorDomain: chartColorDomain,
                         chartColorRange: chartColorRange,
+                        activityColorMap: activityColorMap,
                         weekendDayLabels: weekendDayLabels
                     )
                     HStack(alignment: .top, spacing: 16) {
@@ -60,6 +61,7 @@ struct ReportsView: View {
                             totalSeconds: displayTotalSeconds,
                             chartColorDomain: chartColorDomain,
                             chartColorRange: chartColorRange,
+                            activityColorMap: activityColorMap,
                             activeActivityTitle: activeActivityTitle
                         )
                         .frame(maxWidth: .infinity)
@@ -69,6 +71,7 @@ struct ReportsView: View {
                                 activities: displayActivities,
                                 chartColorDomain: chartColorDomain,
                                 chartColorRange: chartColorRange,
+                                activityColorMap: activityColorMap,
                                 activeTagNames: activeTagNames
                             )
                             .frame(maxWidth: .infinity)
@@ -433,12 +436,26 @@ struct ReportsView: View {
     // MARK: - Chart Colors
 
     private var chartColorDomain: [String] {
-        var titles = activities.map(\.activity.title)
+        var titles = Set(activities.map(\.activity.title))
         // Include active activity so chart color scale covers it when injected into entries.
-        if let activity = activeActivity, !titles.contains(activity.title) {
-            titles.append(activity.title)
+        if let activity = activeActivity {
+            titles.insert(activity.title)
         }
-        return titles
+        // Include any activity that appears in bar entries — dailyBreakdown can contain
+        // activities not present in the top-level summary (e.g. cross-week boundaries).
+        // Without this, chartForegroundStyleScale crashes on an unknown domain value.
+        for entry in barEntries {
+            titles.insert(entry.activity)
+        }
+        // Include activities from tag summaries — tagActivitySummary is a separate
+        // service call that can return activities absent from the period summary
+        // (e.g. monthly summary aggregates weekly boundaries differently).
+        for tag in displayTagActivitySummaries {
+            for summary in tag.activities {
+                titles.insert(summary.activity.title)
+            }
+        }
+        return titles.sorted()
     }
 
     private var chartColorRange: [Color] {

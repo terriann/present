@@ -4,10 +4,34 @@ import AppKit
 struct MarkdownEditor: NSViewRepresentable {
     @Binding var text: String
     var isEditable: Bool = true
+    var focusOnAppear: Bool = false
+    var onCommit: (() -> Void)?
+    var onEscape: (() -> Void)?
 
     func makeNSView(context: Context) -> NSScrollView {
-        let scrollView = NSTextView.scrollablePlainDocumentContentTextView()
-        let textView = scrollView.documentView as! NSTextView
+        // Build scroll view + text view from scratch so we can use our CommittableTextView subclass.
+        // NSTextView.scrollablePlainDocumentContentTextView() creates a standard NSTextView that
+        // can't be swapped out, so we replicate its setup here.
+        let scrollView = NSScrollView()
+        scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = false
+        scrollView.autohidesScrollers = true
+        scrollView.drawsBackground = false
+
+        let textStorage = NSTextStorage()
+        let layoutManager = NSLayoutManager()
+        textStorage.addLayoutManager(layoutManager)
+
+        let textContainer = NSTextContainer()
+        textContainer.widthTracksTextView = true
+        textContainer.heightTracksTextView = false
+        layoutManager.addTextContainer(textContainer)
+
+        let textView = CommittableTextView(frame: .zero, textContainer: textContainer)
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.autoresizingMask = [.width]
+        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
 
         textView.delegate = context.coordinator
         textView.isEditable = isEditable
@@ -21,8 +45,14 @@ struct MarkdownEditor: NSViewRepresentable {
         textView.textColor = NSColor.textColor
         textView.backgroundColor = NSColor.textBackgroundColor
         textView.textContainerInset = NSSize(width: 8, height: 8)
+        textView.isAutomaticLinkDetectionEnabled = false
+        let coordinator = context.coordinator
+        textView.onResignFirstResponder = { [weak coordinator] in
+            coordinator?.onCommit?()
+        }
 
         textView.string = text
+        scrollView.documentView = textView
         context.coordinator.applyHighlighting(to: textView)
 
         return scrollView
@@ -30,6 +60,14 @@ struct MarkdownEditor: NSViewRepresentable {
 
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         guard let textView = scrollView.documentView as? NSTextView else { return }
+        context.coordinator.onCommit = onCommit
+        context.coordinator.onEscape = onEscape
+        if let committable = textView as? CommittableTextView {
+            let coordinator = context.coordinator
+            committable.onResignFirstResponder = { [weak coordinator] in
+                coordinator?.onCommit?()
+            }
+        }
         if textView.string != text {
             let selectedRanges = textView.selectedRanges
             textView.string = text
@@ -37,17 +75,29 @@ struct MarkdownEditor: NSViewRepresentable {
             context.coordinator.applyHighlighting(to: textView)
         }
         textView.isEditable = isEditable
+
+        if focusOnAppear && !context.coordinator.didFocus {
+            context.coordinator.didFocus = true
+            DispatchQueue.main.async {
+                textView.window?.makeFirstResponder(textView)
+            }
+        }
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text)
+        Coordinator(text: $text, onCommit: onCommit, onEscape: onEscape)
     }
 
     final class Coordinator: NSObject, NSTextViewDelegate {
         var text: Binding<String>
+        var onCommit: (() -> Void)?
+        var onEscape: (() -> Void)?
+        var didFocus = false
 
-        init(text: Binding<String>) {
+        init(text: Binding<String>, onCommit: (() -> Void)?, onEscape: (() -> Void)?) {
             self.text = text
+            self.onCommit = onCommit
+            self.onEscape = onEscape
         }
 
         func textDidChange(_ notification: Notification) {
@@ -59,6 +109,13 @@ struct MarkdownEditor: NSViewRepresentable {
         // MARK: - List Auto-Continuation
 
         func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+            if commandSelector == #selector(NSResponder.cancelOperation(_:)) {
+                if let onEscape {
+                    onEscape()
+                    return true
+                }
+                return false
+            }
             guard commandSelector == #selector(NSResponder.insertNewline(_:)) else {
                 return false
             }
@@ -102,7 +159,7 @@ struct MarkdownEditor: NSViewRepresentable {
         private func matchListPrefix(_ line: String) -> ListMatch? {
             // Checkbox: "- [ ] " or "- [x] " or "- [X] "
             if let range = line.range(of: #"^(\s*)- \[[ xX]\] "#, options: .regularExpression) {
-                let indent = String(line[line.startIndex..<line.firstIndex(of: "-")!])
+                let indent = String(line.prefix(while: { $0 == " " || $0 == "\t" }))
                 let content = String(line[range.upperBound...])
                 return ListMatch(contentAfterPrefix: content, nextPrefix: "\(indent)- [ ] ")
             }
@@ -174,9 +231,9 @@ struct MarkdownEditor: NSViewRepresentable {
                             .font: NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
                         ])
 
-            // Links [text](url)
-            applyPattern(#"\[([^\]]+)\]\([^\)]+\)"#, to: textStorage, in: lines,
-                        attributes: [.foregroundColor: NSColor.linkColor])
+            // Links [text](url) — apply .link attribute for clickable links
+            textStorage.removeAttribute(.link, range: fullRange)
+            applyLinkAttributes(to: textStorage, in: lines)
 
             // Checklist items - [ ] and - [x]
             applyPattern(#"^- \[[ xX]\]"#, to: textStorage, in: lines,
@@ -198,6 +255,26 @@ struct MarkdownEditor: NSViewRepresentable {
             textStorage.endEditing()
         }
 
+        func textView(_ textView: NSTextView, clickedOnLink link: Any, at charIndex: Int) -> Bool {
+            guard let url = link as? URL else { return false }
+            NSWorkspace.shared.open(url)
+            return true
+        }
+
+        private func applyLinkAttributes(to textStorage: NSTextStorage, in string: NSString) {
+            let pattern = #"\[([^\]]+)\]\(([^\)]+)\)"#
+            guard let regex = try? NSRegularExpression(pattern: pattern, options: [.anchorsMatchLines]) else { return }
+            let fullRange = NSRange(location: 0, length: string.length)
+            regex.enumerateMatches(in: string as String, range: fullRange) { match, _, _ in
+                guard let matchRange = match?.range,
+                      let urlRange = match?.range(at: 2) else { return }
+                let urlString = string.substring(with: urlRange)
+                if let url = URL(string: urlString) {
+                    textStorage.addAttribute(.link, value: url, range: matchRange)
+                }
+            }
+        }
+
         private func applyPattern(_ pattern: String, to textStorage: NSTextStorage, in string: NSString,
                                   attributes: [NSAttributedString.Key: Any]) {
             guard let regex = try? NSRegularExpression(pattern: pattern, options: [.anchorsMatchLines]) else { return }
@@ -207,6 +284,62 @@ struct MarkdownEditor: NSViewRepresentable {
                     textStorage.addAttributes(attributes, range: range)
                 }
             }
+        }
+    }
+}
+
+// MARK: - CommittableTextView
+
+/// NSTextView subclass that fires a callback when it loses first responder (blur).
+///
+/// In macOS, clicking on non-interactive SwiftUI areas (backgrounds, labels) doesn't cause
+/// the current first responder to resign. This subclass installs a click-outside monitor
+/// when it becomes first responder, forcing a resign when the user clicks outside the
+/// editor's scroll area.
+private final class CommittableTextView: NSTextView {
+    var onResignFirstResponder: (() -> Void)?
+    private var clickMonitor: Any?
+
+    override func becomeFirstResponder() -> Bool {
+        let became = super.becomeFirstResponder()
+        if became { installClickOutsideMonitor() }
+        return became
+    }
+
+    override func resignFirstResponder() -> Bool {
+        let resigned = super.resignFirstResponder()
+        if resigned {
+            removeClickOutsideMonitor()
+            onResignFirstResponder?()
+        }
+        return resigned
+    }
+
+    private func installClickOutsideMonitor() {
+        removeClickOutsideMonitor()
+        clickMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown]) { [weak self] event in
+            guard let self else { return event }
+            // Use the enclosing scroll view bounds so clicks on scrollbar or empty
+            // space below text don't count as "outside" the editor area.
+            let container = self.enclosingScrollView ?? self
+            let point = container.convert(event.locationInWindow, from: nil)
+            if !container.bounds.contains(point) {
+                self.window?.makeFirstResponder(nil)
+            }
+            return event
+        }
+    }
+
+    private func removeClickOutsideMonitor() {
+        if let monitor = clickMonitor {
+            NSEvent.removeMonitor(monitor)
+            clickMonitor = nil
+        }
+    }
+
+    deinit {
+        MainActor.assumeIsolated {
+            removeClickOutsideMonitor()
         }
     }
 }

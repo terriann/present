@@ -14,8 +14,6 @@ struct ActivitiesFormSheet: View {
     let mode: ActivitiesFormMode
 
     @State private var title = ""
-    @State private var externalId = ""
-    @State private var link = ""
     @State private var notes = ""
     @State private var errorMessage: String?
     @FocusState private var isTitleFocused: Bool
@@ -29,12 +27,13 @@ struct ActivitiesFormSheet: View {
                 TextField("Title", text: $title)
                     .focused($isTitleFocused)
 
-                TextField("External ID", text: $externalId)
-
-                TextField("Link (URL)", text: $link)
-
-                TextField("Notes", text: $notes, axis: .vertical)
-                    .lineLimit(3...6)
+                VStack(alignment: .leading, spacing: 4) {
+                    TextField("Notes", text: $notes, axis: .vertical)
+                        .lineLimit(3...6)
+                    Text("Supports Markdown formatting")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
             .formStyle(.grouped)
 
@@ -61,8 +60,6 @@ struct ActivitiesFormSheet: View {
         .onAppear {
             if case .edit(let activity) = mode {
                 title = activity.title
-                externalId = activity.externalId ?? ""
-                link = activity.link ?? ""
                 notes = activity.notes ?? ""
             }
             isTitleFocused = true
@@ -77,12 +74,11 @@ struct ActivitiesFormSheet: View {
     private func save() async {
         do {
             if case .edit(let activity) = mode {
+                guard let activityId = activity.id else { return }
                 _ = try await appState.service.updateActivity(
-                    id: activity.id!,
+                    id: activityId,
                     UpdateActivityInput(
                         title: title,
-                        externalId: externalId,
-                        link: link,
                         notes: notes
                     )
                 )
@@ -90,8 +86,6 @@ struct ActivitiesFormSheet: View {
                 _ = try await appState.service.createActivity(
                     CreateActivityInput(
                         title: title,
-                        externalId: externalId.isEmpty ? nil : externalId,
-                        link: link.isEmpty ? nil : link,
                         notes: notes.isEmpty ? nil : notes
                     )
                 )

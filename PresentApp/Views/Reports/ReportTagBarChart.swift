@@ -7,6 +7,7 @@ struct ReportTagBarChart: View {
     let activities: [ActivitySummary]
     let chartColorDomain: [String]
     let chartColorRange: [Color]
+    let activityColorMap: [String: Color]
     /// Tag names that include active session data. Matching bars pulse.
     var activeTagNames: Set<String> = []
 
@@ -22,43 +23,60 @@ struct ReportTagBarChart: View {
     }
 
     var body: some View {
-        let sorted = tagActivitySummaries.sorted { $0.totalSeconds > $1.totalSeconds }
-        let barHeight: CGFloat = max(120, CGFloat(sorted.count) * 36 + 40)
-
-        // Flatten into entries for the stacked bar
-        let entries: [TagBarEntry] = sorted.flatMap { tag in
-            let isActive = activeTagNames.contains(tag.tagName)
-            let duration = TimeFormatting.formatDuration(seconds: tag.totalSeconds, active: isActive)
-            let yLabel = "\(tag.tagName) \u{00B7} \(duration) (\(tag.activityCount))"
-            return tag.activities.map { summary in
-                TagBarEntry(
-                    tagName: tag.tagName,
-                    tagLabel: yLabel,
-                    activityTitle: summary.activity.title,
-                    hours: Double(summary.totalSeconds) / 3600.0,
-                    totalSeconds: tag.totalSeconds,
-                    isActive: isActive
-                )
+        // DEBUG: chart crash investigation
+        let _ = {
+            let tagActivities = Set(tagActivitySummaries.flatMap { $0.activities.map(\.activity.title) })
+            let domainSet = Set(chartColorDomain)
+            let missing = tagActivities.subtracting(domainSet)
+            if !missing.isEmpty {
+                print("⚠️ [TagBar] activities NOT in domain: \(missing)")
+                print("  domain: \(chartColorDomain)")
             }
-        }
+            if chartColorDomain.count != chartColorRange.count {
+                print("⚠️ [TagBar] domain/range COUNT MISMATCH: domain=\(chartColorDomain.count) range=\(chartColorRange.count)")
+            }
+        }()
 
-        ChartCard(title: "Tag Distribution") {
-            tagBarChart(entries: entries, sorted: sorted, barHeight: barHeight)
-        }
-        .onChange(of: hasActiveEntries) {
-            if hasActiveEntries {
-                pulseState.start(reduceMotion: reduceMotion)
-            } else {
+        // Guard: chartForegroundStyleScale crashes on empty domain (FB…).
+        if !chartColorDomain.isEmpty {
+            let sorted = tagActivitySummaries.sorted { $0.totalSeconds > $1.totalSeconds }
+            let barHeight: CGFloat = max(120, CGFloat(sorted.count) * 36 + 40)
+
+            // Flatten into entries for the stacked bar
+            let entries: [TagBarEntry] = sorted.flatMap { tag in
+                let isActive = activeTagNames.contains(tag.tagName)
+                let duration = TimeFormatting.formatDuration(seconds: tag.totalSeconds, active: isActive)
+                let yLabel = "\(tag.tagName) \u{00B7} \(duration) (\(tag.activityCount))"
+                return tag.activities.map { summary in
+                    TagBarEntry(
+                        tagName: tag.tagName,
+                        tagLabel: yLabel,
+                        activityTitle: summary.activity.title,
+                        hours: Double(summary.totalSeconds) / 3600.0,
+                        totalSeconds: tag.totalSeconds,
+                        isActive: isActive
+                    )
+                }
+            }
+
+            ChartCard(title: "Tag Distribution") {
+                tagBarChart(entries: entries, sorted: sorted, barHeight: barHeight)
+            }
+            .onChange(of: hasActiveEntries) {
+                if hasActiveEntries {
+                    pulseState.start(reduceMotion: reduceMotion)
+                } else {
+                    pulseState.stop()
+                }
+            }
+            .onAppear {
+                if hasActiveEntries {
+                    pulseState.start(reduceMotion: reduceMotion)
+                }
+            }
+            .onDisappear {
                 pulseState.stop()
             }
-        }
-        .onAppear {
-            if hasActiveEntries {
-                pulseState.start(reduceMotion: reduceMotion)
-            }
-        }
-        .onDisappear {
-            pulseState.stop()
         }
     }
 
@@ -140,7 +158,6 @@ struct ReportTagBarChart: View {
 
     private func tagTooltip(forTag tagName: String?, summaries: [TagActivitySummary]) -> some View {
         let matching = summaries.first { $0.tagName == tagName }
-        let palette = ThemeManager.chartColors(for: theme.activePalette)
         let isActive = tagName.map { activeTagNames.contains($0) } ?? false
 
         return ChartTooltip {
@@ -150,10 +167,8 @@ struct ReportTagBarChart: View {
 
                 ForEach(tag.activities, id: \.activity.id) { summary in
                     HStack(spacing: 6) {
-                        let color = activities.firstIndex(where: { $0.activity.title == summary.activity.title })
-                            .map { palette[$0 % palette.count] } ?? .secondary
                         Circle()
-                            .fill(color)
+                            .fill(activityColorMap[summary.activity.title] ?? .secondary)
                             .frame(width: 8, height: 8)
                         Text(summary.activity.title)
                             .font(.caption)

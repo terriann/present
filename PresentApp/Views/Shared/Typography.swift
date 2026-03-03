@@ -27,6 +27,9 @@ extension Font {
     /// Duration in detail/sub-rows (expanded breakdown, activity detail).
     static let durationDetail = Font.body.monospacedDigit()
 
+    /// Form field section labels (External ID, Link, etc.) — bold subheadline.
+    static let fieldLabel = Font.subheadline.bold()
+
     // MARK: - Data & Charts
 
     /// Tooltip headers, donut center titles — bold caption.

@@ -10,15 +10,18 @@ set -euo pipefail
 #   ./Scripts/benchmark.sh                        Run benchmarks, save results
 #   ./Scripts/benchmark.sh --compare HASH|latest  Run + compare against a baseline
 #   ./Scripts/benchmark.sh --compare-only OLD NEW Compare two existing result files
+#   ./Scripts/benchmark.sh --baseline REF         Run REF in a worktree, then HEAD, compare
 #   ./Scripts/benchmark.sh --dry-run              Show what would run without executing
 #
 # Options:
 #   --compare REF    Compare against a previous result. REF can be:
-#                      - A git hash (e.g., 5a8cccb) — finds matching result file
+#                      - A git hash (e.g., 5a8cccb) -- finds matching result file
 #                      - A file path (e.g., benchmarks/2026-02-28-5a8cccb.json)
-#                      - "latest" — uses the most recent result (excluding current)
+#                      - "latest" -- uses the most recent result (excluding current)
 #   --compare-only OLD NEW  Compare two existing results without running benchmarks.
 #                           OLD and NEW can be hashes, file paths, or "latest".
+#   --baseline REF   Benchmark REF (in a temp worktree) and HEAD, then compare.
+#                    REF can be a branch, tag, or commit hash.
 #   --dry-run        Show commands without executing
 #   -h, --help       Show this help
 
@@ -30,11 +33,12 @@ DRY_RUN=false
 COMPARE_FILE=""
 COMPARE_ONLY_OLD=""
 COMPARE_ONLY_NEW=""
+BASELINE_REF=""
 
 # ---------- Argument parsing ----------
 
 usage() {
-    sed -n '3,17p' "$0" | sed -E 's/^# ?//'
+    sed -n '3,25p' "$0" | sed -E 's/^# ?//'
     exit 0
 }
 
@@ -58,6 +62,14 @@ while [[ $# -gt 0 ]]; do
             fi
             shift 2
             ;;
+        --baseline)
+            BASELINE_REF="${2:-}"
+            if [[ -z "$BASELINE_REF" ]]; then
+                echo "Error: --baseline requires a ref (branch, tag, or commit hash)"
+                exit 1
+            fi
+            shift 2
+            ;;
         --dry-run)
             DRY_RUN=true
             shift
@@ -71,6 +83,17 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+# ---------- Validate mutual exclusivity ----------
+
+MODES_SET=0
+[[ -n "$COMPARE_ONLY_OLD" ]] && MODES_SET=$((MODES_SET + 1))
+[[ -n "$COMPARE_FILE" ]] && MODES_SET=$((MODES_SET + 1))
+[[ -n "$BASELINE_REF" ]] && MODES_SET=$((MODES_SET + 1))
+if [[ "$MODES_SET" -gt 1 ]]; then
+    echo "Error: --compare, --compare-only, and --baseline are mutually exclusive."
+    exit 1
+fi
 
 # ---------- Resolve a reference to a result file path ----------
 # Accepts: file path, git hash, partial hash, or "latest"
@@ -96,7 +119,7 @@ resolve_ref() {
     elif [[ -f "$ref" ]]; then
         eval "$varname='$ref'"
     else
-        # Treat as a git hash — search for matching result file
+        # Treat as a git hash -- search for matching result file
         local found
         found=$(ls "$RESULTS_DIR"/*-"${ref}".json 2>/dev/null | head -1 || true)
         if [[ -z "$found" ]]; then
@@ -115,25 +138,16 @@ resolve_ref() {
     fi
 }
 
-# ---------- Derive GitHub repo URL for commit links ----------
+# ---------- compare_results() ----------
+# Usage: compare_results <old_result_file> <new_result_file> <repo_url>
+# Prints a GitHub-flavored markdown comparison table to stdout.
 
-cd "$PROJECT_DIR"
+compare_results() {
+    local old_file="$1"
+    local new_file="$2"
+    local repo_url="${3:-}"
 
-REMOTE_URL=$(git remote get-url origin 2>/dev/null || true)
-REPO_URL=""
-if [[ "$REMOTE_URL" =~ github\.com[:/](.+)\.git$ ]]; then
-    REPO_URL="https://github.com/${BASH_REMATCH[1]}"
-elif [[ "$REMOTE_URL" =~ github\.com[:/](.+)$ ]]; then
-    REPO_URL="https://github.com/${BASH_REMATCH[1]}"
-fi
-
-# ---------- Compare-only mode ----------
-
-if [[ -n "$COMPARE_ONLY_OLD" ]]; then
-    resolve_ref "$COMPARE_ONLY_OLD" RESOLVED_OLD || exit 1
-    resolve_ref "$COMPARE_ONLY_NEW" RESOLVED_NEW || exit 1
-
-    python3 - "$RESOLVED_OLD" "$RESOLVED_NEW" "$REPO_URL" <<'COMPARE_SCRIPT'
+    python3 - "$old_file" "$new_file" "$repo_url" <<'COMPARE_SCRIPT'
 import json, sys
 
 with open(sys.argv[1]) as f:
@@ -265,75 +279,63 @@ print()
 print("</details>")
 print()
 COMPARE_SCRIPT
-    exit 0
-fi
+}
 
-# ---------- Dirty tree guard ----------
+# ---------- run_benchmarks() ----------
+# Usage: run_benchmarks <work_dir> <results_dir>
+# Runs benchmarks in <work_dir>, saves JSON to <results_dir>.
+# Prints the result file path on the last line of stdout.
+# Skips the run if a result file already exists for the commit.
 
-DIRTY_FILES=$(git status --porcelain -- '*.swift' 2>/dev/null | head -20)
-if [[ -n "$DIRTY_FILES" ]]; then
-    echo "Error: uncommitted .swift changes detected."
-    echo ""
-    echo "Benchmark results are named by git commit hash, so all Swift"
-    echo "changes must be committed first to ensure reproducibility."
-    echo ""
-    echo "Changed files:"
-    echo "$DIRTY_FILES"
-    echo ""
-    echo "Commit or stash your changes, then try again."
-    exit 1
-fi
+run_benchmarks() {
+    local work_dir="$1"
+    local results_dir="$2"
 
-# ---------- Result naming ----------
+    local git_hash
+    git_hash=$(git -C "$work_dir" rev-parse --short HEAD)
+    local date_stamp
+    date_stamp=$(date "+%Y-%m-%d")
+    local result_name="${date_stamp}-${git_hash}"
+    local result_path="${results_dir}/${result_name}.json"
 
-GIT_HASH=$(git rev-parse --short HEAD)
-DATE_STAMP=$(date "+%Y-%m-%d")
-RESULT_NAME="${DATE_STAMP}-${GIT_HASH}"
-RESULT_PATH="$RESULTS_DIR/${RESULT_NAME}.json"
-
-echo "Benchmark run: $RESULT_NAME"
-echo "Commit: $(git log --oneline -1)"
-echo ""
-
-if [[ "$DRY_RUN" == true ]]; then
-    echo "[dry-run] Would run: swift test --filter $TEST_TARGET"
-    echo "[dry-run] Would save results to: $RESULT_PATH"
-    if [[ -n "$COMPARE_FILE" ]]; then
-        echo "[dry-run] Would compare against: $COMPARE_FILE"
+    # Reuse cached result if it exists
+    if [[ -f "$result_path" ]]; then
+        echo "Reusing existing result for ${git_hash}: benchmarks/${result_name}.json" >&2
+        echo "$result_path"
+        return 0
     fi
-    exit 0
-fi
 
-# ---------- Run benchmarks ----------
+    echo "Benchmark run: $result_name" >&2
+    echo "Commit: $(git -C "$work_dir" log --oneline -1)" >&2
+    echo "" >&2
 
-echo "Running benchmarks..."
-echo ""
+    echo "Running benchmarks in ${work_dir}..." >&2
+    echo "" >&2
 
-TEST_OUTPUT=$(swift test --filter "$TEST_TARGET" 2>&1) || true
+    local test_output
+    test_output=$(cd "$work_dir" && swift test --filter "$TEST_TARGET" 2>&1) || true
 
-# Check that benchmarks actually ran
-if ! echo "$TEST_OUTPUT" | grep -q "measured \["; then
-    echo "Error: no benchmark metrics found in test output."
-    echo ""
-    echo "Test output:"
-    echo "$TEST_OUTPUT" | tail -20
-    exit 1
-fi
+    # Check that benchmarks actually ran
+    if ! echo "$test_output" | grep -q "measured \["; then
+        echo "Error: no benchmark metrics found in test output." >&2
+        echo "" >&2
+        echo "Test output:" >&2
+        echo "$test_output" | tail -20 >&2
+        return 1
+    fi
 
-# Check for test failures (excluding performance baseline failures)
-FAILURES=$(echo "$TEST_OUTPUT" | grep -c "with [0-9]* failures" | head -1 || true)
-if echo "$TEST_OUTPUT" | grep -q "with 0 failures"; then
-    echo "All benchmarks passed."
-else
-    echo "Warning: some benchmarks may have failed. Check output above."
-fi
-echo ""
+    # Check for test failures (excluding performance baseline failures)
+    if echo "$test_output" | grep -q "with 0 failures"; then
+        echo "All benchmarks passed." >&2
+    else
+        echo "Warning: some benchmarks may have failed. Check output above." >&2
+    fi
+    echo "" >&2
 
-# ---------- Extract metrics ----------
+    echo "Extracting metrics..." >&2
 
-echo "Extracting metrics..."
-
-METRICS_JSON=$(echo "$TEST_OUTPUT" | python3 -c '
+    local metrics_json
+    metrics_json=$(echo "$test_output" | python3 -c '
 import sys, json, re, statistics
 
 lines = sys.stdin.readlines()
@@ -379,173 +381,154 @@ result = {
 
 json.dump(result, sys.stdout, indent=2, sort_keys=True)
 print()
-' "$DATE_STAMP" "$GIT_HASH")
+' "$date_stamp" "$git_hash")
 
-if [[ -z "$METRICS_JSON" ]] || [[ "$METRICS_JSON" == '{"benchmarks": {}, '* ]]; then
-    echo "Error: failed to extract metrics from test output."
+    if [[ -z "$metrics_json" ]] || [[ "$metrics_json" == '{"benchmarks": {}, '* ]]; then
+        echo "Error: failed to extract metrics from test output." >&2
+        return 1
+    fi
+
+    mkdir -p "$results_dir"
+    echo "$metrics_json" > "$result_path"
+
+    local benchmark_count
+    benchmark_count=$(echo "$metrics_json" | python3 -c 'import json,sys; print(len(json.load(sys.stdin)["benchmarks"]))')
+    echo "Saved $benchmark_count benchmarks to benchmarks/${result_name}.json" >&2
+    echo "" >&2
+
+    echo "$result_path"
+}
+
+# ---------- Derive GitHub repo URL for commit links ----------
+
+cd "$PROJECT_DIR"
+
+REMOTE_URL=$(git remote get-url origin 2>/dev/null || true)
+REPO_URL=""
+if [[ "$REMOTE_URL" =~ github\.com[:/](.+)\.git$ ]]; then
+    REPO_URL="https://github.com/${BASH_REMATCH[1]}"
+elif [[ "$REMOTE_URL" =~ github\.com[:/](.+)$ ]]; then
+    REPO_URL="https://github.com/${BASH_REMATCH[1]}"
+fi
+
+# ---------- Compare-only mode ----------
+
+if [[ -n "$COMPARE_ONLY_OLD" ]]; then
+    resolve_ref "$COMPARE_ONLY_OLD" RESOLVED_OLD || exit 1
+    resolve_ref "$COMPARE_ONLY_NEW" RESOLVED_NEW || exit 1
+
+    compare_results "$RESOLVED_OLD" "$RESOLVED_NEW" "$REPO_URL"
+    exit 0
+fi
+
+# ---------- Dirty tree guard ----------
+
+DIRTY_FILES=$(git status --porcelain -- '*.swift' 2>/dev/null | head -20)
+if [[ -n "$DIRTY_FILES" ]]; then
+    echo "Error: uncommitted .swift changes detected."
+    echo ""
+    echo "Benchmark results are named by git commit hash, so all Swift"
+    echo "changes must be committed first to ensure reproducibility."
+    echo ""
+    echo "Changed files:"
+    echo "$DIRTY_FILES"
+    echo ""
+    echo "Commit or stash your changes, then try again."
     exit 1
 fi
 
-# ---------- Save results ----------
+# ---------- Baseline mode ----------
 
-mkdir -p "$RESULTS_DIR"
-echo "$METRICS_JSON" > "$RESULT_PATH"
+if [[ -n "$BASELINE_REF" ]]; then
+    # Validate the ref exists
+    if ! git rev-parse --verify "$BASELINE_REF" >/dev/null 2>&1; then
+        echo "Error: '$BASELINE_REF' is not a valid git ref."
+        exit 1
+    fi
 
-BENCHMARK_COUNT=$(echo "$METRICS_JSON" | python3 -c 'import json,sys; print(len(json.load(sys.stdin)["benchmarks"]))')
-echo "Saved $BENCHMARK_COUNT benchmarks to benchmarks/${RESULT_NAME}.json"
+    # Same-commit guard
+    BASELINE_HASH=$(git rev-parse "$BASELINE_REF")
+    HEAD_HASH=$(git rev-parse HEAD)
+    if [[ "$BASELINE_HASH" == "$HEAD_HASH" ]]; then
+        echo "Error: --baseline ref resolves to the same commit as HEAD ($HEAD_HASH)."
+        echo "Nothing to compare."
+        exit 1
+    fi
+
+    BASELINE_SHORT=$(git rev-parse --short "$BASELINE_REF")
+    HEAD_SHORT=$(git rev-parse --short HEAD)
+
+    # Dry-run path
+    if [[ "$DRY_RUN" == true ]]; then
+        echo "[dry-run] Baseline mode: $BASELINE_REF ($BASELINE_SHORT) -> HEAD ($HEAD_SHORT)"
+        echo "[dry-run] Would create a temporary worktree for $BASELINE_REF"
+        echo "[dry-run] Would run: swift test --filter $TEST_TARGET (in worktree)"
+        echo "[dry-run] Would run: swift test --filter $TEST_TARGET (in $PROJECT_DIR)"
+        echo "[dry-run] Would compare results and print markdown table"
+        exit 0
+    fi
+
+    echo "Baseline comparison: $BASELINE_REF ($BASELINE_SHORT) -> HEAD ($HEAD_SHORT)"
+    echo ""
+
+    # Create temporary worktree
+    WORKTREE_DIR=$(mktemp -d)
+    git worktree add --detach "$WORKTREE_DIR" "$BASELINE_REF" 2>&1 | head -5
+
+    cleanup_worktree() {
+        if [[ -d "$WORKTREE_DIR" ]]; then
+            git worktree remove --force "$WORKTREE_DIR" 2>/dev/null || true
+        fi
+    }
+    trap cleanup_worktree EXIT
+
+    echo ""
+
+    # Run baseline benchmarks
+    BASELINE_RESULT=$(run_benchmarks "$WORKTREE_DIR" "$RESULTS_DIR")
+
+    # Clean up worktree early to free disk/lock
+    cleanup_worktree
+    trap - EXIT
+
+    # Run HEAD benchmarks
+    HEAD_RESULT=$(run_benchmarks "$PROJECT_DIR" "$RESULTS_DIR")
+
+    # Compare
+    compare_results "$BASELINE_RESULT" "$HEAD_RESULT" "$REPO_URL"
+    exit 0
+fi
+
+# ---------- Standard mode: run benchmarks ----------
+
+GIT_HASH=$(git rev-parse --short HEAD)
+DATE_STAMP=$(date "+%Y-%m-%d")
+RESULT_NAME="${DATE_STAMP}-${GIT_HASH}"
+RESULT_PATH="$RESULTS_DIR/${RESULT_NAME}.json"
+
+echo "Benchmark run: $RESULT_NAME"
+echo "Commit: $(git log --oneline -1)"
 echo ""
+
+if [[ "$DRY_RUN" == true ]]; then
+    echo "[dry-run] Would run: swift test --filter $TEST_TARGET"
+    echo "[dry-run] Would save results to: $RESULT_PATH"
+    if [[ -n "$COMPARE_FILE" ]]; then
+        echo "[dry-run] Would compare against: $COMPARE_FILE"
+    fi
+    exit 0
+fi
+
+RESULT_PATH=$(run_benchmarks "$PROJECT_DIR" "$RESULTS_DIR")
 
 # ---------- Compare (if requested) ----------
 
 if [[ -n "$COMPARE_FILE" ]]; then
+    RESULT_NAME=$(basename "$RESULT_PATH")
     resolve_ref "$COMPARE_FILE" COMPARE_FILE "$RESULT_NAME"
 
     echo "Comparing against: $(basename "$COMPARE_FILE")"
     echo ""
 
-    python3 - "$COMPARE_FILE" "$RESULT_PATH" "$REPO_URL" <<'COMPARE_SCRIPT'
-import json, sys
-
-with open(sys.argv[1]) as f:
-    baseline = json.load(f)
-with open(sys.argv[2]) as f:
-    current = json.load(f)
-repo_url = sys.argv[3] if len(sys.argv) > 3 else ""
-
-# ---------- GitHub-flavored markdown comparison ----------
-
-b_commit = baseline["commit"]
-b_date = baseline["date"]
-c_commit = current["commit"]
-c_date = current["date"]
-
-def commit_ref(sha, date):
-    if repo_url:
-        return f"[`{sha}`]({repo_url}/commit/{sha}) ({date})"
-    return f"`{sha}` ({date})"
-
-all_tests = sorted(set(list(baseline["benchmarks"]) + list(current["benchmarks"])))
-
-# Key metrics to show (most actionable for performance review)
-key_metrics = [
-    ("Clock Monotonic Time", "Clock", "s"),
-    ("CPU Time", "CPU", "s"),
-    ("Memory Peak Physical", "Mem Peak", "kB"),
-]
-
-# Collect rows and stats
-rows = []
-improved = 0
-regressed = 0
-stable = 0
-
-for test_name in all_tests:
-    b_metrics = baseline["benchmarks"].get(test_name, {})
-    c_metrics = current["benchmarks"].get(test_name, {})
-    if not b_metrics and not c_metrics:
-        continue
-
-    # Clean up test name for display
-    display_name = test_name.replace("Performance", "")
-    if display_name.startswith("test"):
-        display_name = display_name[4:]
-
-    row = {"name": display_name, "cells": []}
-
-    for metric_key, label, unit in key_metrics:
-        b = b_metrics.get(metric_key, {})
-        c = c_metrics.get(metric_key, {})
-        b_avg = b.get("average", 0)
-        c_avg = c.get("average", 0)
-
-        if b_avg > 0:
-            pct = ((c_avg - b_avg) / b_avg) * 100
-
-            # Format values for readability
-            if unit == "s":
-                b_str = f"{b_avg * 1000:.1f}ms" if b_avg < 1 else f"{b_avg:.3f}s"
-                c_str = f"{c_avg * 1000:.1f}ms" if c_avg < 1 else f"{c_avg:.3f}s"
-            elif unit == "kB":
-                if b_avg > 1024:
-                    b_str = f"{b_avg / 1024:.1f} MB"
-                    c_str = f"{c_avg / 1024:.1f} MB"
-                else:
-                    b_str = f"{b_avg:.0f} kB"
-                    c_str = f"{c_avg:.0f} kB"
-            else:
-                b_str = f"{b_avg:.3f}"
-                c_str = f"{c_avg:.3f}"
-
-            # Determine indicator
-            if abs(pct) < 2:
-                indicator = " :white_circle:"
-                stable += 1
-            elif pct < -5:
-                indicator = " :tada:"
-                improved += 1
-            elif pct < 0:
-                indicator = " :white_check_mark:"
-                improved += 1
-            elif pct > 10:
-                indicator = " :rotating_light:"
-                regressed += 1
-            elif pct > 5:
-                indicator = " :warning:"
-                regressed += 1
-            else:
-                indicator = " :white_circle:"
-                stable += 1
-
-            sign = "+" if pct > 0 else ""
-            row["cells"].append(f"{c_str} ({sign}{pct:.1f}%){indicator}")
-        elif c_avg > 0:
-            row["cells"].append(f"{c_avg:.3f} (new)")
-        else:
-            row["cells"].append("--")
-
-    rows.append(row)
-
-# ---------- Output ----------
-
-print(f"## Benchmark Comparison")
-print()
-print(f"{commit_ref(b_commit, b_date)} → {commit_ref(c_commit, c_date)}")
-print()
-
-# Summary line
-parts = []
-if improved > 0:
-    parts.append(f"**{improved}** improved")
-if regressed > 0:
-    parts.append(f"**{regressed}** regressed")
-if stable > 0:
-    parts.append(f"**{stable}** stable")
-print(" · ".join(parts))
-print()
-
-# Table header
-header_labels = [m[1] for m in key_metrics]
-print("| Benchmark | " + " | ".join(header_labels) + " |")
-print("|:--|" + "|".join(["--:" for _ in key_metrics]) + "|")
-
-# Table rows
-for row in rows:
-    print(f"| **{row['name']}** | " + " | ".join(row["cells"]) + " |")
-
-# Legend (collapsible, after the table)
-print()
-print("<details>")
-print("<summary>Legend</summary>")
-print()
-print("| Icon | Meaning |")
-print("|:--:|:--|")
-print("| :tada: | Improvement > 5% |")
-print("| :white_check_mark: | Improvement up to 5% |")
-print("| :white_circle: | Stable (within ±2%) |")
-print("| :warning: | Regression > 5% |")
-print("| :rotating_light: | Regression > 10% |")
-print()
-print("</details>")
-print()
-COMPARE_SCRIPT
+    compare_results "$COMPARE_FILE" "$RESULT_PATH" "$REPO_URL"
 fi

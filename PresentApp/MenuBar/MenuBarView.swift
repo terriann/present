@@ -6,7 +6,6 @@ struct MenuBarView: View {
     @Environment(ThemeManager.self) private var theme
     @Environment(\.openWindow) private var openWindow
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.openURL) private var openURL
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var searchText = ""
     @State private var selectedSessionType: SessionType = .work
@@ -93,35 +92,12 @@ struct MenuBarView: View {
                     }
                 }
 
-                // Ticket badge
-                if let ticketId = session.ticketId, let link = session.link, let url = URL(string: link) {
-                    Button {
-                        openURL(url)
-                    } label: {
-                        Text(ticketId)
-                            .font(scaledFont(.caption))
-                            .padding(.horizontal, 6 * zoomScale)
-                            .padding(.vertical, 2 * zoomScale)
-                            .background(theme.accent.opacity(0.12), in: Capsule())
-                            .foregroundStyle(theme.accent)
-                    }
-                    .buttonStyle(.plain)
-                    .help(link)
-                } else if let link = session.link, let url = URL(string: link) {
-                    Button {
-                        openURL(url)
-                    } label: {
-                        Text(url.host ?? link)
-                            .font(scaledFont(.caption))
-                            .lineLimit(1)
-                            .padding(.horizontal, 6 * zoomScale)
-                            .padding(.vertical, 2 * zoomScale)
-                            .background(theme.accent.opacity(0.12), in: Capsule())
-                            .foregroundStyle(theme.accent)
-                    }
-                    .buttonStyle(.plain)
-                    .help(link)
-                }
+                TicketBadge(
+                    ticketId: session.ticketId,
+                    link: session.link,
+                    font: scaledFont(.caption),
+                    scale: zoomScale
+                )
 
                 Text(appState.formattedTimerValue)
                     .font(scaledFont(.title, weight: .light).monospacedDigit())
@@ -157,8 +133,9 @@ struct MenuBarView: View {
                     session: suggestion.session
                 ) {
                     Task {
+                        guard let activityId = suggestion.activity.id else { return }
                         await appState.startSession(
-                            activityId: suggestion.activity.id!,
+                            activityId: activityId,
                             type: suggestion.session.sessionType,
                             timerMinutes: suggestion.session.timerLengthMinutes,
                             breakMinutes: suggestion.session.breakMinutes
@@ -382,7 +359,7 @@ struct MenuBarView: View {
     }
 
     private func startSessionForType(activity: Activity) async {
-        let activityId = activity.id!
+        guard let activityId = activity.id else { return }
         // System activities cannot use rhythm sessions — fall back to work
         let effectiveType = (activity.isSystem && selectedSessionType == .rhythm) ? .work : selectedSessionType
 

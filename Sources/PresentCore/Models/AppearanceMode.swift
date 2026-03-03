@@ -13,4 +13,13 @@ public enum AppearanceMode: String, CaseIterable, Codable, Sendable {
         case .dark: return "Dark"
         }
     }
+
+    /// SF Symbol name for the appearance mode.
+    public var iconName: String {
+        switch self {
+        case .system: return "circle.lefthalf.filled"
+        case .light: return "sun.max"
+        case .dark: return "moon"
+        }
+    }
 }

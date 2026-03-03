@@ -12,6 +12,32 @@ import Foundation
 /// Returns `nil` for unrecognized URLs or invalid input.
 public enum TicketExtractor {
 
+    /// Scans free text for URLs using `NSDataDetector` and returns the first URL
+    /// that yields a recognized ticket ID via ``extractTicketId(from:)``.
+    ///
+    /// - Parameter text: Free-form text that may contain URLs (plain or markdown).
+    /// - Returns: A tuple of the matched URL string and its extracted ticket ID, or `nil`.
+    public static func extractFirstTicketURL(from text: String) -> (url: String, ticketId: String)? {
+        guard !text.isEmpty else { return nil }
+
+        guard let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else {
+            return nil
+        }
+
+        let range = NSRange(text.startIndex..., in: text)
+        let matches = detector.matches(in: text, options: [], range: range)
+
+        for match in matches {
+            guard let url = match.url else { continue }
+            let urlString = url.absoluteString
+            if let ticketId = extractTicketId(from: urlString) {
+                return (url: urlString, ticketId: ticketId)
+            }
+        }
+
+        return nil
+    }
+
     /// Attempts to extract a ticket ID from the given URL string.
     public static func extractTicketId(from urlString: String) -> String? {
         let trimmed = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
