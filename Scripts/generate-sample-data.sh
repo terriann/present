@@ -3,8 +3,20 @@ set -euo pipefail
 
 # Generate sample time-tracking data for testing.
 #
-# Creates activities, tags, and sessions across a date range with realistic
-# work-day patterns averaging ~4.5 hours per weekday.
+# Creates 12 activities (with tags) and populates sessions across a date range
+# with randomized work-day patterns for realistic test data.
+#
+# Weekday structure:
+#   - Morning meeting (15-45 min, random: Sprint Planning / Client Meeting / Team Standup)
+#   - Lunch break (~30 min timebound around noon)
+#   - 3-7 additional work sessions filling 4-9 total hours
+#   - Session types: ~60% work, ~25% rhythm (25/5), ~15% timebound (15/30/45 min)
+#   - Random activities from all 12, with variety encouraged per day
+#
+# Weekend behavior:
+#   - Without --weekends: ~10% chance of sessions per weekend day
+#   - With --weekends: all weekend days get sessions
+#   - Weekend days: 1-3 sessions, 1-3 hours total
 #
 # Usage:
 #   ./scripts/generate-sample-data.sh                          # Current week (Mon-Fri)
@@ -57,66 +69,13 @@ TAG_IDS=()
 # Parallel array for activity IDs (populated at runtime, same index as ACTIVITIES)
 ACTIVITY_ID_LIST=()
 
-# Session templates: "activity_index|start_hour|duration_minutes|type|timer_min|break_min"
-# Day shapes are picked based on day-of-year to add variety
-
-# Shape A: Heavy focus day (~5.5h / 330min)
-SHAPE_A=(
-  "0|09:00|150|work||"
-  "1|11:45|60|work||"
-  "8|13:30|60|work||"
-  "7|14:45|60|work||"
-)
-
-# Shape B: Standard sprint day (~4.5h / 270min)
-SHAPE_B=(
-  "9|09:00|15|work||"
-  "3|09:30|90|work||"
-  "5|11:15|75|work||"
-  "1|13:00|60|work||"
-  "4|14:15|30|rhythm|25|5"
-)
-
-# Shape C: Deep work marathon (~6h / 360min)
-SHAPE_C=(
-  "0|09:00|25|rhythm|25|5"
-  "0|09:30|25|rhythm|25|5"
-  "0|10:00|25|rhythm|25|5"
-  "0|10:30|25|rhythm|25|5"
-  "6|11:15|90|work||"
-  "10|13:00|90|work||"
-  "7|14:45|80|work||"
-)
-
-# Shape D: Meeting-heavy day (~4h / 240min)
-SHAPE_D=(
-  "9|09:00|15|work||"
-  "2|09:30|60|work||"
-  "8|10:45|45|work||"
-  "0|11:45|45|work||"
-  "1|13:30|45|work||"
-  "7|14:30|30|work||"
-)
-
-# Shape E: Light day (~3.5h / 210min)
-SHAPE_E=(
-  "10|09:00|45|work||"
-  "3|10:00|75|work||"
-  "5|13:00|45|work||"
-  "0|14:00|45|work||"
-)
-
-# Shape F: Weekend casual (~2.25h, if --weekends)
-SHAPE_F=(
-  "11|10:00|30|work||"
-  "10|11:00|60|work||"
-  "6|14:00|45|work||"
-)
+# Number of defined activities (for random selection)
+ACTIVITY_COUNT=${#ACTIVITIES[@]}
 
 # ---------- Helpers ----------
 
 usage() {
-  sed -n '3,/^$/s/^# \?//p' "$0"
+  sed -n '4,/^[^#]/{ /^#/s/^# \{0,1\}//p; }' "$0"
   exit 0
 }
 
@@ -137,6 +96,29 @@ date_add_days() {
 day_of_week() {
   # Returns 1=Mon .. 7=Sun
   date -j -f "%Y-%m-%d" "$1" "+%u"
+}
+
+# Random integer in [min, max] inclusive
+rand_range() {
+  local min="$1" max="$2"
+  echo $(( RANDOM % (max - min + 1) + min ))
+}
+
+# Pick a random activity index (0..ACTIVITY_COUNT-1)
+rand_activity() {
+  echo $(( RANDOM % ACTIVITY_COUNT ))
+}
+
+# Pick a random session type: ~60% work, ~25% rhythm, ~15% timebound
+rand_session_type() {
+  local roll=$(( RANDOM % 100 ))
+  if (( roll < 60 )); then
+    echo "work"
+  elif (( roll < 85 )); then
+    echo "rhythm"
+  else
+    echo "timebound"
+  fi
 }
 
 # Look up a tag ID by name from parallel arrays
@@ -330,52 +312,158 @@ current_date="$FROM_DATE"
 session_count=0
 total_minutes=0
 day_count=0
+weekend_days=0
 
 while [[ "$current_date" < "$TO_DATE" || "$current_date" == "$TO_DATE" ]]; do
   dow=$(day_of_week "$current_date")
-
-  # Skip weekends unless requested
-  if [[ "$dow" -gt 5 ]] && ! $WEEKENDS; then
-    current_date=$(date_add_days "$current_date" 1)
-    continue
+  is_weekend=false
+  if [[ "$dow" -gt 5 ]]; then
+    is_weekend=true
   fi
 
-  # Pick a day shape based on day-of-year for variety
-  day_num=$(date -j -f "%Y-%m-%d" "$current_date" "+%j" | sed 's/^0*//')
-
-  if [[ "$dow" -gt 5 ]]; then
-    shape_ref="SHAPE_F[@]"
-  else
-    shapes=("SHAPE_A" "SHAPE_B" "SHAPE_C" "SHAPE_D" "SHAPE_E")
-    shape_idx=$(( day_num % ${#shapes[@]} ))
-    shape_ref="${shapes[$shape_idx]}[@]"
+  # Skip weekends unless --weekends flag or ~10% random chance
+  if $is_weekend && ! $WEEKENDS; then
+    roll=$(( RANDOM % 10 ))
+    if (( roll != 0 )); then
+      current_date=$(date_add_days "$current_date" 1)
+      continue
+    fi
+    weekend_days=$(( weekend_days + 1 ))
   fi
 
   day_minutes=0
   day_sessions=0
-  shape=("${!shape_ref}")
 
-  # Add time jitter per day (shift all sessions by 0-24 min) for realism
-  jitter=$(( day_num % 4 * 8 ))
+  if $is_weekend; then
+    # Weekend: 1-3 sessions, 1-3 hours total
+    num_sessions=$(rand_range 1 3)
+    target_minutes=$(rand_range 60 180)
+  else
+    # Weekday: 3-7 sessions, 4-9 hours
+    num_sessions=$(rand_range 3 7)
+    target_hours=$(rand_range 4 9)
+    target_minutes=$(( target_hours * 60 ))
+  fi
 
-  for template in "${shape[@]}"; do
-    IFS='|' read -r act_idx start_time duration_min stype timer_min break_min <<< "$template"
+  # Random start: 8-10 AM with 0-45 min jitter
+  start_hour=$(rand_range 8 10)
+  start_jitter=$(rand_range 0 45)
+  cursor_minutes=$(( start_hour * 60 + start_jitter ))
 
-    # Get activity ID from the parallel array
+  # --- Weekday: add a meeting in the morning and lunch around noon ---
+  if ! $is_weekend; then
+    # Morning meeting: pick from Sprint Planning (2), Client Meeting (8), Team Standup (9)
+    meeting_activities=(2 8 9)
+    meeting_idx=${meeting_activities[$(( RANDOM % 3 ))]}
+    meeting_id="${ACTIVITY_ID_LIST[$meeting_idx]:-}"
+    meeting_dur=$(rand_range 15 45)
+    if [[ -n "$meeting_id" ]] && { [[ "$meeting_id" != "0" ]] || $DRY_RUN; }; then
+      adj_hour=$(( cursor_minutes / 60 ))
+      adj_min=$(( cursor_minutes % 60 ))
+      started_at=$(printf "%sT%02d:%02d:00" "$current_date" "$adj_hour" "$adj_min")
+      end_total=$(( cursor_minutes + meeting_dur ))
+      ended_at=$(printf "%sT%02d:%02d:00" "$current_date" $(( end_total / 60 )) $(( end_total % 60 )))
+      run "$CLI session add $meeting_id --started-at $started_at --ended-at $ended_at --type work -f text"
+      day_minutes=$(( day_minutes + meeting_dur ))
+      day_sessions=$(( day_sessions + 1 ))
+      session_count=$(( session_count + 1 ))
+      gap=$(rand_range 5 15)
+      cursor_minutes=$(( cursor_minutes + meeting_dur + gap ))
+    fi
+
+    # Lunch: ~30 min timebound around noon (11:30-12:30 start)
+    lunch_id="${ACTIVITY_ID_LIST[11]:-}"  # Rest & Recovery
+    lunch_start=$(rand_range 690 750)     # 11:30 (690) to 12:30 (750)
+    # Only insert lunch if cursor hasn't already passed lunch time
+    if (( cursor_minutes < lunch_start )); then
+      lunch_cursor=$lunch_start
+    else
+      lunch_cursor=$(( cursor_minutes + 5 ))
+    fi
+    if [[ -n "$lunch_id" ]] && { [[ "$lunch_id" != "0" ]] || $DRY_RUN; }; then
+      started_at=$(printf "%sT%02d:%02d:00" "$current_date" $(( lunch_cursor / 60 )) $(( lunch_cursor % 60 )))
+      end_total=$(( lunch_cursor + 30 ))
+      ended_at=$(printf "%sT%02d:%02d:00" "$current_date" $(( end_total / 60 )) $(( end_total % 60 )))
+      run "$CLI session add $lunch_id --started-at $started_at --ended-at $ended_at --type timebound --minutes 30 -f text"
+      day_minutes=$(( day_minutes + 30 ))
+      day_sessions=$(( day_sessions + 1 ))
+      session_count=$(( session_count + 1 ))
+      gap=$(rand_range 10 25)
+      cursor_minutes=$(( lunch_cursor + 30 + gap ))
+    fi
+  fi
+
+  # Distribute remaining target across random sessions with ±20% variance
+  remaining_target=$(( target_minutes - day_minutes ))
+  if (( remaining_target < 60 )); then remaining_target=60; fi
+  base_duration=$(( remaining_target / num_sessions ))
+
+  # Track activities used today to encourage variety
+  used_activities=()
+
+  for (( s=0; s<num_sessions; s++ )); do
+    # Random activity, prefer unused ones (skip meeting/lunch activities already used)
+    attempts=0
+    act_idx=$(rand_activity)
+    while [[ " ${used_activities[*]:-} " == *" $act_idx "* ]] && (( attempts < 5 )); do
+      act_idx=$(rand_activity)
+      attempts=$(( attempts + 1 ))
+    done
+    used_activities+=("$act_idx")
+
+    # Get activity ID (use placeholder in dry-run mode)
     act_id="${ACTIVITY_ID_LIST[$act_idx]:-}"
-    if [[ -z "$act_id" || "$act_id" == "0" ]]; then
+    if [[ -z "$act_id" ]]; then
+      continue
+    fi
+    if [[ "$act_id" == "0" ]] && ! $DRY_RUN; then
       continue
     fi
 
-    # Parse start time and add jitter
-    start_hour="${start_time%%:*}"
-    start_min="${start_time##*:}"
-    start_total=$(( 10#$start_hour * 60 + 10#$start_min + jitter ))
-    adj_hour=$(( start_total / 60 ))
-    adj_min=$(( start_total % 60 ))
+    # Duration with ±20% variance
+    variance=$(( base_duration * 20 / 100 ))
+    if (( variance < 1 )); then variance=1; fi
+    min_dur=$(( base_duration - variance ))
+    max_dur=$(( base_duration + variance ))
+    if (( min_dur < 10 )); then min_dur=10; fi
+    duration_min=$(rand_range "$min_dur" "$max_dur")
+
+    # Last session absorbs remainder to hit target
+    if (( s == num_sessions - 1 )); then
+      remaining=$(( target_minutes - day_minutes ))
+      if (( remaining > 10 )); then
+        duration_min=$remaining
+      fi
+    fi
+
+    # Session type (last session is always work to absorb remainder)
+    timer_min=""
+    break_min=""
+
+    if (( s == num_sessions - 1 )); then
+      stype="work"
+    else
+      stype=$(rand_session_type)
+    fi
+
+    if [[ "$stype" == "rhythm" ]]; then
+      timer_min=25
+      break_min=5
+      # Rhythm sessions are always 25 min focus
+      duration_min=25
+    elif [[ "$stype" == "timebound" ]]; then
+      # Random timer: 15, 30, or 45 min
+      timer_options=(15 30 45)
+      timer_min=${timer_options[$(( RANDOM % 3 ))]}
+      duration_min=$timer_min
+    fi
+
+    # Compute timestamps
+    adj_hour=$(( cursor_minutes / 60 ))
+    adj_min=$(( cursor_minutes % 60 ))
     started_at=$(printf "%sT%02d:%02d:00" "$current_date" "$adj_hour" "$adj_min")
 
-    end_total=$(( start_total + duration_min ))
+    end_total=$(( cursor_minutes + duration_min ))
     end_hour=$(( end_total / 60 ))
     end_min=$(( end_total % 60 ))
     ended_at=$(printf "%sT%02d:%02d:00" "$current_date" "$end_hour" "$end_min")
@@ -395,12 +483,20 @@ while [[ "$current_date" < "$TO_DATE" || "$current_date" == "$TO_DATE" ]]; do
     day_minutes=$(( day_minutes + duration_min ))
     day_sessions=$(( day_sessions + 1 ))
     session_count=$(( session_count + 1 ))
+
+    # Gap between sessions: 5-30 min
+    gap=$(rand_range 5 30)
+    cursor_minutes=$(( cursor_minutes + duration_min + gap ))
   done
 
   total_minutes=$(( total_minutes + day_minutes ))
   day_count=$(( day_count + 1 ))
   day_hours=$(echo "scale=1; $day_minutes / 60" | bc)
-  log "$current_date ($( date -j -f "%Y-%m-%d" "$current_date" "+%A" )): ${day_sessions} sessions, ${day_hours}h"
+  day_label="$current_date ($( date -j -f "%Y-%m-%d" "$current_date" "+%A" ))"
+  if $is_weekend; then
+    day_label="$day_label [weekend]"
+  fi
+  log "$day_label: ${day_sessions} sessions, ${day_hours}h"
 
   current_date=$(date_add_days "$current_date" 1)
 done
@@ -413,4 +509,8 @@ else
   avg_hours="0"
 fi
 echo "=== Done ==="
-echo "  Days: $day_count | Sessions: $session_count | Total: ${total_hours}h | Avg: ${avg_hours}h/day"
+summary="  Days: $day_count | Sessions: $session_count | Total: ${total_hours}h | Avg: ${avg_hours}h/day"
+if (( weekend_days > 0 )); then
+  summary="$summary | Weekend days: $weekend_days"
+fi
+echo "$summary"
