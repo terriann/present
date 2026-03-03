@@ -70,6 +70,8 @@ public enum Constants {
     public static let activePulseDuration: Double = 3.0
     /// Pause (seconds) at the low point before fading back up.
     public static let activePulseDelay: Double = 1.0
+    /// Milliseconds between pulse animation state updates (~6.7fps).
+    public static let activePulseInterval: Int = 150
 
     // MARK: - Version
 
