@@ -205,17 +205,13 @@ struct ReportsView: View {
         let calendar = Calendar.current
         switch selectedPeriod {
         case .daily:
-            let formatter = DateFormatter()
-            formatter.dateStyle = .full
-            return formatter.string(from: selectedDate)
+            return ChartFormatters.fullDate.string(from: selectedDate)
         case .weekly:
             let weekStart = weekStart(for: selectedDate)
             let weekEnd = calendar.date(byAdding: .day, value: 6, to: weekStart) ?? weekStart
             return TimeFormatting.formatWeekRange(start: weekStart, end: weekEnd)
         case .monthly:
-            let formatter = DateFormatter()
-            formatter.dateFormat = "MMMM yyyy"
-            return formatter.string(from: selectedDate)
+            return ChartFormatters.monthYear.string(from: selectedDate)
         }
     }
 
@@ -564,12 +560,10 @@ struct ReportsView: View {
     private var allWeekdayLabels: [String] {
         var calendar = Calendar.current
         calendar.firstWeekday = weekStartDay
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEE"
         let start = weekStart(for: selectedDate)
         return (0..<7).compactMap { offset in
             guard let date = calendar.date(byAdding: .day, value: offset, to: start) else { return nil }
-            return formatter.string(from: date)
+            return ChartFormatters.weekday.string(from: date)
         }
     }
 
@@ -590,24 +584,18 @@ struct ReportsView: View {
     // MARK: - Helpers
 
     private func hourLabel(_ hour: Int) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "ha"
         var components = DateComponents()
         components.hour = hour
         let date = Calendar.current.date(from: components) ?? Date()
-        return formatter.string(from: date).lowercased()
+        return ChartFormatters.hour.string(from: date).lowercased()
     }
 
     private func dayLabel(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEE"
-        return formatter.string(from: date)
+        ChartFormatters.weekday.string(from: date)
     }
 
     private func dayNumberLabel(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "d"
-        return formatter.string(from: date)
+        ChartFormatters.dayNumber.string(from: date)
     }
 
     // MARK: - Data Loading

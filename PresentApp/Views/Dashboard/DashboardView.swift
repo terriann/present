@@ -144,9 +144,7 @@ struct DashboardView: View {
     }
 
     private var dateText: String {
-        let f = DateFormatter()
-        f.dateStyle = .full
-        return f.string(from: greetingDate)
+        ChartFormatters.fullDate.string(from: greetingDate)
     }
 
     /// Sleeps until the next greeting boundary and updates `greetingDate`.

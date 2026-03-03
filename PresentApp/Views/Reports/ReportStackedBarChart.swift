@@ -257,12 +257,10 @@ struct ReportStackedBarChart: View {
     }
 
     private func hourLabel(_ hour: Int) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "ha"
         var components = DateComponents()
         components.hour = hour
         let date = Calendar.current.date(from: components) ?? Date()
-        return formatter.string(from: date).lowercased()
+        return ChartFormatters.hour.string(from: date).lowercased()
     }
 }
 
