@@ -19,6 +19,7 @@ struct MenuBarView: View {
     @State private var isSettingsHovered = false
     @State private var showConvertPicker = false
     @FocusState private var isSearchFocused: Bool
+    @FocusState private var isPanelFocused: Bool
 
     private var zoomScale: CGFloat { appState.zoomScale }
 
@@ -44,6 +45,14 @@ struct MenuBarView: View {
             bottomBar
         }
         .frame(width: 320 * zoomScale)
+        .focusable()
+        .focused($isPanelFocused)
+        .focusEffectDisabled()
+        .onAppear { isPanelFocused = true }
+        .onKeyPress(.escape) {
+            dismiss()
+            return .handled
+        }
     }
 
     // MARK: - Scaled Fonts
