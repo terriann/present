@@ -100,7 +100,7 @@ struct ReportsView: View {
                     sessionEntries: sessionEntries,
                     activityColorMap: activityColorMap,
                     includeActiveSession: isShowingToday,
-                    onReload: reloadReport
+                    onReload: { reloadReport(clearData: false) }
                 )
                 ReportCLIPromoCard()
             }
@@ -617,18 +617,25 @@ struct ReportsView: View {
         }
     }
 
-    private func reloadReport() {
+    /// Reload report data.
+    ///
+    /// - Parameter clearData: When `true` (default), clears all summary and chart data
+    ///   before loading to prevent mixing stale values across period/date changes. Pass
+    ///   `false` for in-place refreshes (e.g. after a session edit) so existing content
+    ///   stays visible and the ScrollView doesn't reset to the top.
+    private func reloadReport(clearData: Bool = true) {
         loadTask?.cancel()
-        // Clear stale summary data so computed chart properties don't mix periods
-        dailySummaryData = nil
-        weeklySummaryData = nil
-        monthlySummaryData = nil
-        activities = []
-        totalSeconds = 0
-        sessionCount = 0
-        tagActivitySummaries = []
-        sessionEntries = []
-        sessionSegments = [:]
+        if clearData {
+            dailySummaryData = nil
+            weeklySummaryData = nil
+            monthlySummaryData = nil
+            activities = []
+            totalSeconds = 0
+            sessionCount = 0
+            tagActivitySummaries = []
+            sessionEntries = []
+            sessionSegments = [:]
+        }
         loadTask = Task { await loadReport() }
     }
 
