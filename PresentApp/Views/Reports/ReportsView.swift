@@ -34,7 +34,7 @@ struct ReportsView: View {
                 periodNavigationBar
                 summaryBar
 
-                if !activities.isEmpty {
+                if !activities.isEmpty || shouldIncludeActive {
                     if selectedPeriod == .daily {
                         ReportDayTimelineCard(
                             sessionEntries: sessionEntries,
