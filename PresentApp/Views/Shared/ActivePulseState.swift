@@ -29,6 +29,7 @@ final class ActivePulseState {
         task = Task {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(Constants.activePulseInterval))
+                guard !Task.isCancelled else { break }
                 let t = Date().timeIntervalSinceReferenceDate
                 self.opacity = midpoint + amplitude * sin(t * 2 * .pi / period)
             }
