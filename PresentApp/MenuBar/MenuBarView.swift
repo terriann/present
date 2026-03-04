@@ -18,6 +18,9 @@ struct MenuBarView: View {
     @State private var isLaunchHovered = false
     @State private var isSettingsHovered = false
     @State private var showConvertPicker = false
+    @State private var isExpanded = false
+    @State private var switchActivityTarget: Activity?
+    @State private var isChevronHovered = false
     @FocusState private var isSearchFocused: Bool
     @FocusState private var isPanelFocused: Bool
 
@@ -26,8 +29,15 @@ struct MenuBarView: View {
     var body: some View {
         VStack(spacing: 0) {
             if appState.isSessionRunning {
-                // Focused: timer + controls only
                 currentSessionSection
+                chevronToggle
+
+                if isExpanded {
+                    Divider()
+                    quickStartSection
+                    Divider()
+                    bottomBar
+                }
             } else {
                 if appState.isSessionActive {
                     currentSessionSection
@@ -38,20 +48,49 @@ struct MenuBarView: View {
                 Divider()
 
                 quickStartSection
+
+                Divider()
+
+                bottomBar
             }
-
-            Divider()
-
-            bottomBar
         }
         .frame(width: 320 * zoomScale)
         .focusable()
         .focused($isPanelFocused)
         .focusEffectDisabled()
-        .onAppear { isPanelFocused = true }
+        .onAppear {
+            isPanelFocused = true
+            isExpanded = false
+        }
         .onKeyPress(.escape) {
             dismiss()
             return .handled
+        }
+        .alert(
+            "Switch Activity?",
+            isPresented: Binding(
+                get: { switchActivityTarget != nil },
+                set: { if !$0 { switchActivityTarget = nil } }
+            )
+        ) {
+            Button("Cancel", role: .cancel) {
+                switchActivityTarget = nil
+            }
+            Button("Switch") {
+                guard let target = switchActivityTarget else { return }
+                switchActivityTarget = nil
+                Task {
+                    await appState.stopSession()
+                    await startSessionForType(activity: target)
+                    withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
+                        isExpanded = false
+                    }
+                }
+            }
+        } message: {
+            if let currentActivity = appState.currentActivity {
+                Text("This will stop your current session: \(currentActivity.title)")
+            }
         }
     }
 
@@ -116,6 +155,28 @@ struct MenuBarView: View {
             }
         }
         .padding(Constants.spacingCard * zoomScale)
+    }
+
+    // MARK: - Chevron Toggle
+
+    private var chevronToggle: some View {
+        Button {
+            withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
+                isExpanded.toggle()
+            }
+        } label: {
+            Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                .font(scaledFont(.caption))
+                .foregroundStyle(isChevronHovered ? .primary : .secondary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 6 * zoomScale)
+                .background(isChevronHovered ? Color.primary.opacity(0.08) : Color.clear)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(isExpanded ? "Hide activities" : "Show activities")
+        .help(isExpanded ? "Hide activities" : "Show activities")
+        .onHover { hovering in isChevronHovered = hovering }
     }
 
     // MARK: - Idle
@@ -323,9 +384,7 @@ struct MenuBarView: View {
                                     activity: activity,
                                     isSelected: selectedIndex == index,
                                     onTap: {
-                                        Task {
-                                            await startSessionForType(activity: activity)
-                                        }
+                                        handleActivityTap(activity: activity)
                                     },
                                     onEdit: {
                                         dismiss()
@@ -365,6 +424,16 @@ struct MenuBarView: View {
             }
         }
         .syncRhythmSelection($selectedRhythmOption)
+    }
+
+    private func handleActivityTap(activity: Activity) {
+        if appState.isSessionRunning {
+            switchActivityTarget = activity
+        } else {
+            Task {
+                await startSessionForType(activity: activity)
+            }
+        }
     }
 
     private func startSessionForType(activity: Activity) async {
@@ -414,7 +483,7 @@ struct MenuBarView: View {
                     CreateActivityInput(title: title)
                 ) else { return }
                 searchText = ""
-                await startSessionForType(activity: newActivity)
+                handleActivityTap(activity: newActivity)
             }
         }
     }
@@ -432,9 +501,7 @@ struct MenuBarView: View {
         let activities = filteredActivities
         if index < activities.count {
             let activity = activities[index]
-            Task {
-                await startSessionForType(activity: activity)
-            }
+            handleActivityTap(activity: activity)
         } else {
             // Create row
             let title = searchText.trimmingCharacters(in: .whitespaces)
@@ -445,7 +512,7 @@ struct MenuBarView: View {
                 ) else { return }
                 searchText = ""
                 selectedIndex = nil
-                await startSessionForType(activity: newActivity)
+                handleActivityTap(activity: newActivity)
             }
         }
     }
