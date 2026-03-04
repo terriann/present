@@ -255,19 +255,15 @@ struct DashboardWeeklyChartCard: View {
     private func weekdayLabels() -> [String] {
         var calendar = Calendar.current
         calendar.firstWeekday = appState.weekStartDay
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEE"
         guard let start = calendar.dateInterval(of: .weekOfYear, for: Date())?.start else { return [] }
         return (0..<7).compactMap { offset in
             guard let date = calendar.date(byAdding: .day, value: offset, to: start) else { return nil }
-            return formatter.string(from: date)
+            return ChartFormatters.weekday.string(from: date)
         }
     }
 
     private func dayLabel(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEE"
-        return formatter.string(from: date)
+        ChartFormatters.weekday.string(from: date)
     }
 
     private func formatHours(_ value: Double) -> String {

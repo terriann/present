@@ -176,7 +176,7 @@ struct ActivitySessionCard: View {
 
     private func groupedView(entries: [(Session, Activity)]) -> some View {
         let groups = groupedEntries(from: entries)
-        return VStack(spacing: 0) {
+        return LazyVStack(spacing: 0) {
             ForEach(Array(groups.enumerated()), id: \.element.activity.id) { index, group in
                 let activityId = group.activity.id ?? -1
                 let isExpanded = expandedActivities.contains(activityId)
@@ -284,7 +284,7 @@ struct ActivitySessionCard: View {
     // MARK: - Ungrouped View
 
     private func ungroupedView(entries: [(Session, Activity)]) -> some View {
-        VStack(spacing: 0) {
+        LazyVStack(spacing: 0) {
             // Active session at top
             if hasActiveSession, activeSessionMatchesSearch,
                let active = appState.currentSession, let activity = appState.currentActivity {

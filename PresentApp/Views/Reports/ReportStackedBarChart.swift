@@ -45,25 +45,6 @@ struct ReportStackedBarChart: View {
     }
 
     var body: some View {
-        // DEBUG: chart crash investigation
-        let _ = {
-            let entryActivities = Set(entries.map(\.activity))
-            let domainSet = Set(chartColorDomain)
-            let missing = entryActivities.subtracting(domainSet)
-            if !missing.isEmpty {
-                print("⚠️ [StackedBar] entries have activities NOT in domain: \(missing)")
-                print("  domain(\(chartColorDomain.count)): \(chartColorDomain)")
-                print("  range(\(chartColorRange.count)): \(chartColorRange.count) colors")
-                print("  entryActivities: \(entryActivities.sorted())")
-            }
-            if chartColorDomain.count != chartColorRange.count {
-                print("⚠️ [StackedBar] domain/range COUNT MISMATCH: domain=\(chartColorDomain.count) range=\(chartColorRange.count)")
-            }
-            if !entries.isEmpty {
-                print("📊 [StackedBar] rendering: \(entries.count) entries, domain=\(chartColorDomain), range=\(chartColorRange.count) colors")
-            }
-        }()
-
         // Guard: chartForegroundStyleScale crashes on empty domain (FB…).
         // During reload transitions the parent may clear state, leaving domain empty
         // while the attribute graph still evaluates this view.
@@ -276,12 +257,10 @@ struct ReportStackedBarChart: View {
     }
 
     private func hourLabel(_ hour: Int) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "ha"
         var components = DateComponents()
         components.hour = hour
         let date = Calendar.current.date(from: components) ?? Date()
-        return formatter.string(from: date).lowercased()
+        return ChartFormatters.hour.string(from: date).lowercased()
     }
 }
 

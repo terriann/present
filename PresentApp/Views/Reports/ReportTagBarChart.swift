@@ -23,20 +23,6 @@ struct ReportTagBarChart: View {
     }
 
     var body: some View {
-        // DEBUG: chart crash investigation
-        let _ = {
-            let tagActivities = Set(tagActivitySummaries.flatMap { $0.activities.map(\.activity.title) })
-            let domainSet = Set(chartColorDomain)
-            let missing = tagActivities.subtracting(domainSet)
-            if !missing.isEmpty {
-                print("⚠️ [TagBar] activities NOT in domain: \(missing)")
-                print("  domain: \(chartColorDomain)")
-            }
-            if chartColorDomain.count != chartColorRange.count {
-                print("⚠️ [TagBar] domain/range COUNT MISMATCH: domain=\(chartColorDomain.count) range=\(chartColorRange.count)")
-            }
-        }()
-
         // Guard: chartForegroundStyleScale crashes on empty domain (FB…).
         if !chartColorDomain.isEmpty {
             let sorted = tagActivitySummaries.sorted { $0.totalSeconds > $1.totalSeconds }

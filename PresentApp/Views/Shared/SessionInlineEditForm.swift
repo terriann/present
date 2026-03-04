@@ -5,6 +5,7 @@ import PresentCore
 ///
 /// Renders inside `ActivitySessionCard` when "Edit Session" is selected from the context menu.
 /// Only one session can be edited at a time. Each field saves independently on blur/change.
+/// The form stays open until the user explicitly clicks "Done" or presses Escape.
 struct SessionInlineEditForm: View {
     let session: Session
     let activity: Activity
@@ -92,11 +93,13 @@ struct SessionInlineEditForm: View {
                 }
 
                 Spacer()
+
+                Button("Done") { done() }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
             }
-            .onChange(of: selectedActivityId) { oldValue, newValue in
-                guard newValue != session.activityId else { return }
-                saveField { UpdateSessionInput(activityId: newValue) }
-            }
+            // Activity change is buffered until Done — auto-saving it would move the
+            // session to a different group mid-edit, causing the form to jump or vanish.
             .onChange(of: startTime) { oldValue, newValue in
                 guard newValue != session.startedAt else { return }
                 saveField { UpdateSessionInput(startedAt: newValue) }
@@ -170,12 +173,46 @@ struct SessionInlineEditForm: View {
         errorFields = []
     }
 
+    // MARK: - Save & Dismiss
+
+    /// Save the note if changed (on blur). Does not dismiss the form.
     private func saveNote() {
         let trimmed = noteText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed != (session.note ?? "") else { return }
         saveField { UpdateSessionInput(note: trimmed) }
     }
 
+    /// Flush buffered changes (activity, note) and dismiss the form.
+    ///
+    /// Activity and note are the two fields that aren't auto-saved: activity is buffered
+    /// to prevent the form from jumping between groups, and note saves on blur but may
+    /// have unsaved text if the user clicks Done without blurring the editor first.
+    private func done() {
+        guard let sessionId = session.id else { onSave(); return }
+
+        let activityChanged = selectedActivityId != session.activityId
+        let trimmed = noteText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let noteChanged = trimmed != (session.note ?? "")
+
+        guard activityChanged || noteChanged else { onSave(); return }
+
+        var input = UpdateSessionInput()
+        if activityChanged { input.activityId = selectedActivityId }
+        if noteChanged { input.note = trimmed }
+
+        Task {
+            do {
+                try await appState.updateSession(id: sessionId, input)
+            } catch {
+                errorMessage = error.localizedDescription
+                errorFields = errorFieldsFrom(error)
+                return
+            }
+            onSave()
+        }
+    }
+
+    /// Save a single field change. Shows errors inline but does not dismiss the form.
     private func saveField(_ inputBuilder: @escaping () -> UpdateSessionInput) {
         guard let sessionId = session.id else { return }
         errorMessage = nil
@@ -184,7 +221,6 @@ struct SessionInlineEditForm: View {
         Task {
             do {
                 try await appState.updateSession(id: sessionId, inputBuilder())
-                onSave()
             } catch {
                 errorMessage = error.localizedDescription
                 errorFields = errorFieldsFrom(error)

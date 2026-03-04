@@ -28,13 +28,19 @@ final class ServiceBenchmarks: XCTestCase {
         [XCTClockMetric(), XCTCPUMetric(), XCTMemoryMetric()]
     }
 
+    private var benchmarkOptions: XCTMeasureOptions {
+        let options = XCTMeasureOptions()
+        options.iterationCount = 10
+        return options
+    }
+
     // MARK: - Session Lifecycle
 
     func testStartStopSessionPerformance() {
         let activityId = seeder.activityIds[0]
         let svc = service!
 
-        measure(metrics: benchmarkMetrics) {
+        measure(metrics: benchmarkMetrics, options: benchmarkOptions) {
             let exp = expectation(description: "startStop")
             Task {
                 _ = try await svc.startSession(activityId: activityId, type: .work)
@@ -50,7 +56,7 @@ final class ServiceBenchmarks: XCTestCase {
     func testListActivitiesPerformance() {
         let svc = service!
 
-        measure(metrics: benchmarkMetrics) {
+        measure(metrics: benchmarkMetrics, options: benchmarkOptions) {
             let exp = expectation(description: "listActivities")
             Task {
                 _ = try await svc.listActivities(includeArchived: true, includeSystem: true)
@@ -66,7 +72,7 @@ final class ServiceBenchmarks: XCTestCase {
         let startDate = calendar.date(byAdding: .day, value: -30, to: endDate)!
         let svc = service!
 
-        measure(metrics: benchmarkMetrics) {
+        measure(metrics: benchmarkMetrics, options: benchmarkOptions) {
             let exp = expectation(description: "listSessions")
             Task {
                 _ = try await svc.listSessions(
@@ -82,7 +88,7 @@ final class ServiceBenchmarks: XCTestCase {
     func testSearchActivitiesPerformance() {
         let svc = service!
 
-        measure(metrics: benchmarkMetrics) {
+        measure(metrics: benchmarkMetrics, options: benchmarkOptions) {
             let exp = expectation(description: "searchActivities")
             Task {
                 _ = try await svc.searchActivities(query: "Benchmark")
@@ -97,7 +103,7 @@ final class ServiceBenchmarks: XCTestCase {
     func testDailySummaryPerformance() {
         let svc = service!
 
-        measure(metrics: benchmarkMetrics) {
+        measure(metrics: benchmarkMetrics, options: benchmarkOptions) {
             let exp = expectation(description: "dailySummary")
             Task {
                 _ = try await svc.dailySummary(
@@ -112,7 +118,7 @@ final class ServiceBenchmarks: XCTestCase {
     func testWeeklySummaryPerformance() {
         let svc = service!
 
-        measure(metrics: benchmarkMetrics) {
+        measure(metrics: benchmarkMetrics, options: benchmarkOptions) {
             let exp = expectation(description: "weeklySummary")
             Task {
                 _ = try await svc.weeklySummary(
@@ -132,7 +138,7 @@ final class ServiceBenchmarks: XCTestCase {
     func testDataRefreshCyclePerformance() {
         let svc = service!
 
-        measure(metrics: benchmarkMetrics) {
+        measure(metrics: benchmarkMetrics, options: benchmarkOptions) {
             let exp = expectation(description: "dataRefresh")
             Task {
                 _ = try await svc.currentSession()
