@@ -329,35 +329,37 @@ struct MenuBarView: View {
                     }
                 }
 
-                Button {
-                    setActivitySort("recent")
-                } label: {
-                    Image(systemName: "clock.arrow.circlepath")
-                        .font(scaledFont(.caption))
-                        .foregroundStyle(activitySort == "recent" ? theme.accent : .secondary)
-                        .padding(6 * zoomScale)
-                        .background(isSortRecentHovered ? Color.primary.opacity(0.08) : Color.clear, in: RoundedRectangle(cornerRadius: 4))
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Sort by recent")
-                .help("Sort by recent")
-                .onHover { hovering in isSortRecentHovered = hovering }
+                HStack(spacing: 0) {
+                    Button {
+                        setActivitySort("recent")
+                    } label: {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .font(scaledFont(.caption))
+                            .foregroundStyle(activitySort == "recent" ? theme.accent : .secondary)
+                            .padding(6 * zoomScale)
+                            .background(isSortRecentHovered ? Color.primary.opacity(0.08) : Color.clear, in: RoundedRectangle(cornerRadius: 4))
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Sort by recent")
+                    .help("Sort by recent")
+                    .onHover { hovering in isSortRecentHovered = hovering }
 
-                Button {
-                    setActivitySort("alphabetical")
-                } label: {
-                    Image(systemName: "textformat.abc")
-                        .font(scaledFont(.caption))
-                        .foregroundStyle(activitySort == "alphabetical" ? theme.accent : .secondary)
-                        .padding(6 * zoomScale)
-                        .background(isSortAlphaHovered ? Color.primary.opacity(0.08) : Color.clear, in: RoundedRectangle(cornerRadius: 4))
-                        .contentShape(Rectangle())
+                    Button {
+                        setActivitySort("alphabetical")
+                    } label: {
+                        Image(systemName: "textformat.abc")
+                            .font(scaledFont(.caption))
+                            .foregroundStyle(activitySort == "alphabetical" ? theme.accent : .secondary)
+                            .padding(6 * zoomScale)
+                            .background(isSortAlphaHovered ? Color.primary.opacity(0.08) : Color.clear, in: RoundedRectangle(cornerRadius: 4))
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Sort alphabetically")
+                    .help("Sort alphabetically")
+                    .onHover { hovering in isSortAlphaHovered = hovering }
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Sort alphabetically")
-                .help("Sort alphabetically")
-                .onHover { hovering in isSortAlphaHovered = hovering }
             }
             .padding(.horizontal, Constants.spacingCard * zoomScale)
             .padding(.vertical, Constants.spacingCompact * zoomScale)
