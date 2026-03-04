@@ -168,11 +168,18 @@ def commit_ref(sha, date):
 
 all_tests = sorted(set(list(baseline["benchmarks"]) + list(current["benchmarks"])))
 
+# Key metrics: used for regression indicators and summary counts
 key_metrics = [
     ("Clock Monotonic Time", "Clock", "s"),
     ("CPU Time", "CPU", "s"),
+]
+# Info metrics: shown for reference but no indicators or summary counts.
+# Memory Peak Physical measures process-level peak memory (not per-test
+# allocations), so it fluctuates with test execution order and OS state.
+info_metrics = [
     ("Memory Peak Physical", "Mem Peak", "kB"),
 ]
+all_metrics = key_metrics + info_metrics
 
 rows = []
 improved = 0
@@ -190,8 +197,10 @@ for test_name in all_tests:
         display_name = display_name[4:]
 
     row = {"name": display_name, "cells": []}
+    is_info_set = {m[0] for m in info_metrics}
 
-    for metric_key, label, unit in key_metrics:
+    for metric_key, label, unit in all_metrics:
+        is_info = metric_key in is_info_set
         b = b_metrics.get(metric_key, {})
         c = c_metrics.get(metric_key, {})
         b_avg = b.get("average", 0)
@@ -214,27 +223,32 @@ for test_name in all_tests:
                 b_str = f"{b_avg:.3f}"
                 c_str = f"{c_avg:.3f}"
 
-            if abs(pct) < 2:
-                indicator = " :white_circle:"
-                stable += 1
-            elif pct < -5:
-                indicator = " :tada:"
-                improved += 1
-            elif pct < 0:
-                indicator = " :white_check_mark:"
-                improved += 1
-            elif pct > 10:
-                indicator = " :rotating_light:"
-                regressed += 1
-            elif pct > 5:
-                indicator = " :warning:"
-                regressed += 1
-            else:
-                indicator = " :white_circle:"
-                stable += 1
-
             sign = "+" if pct > 0 else ""
-            row["cells"].append(f"{c_str} ({sign}{pct:.1f}%){indicator}")
+
+            if is_info:
+                # Info-only: show value and change but no indicator
+                row["cells"].append(f"{c_str} ({sign}{pct:.1f}%)")
+            else:
+                if abs(pct) < 5:
+                    indicator = " :white_circle:"
+                    stable += 1
+                elif pct < -10:
+                    indicator = " :tada:"
+                    improved += 1
+                elif pct < 0:
+                    indicator = " :white_check_mark:"
+                    improved += 1
+                elif pct > 15:
+                    indicator = " :rotating_light:"
+                    regressed += 1
+                elif pct > 10:
+                    indicator = " :warning:"
+                    regressed += 1
+                else:
+                    indicator = " :white_circle:"
+                    stable += 1
+
+                row["cells"].append(f"{c_str} ({sign}{pct:.1f}%){indicator}")
         elif c_avg > 0:
             row["cells"].append(f"{c_avg:.3f} (new)")
         else:
@@ -257,9 +271,9 @@ print()
 print(" \u00b7 ".join(parts))
 print()
 
-header_labels = [m[1] for m in key_metrics]
+header_labels = [m[1] for m in all_metrics]
 print("| Benchmark | " + " | ".join(header_labels) + " |")
-print("|:--|" + "|".join(["--:" for _ in key_metrics]) + "|")
+print("|:--|" + "|".join(["--:" for _ in all_metrics]) + "|")
 
 for row in rows:
     print(f"| **{row['name']}** | " + " | ".join(row["cells"]) + " |")
@@ -270,11 +284,16 @@ print("<summary>Legend</summary>")
 print()
 print("| Icon | Meaning |")
 print("|:--:|:--|")
-print("| :tada: | Improvement > 5% |")
-print("| :white_check_mark: | Improvement up to 5% |")
-print("| :white_circle: | Stable (within \u00b12%) |")
-print("| :warning: | Regression > 5% |")
-print("| :rotating_light: | Regression > 10% |")
+print("| :tada: | Improvement > 10% |")
+print("| :white_check_mark: | Improvement up to 10% |")
+print("| :white_circle: | Stable (within \u00b15%) |")
+print("| :warning: | Regression > 10% |")
+print("| :rotating_light: | Regression > 15% |")
+print()
+print("Indicators apply to Clock and CPU metrics only. Memory Peak Physical")
+print("measures process-level peak memory (not per-test allocations) and")
+print("fluctuates with test execution order and OS state. It is shown for")
+print("reference but excluded from regression detection.")
 print()
 print("</details>")
 print()
