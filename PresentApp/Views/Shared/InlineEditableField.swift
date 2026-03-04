@@ -100,10 +100,10 @@ struct InlineEditableField: View {
         }
         .onChange(of: isFocused) {
             if !isFocused {
-                // Delay slightly to allow button clicks to register first
+                // Delay slightly to allow button clicks to register before committing
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     if !isFocused && isEditing {
-                        cancelEdit()
+                        commitEdit()
                     }
                 }
             }
