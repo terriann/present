@@ -447,6 +447,9 @@ struct SessionSettingsTab: View {
     @State private var newBreakText = ""
     @State private var durationValidationError: String?
     @State private var defaultTimeboundMinutes = Constants.defaultTimeboundMinutes
+    @FocusState private var focusedDurationField: DurationField?
+
+    private enum DurationField { case focus, breakMinutes }
 
     var body: some View {
         Form {
@@ -474,6 +477,8 @@ struct SessionSettingsTab: View {
                                 .textFieldStyle(.roundedBorder)
                                 .frame(width: 100)
                                 .fixedSize()
+                                .focused($focusedDurationField, equals: .focus)
+                                .onSubmit { focusedDurationField = .breakMinutes }
 
                             Text("min  /")
                                 .fixedSize()
@@ -483,6 +488,7 @@ struct SessionSettingsTab: View {
                                 .textFieldStyle(.roundedBorder)
                                 .frame(width: 100)
                                 .fixedSize()
+                                .focused($focusedDurationField, equals: .breakMinutes)
                                 .onSubmit { addDurationOption() }
 
                             Text("min")
@@ -499,6 +505,11 @@ struct SessionSettingsTab: View {
                             }
                             .buttonStyle(.plain)
                             .disabled(newFocusText.isEmpty || newBreakText.isEmpty)
+                            .onKeyPress(keys: [.return, .space]) { _ in
+                                guard !newFocusText.isEmpty && !newBreakText.isEmpty else { return .ignored }
+                                addDurationOption()
+                                return .handled
+                            }
                         }
 
                         if let error = durationValidationError {
