@@ -250,14 +250,35 @@ final class AppState {
             timer.currentSession = nil
             timer.stopTimer()
 
-            // Start linger unless handleTimerCompletion already did
+            // Play completion sound and start linger unless handleTimerCompletion already did
             if completedTimerText == nil {
+                SoundManager.shared.play(.shimmer)
                 timer.startCompletedTimerLinger(text: finalText, isCountdown: false)
             }
 
             await refreshAll()
         } catch {
             showError(error, context: "Could not stop session")
+        }
+    }
+
+    func switchSession(to activityId: Int64, type: SessionType, timerMinutes: Int? = nil, breakMinutes: Int? = nil) async {
+        timer.clearCompletedTimerLinger()
+        timerCompletionContext = nil
+        do {
+            let result = try await sessionMgr.switchSession(
+                to: activityId,
+                type: type,
+                timerMinutes: timerMinutes,
+                breakMinutes: breakMinutes
+            )
+            currentSession = result.started
+            currentActivity = result.activity
+            timer.startTimer(session: result.started)
+            SoundManager.shared.play(.blow)
+            await refreshAll()
+        } catch {
+            showError(error, context: "Could not switch session")
         }
     }
 

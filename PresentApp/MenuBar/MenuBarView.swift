@@ -20,7 +20,10 @@ struct MenuBarView: View {
     @State private var showConvertPicker = false
     @State private var isExpanded = false
     @State private var switchActivityTarget: Activity?
+    @State private var switchFromActivityTitle: String?
     @State private var isChevronHovered = false
+    @State private var hoveredSessionType: SessionType?
+    @State private var hoveredRhythmOption: RhythmOption?
     @FocusState private var isSearchFocused: Bool
     @FocusState private var isPanelFocused: Bool
 
@@ -28,7 +31,9 @@ struct MenuBarView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if appState.isSessionRunning {
+            if switchActivityTarget != nil {
+                switchConfirmationBar
+            } else if appState.isSessionRunning {
                 currentSessionSection
                 chevronToggle
 
@@ -54,7 +59,8 @@ struct MenuBarView: View {
                 bottomBar
             }
         }
-        .frame(width: 320 * zoomScale)
+        .frame(width: (switchActivityTarget != nil ? 400 : 320) * zoomScale)
+        .adaptiveAnimation(.easeInOut(duration: 0.2), value: switchActivityTarget != nil)
         .focusable()
         .focused($isPanelFocused)
         .focusEffectDisabled()
@@ -62,35 +68,146 @@ struct MenuBarView: View {
             isPanelFocused = true
             isExpanded = false
         }
+        .onDisappear {
+            switchActivityTarget = nil
+            switchFromActivityTitle = nil
+        }
         .onKeyPress(.escape) {
+            if switchActivityTarget != nil {
+                switchActivityTarget = nil
+                switchFromActivityTitle = nil
+                return .handled
+            }
             dismiss()
             return .handled
         }
-        .alert(
-            "Switch Activity?",
-            isPresented: Binding(
-                get: { switchActivityTarget != nil },
-                set: { if !$0 { switchActivityTarget = nil } }
-            )
-        ) {
-            Button("Cancel", role: .cancel) {
-                switchActivityTarget = nil
-            }
-            Button("Switch") {
-                guard let target = switchActivityTarget else { return }
-                switchActivityTarget = nil
-                Task {
-                    await appState.stopSession()
-                    await startSessionForType(activity: target)
-                    withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
-                        isExpanded = false
-                    }
+    }
+
+    // MARK: - Switch Confirmation
+
+    /// The effective session type for the switch target, accounting for system activity restrictions.
+    private var switchTargetSessionType: SessionType {
+        guard let target = switchActivityTarget else { return selectedSessionType }
+        return (target.isSystem && selectedSessionType == .rhythm) ? .work : selectedSessionType
+    }
+
+    private var switchConfirmationBar: some View {
+        VStack(spacing: Constants.spacingCard) {
+            Text("Time to move on?")
+                .font(scaledFont(.headline))
+
+            HStack(alignment: .center, spacing: Constants.spacingCompact) {
+                // Current session
+                if let currentTitle = switchFromActivityTitle,
+                   let session = appState.currentSession {
+                    switchSessionColumn(
+                        activityTitle: currentTitle,
+                        sessionType: session.sessionType,
+                        sessionTypeDetail: switchSessionTypeDetail(for: session)
+                    )
+                    .foregroundStyle(.secondary)
+                }
+
+                Image(systemName: "arrow.right")
+                    .font(scaledFont(.title2, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+
+                // Target session
+                if let target = switchActivityTarget {
+                    switchSessionColumn(
+                        activityTitle: target.title,
+                        sessionType: switchTargetSessionType,
+                        sessionTypeDetail: switchTargetTypeDetail
+                    )
                 }
             }
-        } message: {
-            if let currentActivity = appState.currentActivity {
-                Text("This will stop your current session: \(currentActivity.title)")
+
+            VStack(spacing: Constants.spacingCompact) {
+                Button("Begin \(switchActivityTarget?.title ?? "")") {
+                    guard let target = switchActivityTarget else { return }
+                    switchActivityTarget = nil
+                    switchFromActivityTitle = nil
+                    Task {
+                        await switchSessionForType(activity: target)
+                        withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
+                            isExpanded = false
+                        }
+                    }
+                }
+                .keyboardShortcut(.defaultAction)
+
+                Button("Cancel") {
+                    switchActivityTarget = nil
+                    switchFromActivityTitle = nil
+                }
+                .buttonStyle(.plain)
+                .font(scaledFont(.caption))
+                .foregroundStyle(.secondary)
+                .keyboardShortcut(.cancelAction)
             }
+            .padding(.top, Constants.spacingCompact)
+        }
+        .padding(Constants.spacingPage)
+    }
+
+    private func switchSessionColumn(activityTitle: String, sessionType: SessionType, sessionTypeDetail: String) -> some View {
+        VStack(spacing: Constants.spacingTight) {
+            Image(systemName: sessionTypeIcon(for: sessionType))
+                .font(scaledFont(.title3))
+                .accessibilityHidden(true)
+                .padding(.bottom, Constants.spacingCard)
+            Text(activityTitle)
+                .font(scaledFont(.body, weight: .medium))
+                .lineLimit(1)
+            Text(sessionTypeDetail)
+                .font(scaledFont(.caption))
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func sessionTypeIcon(for type: SessionType) -> String {
+        switch type {
+        case .work: "infinity"
+        case .timebound: "timer"
+        case .rhythm: "arrow.triangle.2.circlepath"
+        }
+    }
+
+
+    /// Format session type detail for the current (running) session, matching `ActivitySessionCard.sessionTypeLabel`.
+    private func switchSessionTypeDetail(for session: Session) -> String {
+        let base = SessionTypeConfig.config(for: session.sessionType).displayName
+        switch session.sessionType {
+        case .timebound:
+            if let minutes = session.timerLengthMinutes {
+                return "\(base) \u{00B7} \(minutes)m"
+            }
+        case .rhythm:
+            if let work = session.timerLengthMinutes, let brk = session.breakMinutes {
+                return "\(base) \u{00B7} \(RhythmOption(focusMinutes: work, breakMinutes: brk).displayLabel)"
+            }
+        case .work:
+            break
+        }
+        return base
+    }
+
+    /// Format session type detail for the switch target based on the selected session type picker.
+    private var switchTargetTypeDetail: String {
+        let type = switchTargetSessionType
+        let base = SessionTypeConfig.config(for: type).displayName
+        switch type {
+        case .timebound:
+            return "\(base) \u{00B7} \(timeboundMinutes)m"
+        case .rhythm:
+            let option = selectedRhythmOption ?? appState.rhythmDurationOptions.first
+            if let option {
+                return "\(base) \u{00B7} \(option.displayLabel)"
+            }
+            return base
+        case .work:
+            return base
         }
     }
 
@@ -175,6 +292,7 @@ struct MenuBarView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(isExpanded ? "Hide activities" : "Show activities")
+        .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
         .help(isExpanded ? "Hide activities" : "Show activities")
         .onHover { hovering in isChevronHovered = hovering }
     }
@@ -228,23 +346,29 @@ struct MenuBarView: View {
                 HStack(spacing: 4) {
                     ForEach(menuBarSessionTypes, id: \.self) { type in
                         let isSelected = selectedSessionType == type
+                        let isHovered = hoveredSessionType == type
                         Button {
                             withAdaptiveAnimation(.easeInOut(duration: 0.15)) {
                                 selectedSessionType = type
                             }
                         } label: {
-                            Label {
-                                Text(SessionTypeConfig.config(for: type).displayName)
-                            } icon: {
-                                Image(systemName: sessionTypeIcon(for: type))
-                            }
+                            Text(SessionTypeConfig.config(for: type).displayName)
                             .font(scaledFont(.caption, weight: isSelected ? .semibold : .regular))
                             .padding(.horizontal, 10 * zoomScale)
                             .padding(.vertical, 6 * zoomScale)
-                            .background(isSelected ? theme.accent.opacity(0.15) : Color.clear, in: Capsule())
+                            .background(
+                                isSelected ? theme.accent.opacity(0.15) :
+                                isHovered ? Color.primary.opacity(0.08) :
+                                Color.clear,
+                                in: Capsule()
+                            )
                             .foregroundStyle(isSelected ? theme.accent : .secondary)
+                            .contentShape(Capsule())
                         }
                         .buttonStyle(.plain)
+                        .onHover { hovering in
+                            hoveredSessionType = hovering ? type : nil
+                        }
                     }
                 }
                 .padding(.bottom, Constants.spacingCompact * zoomScale)
@@ -254,6 +378,7 @@ struct MenuBarView: View {
                     HStack(spacing: 4) {
                         ForEach(Array(appState.rhythmDurationOptions.prefix(4)), id: \.self) { option in
                             let isSelected = selectedRhythmOption == option
+                            let isHovered = hoveredRhythmOption == option
                             Button {
                                 selectedRhythmOption = option
                             } label: {
@@ -261,10 +386,19 @@ struct MenuBarView: View {
                                     .font(scaledFont(.caption2, weight: isSelected ? .semibold : .regular))
                                     .padding(.horizontal, Constants.spacingCompact * zoomScale)
                                     .padding(.vertical, 3 * zoomScale)
-                                    .background(isSelected ? theme.accent.opacity(0.12) : Color.secondary.opacity(0.08), in: Capsule())
+                                    .background(
+                                        isSelected ? theme.accent.opacity(0.12) :
+                                        isHovered ? Color.primary.opacity(0.08) :
+                                        Color.clear,
+                                        in: Capsule()
+                                    )
                                     .foregroundStyle(isSelected ? theme.accent : .secondary)
+                                    .contentShape(Capsule())
                             }
                             .buttonStyle(.plain)
+                            .onHover { hovering in
+                                hoveredRhythmOption = hovering ? option : nil
+                            }
                         }
                     }
                     .padding(.bottom, 6 * zoomScale)
@@ -329,35 +463,47 @@ struct MenuBarView: View {
                     }
                 }
 
-                Button {
-                    setActivitySort("recent")
-                } label: {
-                    Image(systemName: "clock.arrow.circlepath")
-                        .font(scaledFont(.caption))
-                        .foregroundStyle(activitySort == "recent" ? theme.accent : .secondary)
-                        .padding(6 * zoomScale)
-                        .background(isSortRecentHovered ? Color.primary.opacity(0.08) : Color.clear, in: RoundedRectangle(cornerRadius: 4))
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Sort by recent")
-                .help("Sort by recent")
-                .onHover { hovering in isSortRecentHovered = hovering }
+                HStack(spacing: 0) {
+                    Button {
+                        setActivitySort("recent")
+                    } label: {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .font(scaledFont(.caption))
+                            .foregroundStyle(activitySort == "recent" ? theme.accent : .secondary)
+                            .padding(6 * zoomScale)
+                            .background(
+                                activitySort == "recent" ? theme.accent.opacity(0.15) :
+                                isSortRecentHovered ? Color.primary.opacity(0.08) :
+                                Color.clear,
+                                in: RoundedRectangle(cornerRadius: 4)
+                            )
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Sort by recent")
+                    .help("Sort by recent")
+                    .onHover { hovering in isSortRecentHovered = hovering }
 
-                Button {
-                    setActivitySort("alphabetical")
-                } label: {
-                    Image(systemName: "textformat.abc")
-                        .font(scaledFont(.caption))
-                        .foregroundStyle(activitySort == "alphabetical" ? theme.accent : .secondary)
-                        .padding(6 * zoomScale)
-                        .background(isSortAlphaHovered ? Color.primary.opacity(0.08) : Color.clear, in: RoundedRectangle(cornerRadius: 4))
-                        .contentShape(Rectangle())
+                    Button {
+                        setActivitySort("alphabetical")
+                    } label: {
+                        Image(systemName: "textformat.abc")
+                            .font(scaledFont(.caption))
+                            .foregroundStyle(activitySort == "alphabetical" ? theme.accent : .secondary)
+                            .padding(6 * zoomScale)
+                            .background(
+                                activitySort == "alphabetical" ? theme.accent.opacity(0.15) :
+                                isSortAlphaHovered ? Color.primary.opacity(0.08) :
+                                Color.clear,
+                                in: RoundedRectangle(cornerRadius: 4)
+                            )
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Sort alphabetically")
+                    .help("Sort alphabetically")
+                    .onHover { hovering in isSortAlphaHovered = hovering }
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Sort alphabetically")
-                .help("Sort alphabetically")
-                .onHover { hovering in isSortAlphaHovered = hovering }
             }
             .padding(.horizontal, Constants.spacingCard * zoomScale)
             .padding(.vertical, Constants.spacingCompact * zoomScale)
@@ -405,7 +551,7 @@ struct MenuBarView: View {
                     .frame(height: 200 * zoomScale)
                     .onChange(of: selectedIndex) { _, newValue in
                         if let newValue {
-                            withAnimation {
+                            withAdaptiveAnimation(.easeInOut) {
                                 proxy.scrollTo(newValue, anchor: .center)
                             }
                         }
@@ -428,6 +574,7 @@ struct MenuBarView: View {
 
     private func handleActivityTap(activity: Activity) {
         if appState.isSessionRunning {
+            switchFromActivityTitle = appState.currentActivity?.title
             switchActivityTarget = activity
         } else {
             Task {
@@ -459,6 +606,33 @@ struct MenuBarView: View {
         default:
             await appState.startSession(
                 activityId: activityId,
+                type: effectiveType
+            )
+        }
+    }
+
+    private func switchSessionForType(activity: Activity) async {
+        guard let activityId = activity.id else { return }
+        let effectiveType = (activity.isSystem && selectedSessionType == .rhythm) ? .work : selectedSessionType
+
+        switch effectiveType {
+        case .rhythm:
+            let option = selectedRhythmOption ?? appState.rhythmDurationOptions.first
+            await appState.switchSession(
+                to: activityId,
+                type: .rhythm,
+                timerMinutes: option?.focusMinutes,
+                breakMinutes: option?.breakMinutes
+            )
+        case .timebound:
+            await appState.switchSession(
+                to: activityId,
+                type: .timebound,
+                timerMinutes: timeboundMinutes
+            )
+        default:
+            await appState.switchSession(
+                to: activityId,
                 type: effectiveType
             )
         }
@@ -514,14 +688,6 @@ struct MenuBarView: View {
                 selectedIndex = nil
                 handleActivityTap(activity: newActivity)
             }
-        }
-    }
-
-    private func sessionTypeIcon(for type: SessionType) -> String {
-        switch type {
-        case .work: "infinity"
-        case .timebound: "timer"
-        case .rhythm: "arrow.triangle.2.circlepath"
         }
     }
 

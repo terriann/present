@@ -5,6 +5,7 @@ struct MarkdownEditor: NSViewRepresentable {
     @Binding var text: String
     var isEditable: Bool = true
     var focusOnAppear: Bool = false
+    var tabNavigatesFocus: Bool = true
     var onCommit: (() -> Void)?
     var onEscape: (() -> Void)?
 
@@ -60,6 +61,7 @@ struct MarkdownEditor: NSViewRepresentable {
 
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         guard let textView = scrollView.documentView as? NSTextView else { return }
+        context.coordinator.tabNavigatesFocus = tabNavigatesFocus
         context.coordinator.onCommit = onCommit
         context.coordinator.onEscape = onEscape
         if let committable = textView as? CommittableTextView {
@@ -85,17 +87,19 @@ struct MarkdownEditor: NSViewRepresentable {
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text, onCommit: onCommit, onEscape: onEscape)
+        Coordinator(text: $text, tabNavigatesFocus: tabNavigatesFocus, onCommit: onCommit, onEscape: onEscape)
     }
 
     final class Coordinator: NSObject, NSTextViewDelegate {
         var text: Binding<String>
+        var tabNavigatesFocus: Bool
         var onCommit: (() -> Void)?
         var onEscape: (() -> Void)?
         var didFocus = false
 
-        init(text: Binding<String>, onCommit: (() -> Void)?, onEscape: (() -> Void)?) {
+        init(text: Binding<String>, tabNavigatesFocus: Bool, onCommit: (() -> Void)?, onEscape: (() -> Void)?) {
             self.text = text
+            self.tabNavigatesFocus = tabNavigatesFocus
             self.onCommit = onCommit
             self.onEscape = onEscape
         }
@@ -117,11 +121,19 @@ struct MarkdownEditor: NSViewRepresentable {
                 return false
             }
             if commandSelector == #selector(NSResponder.insertTab(_:)) {
-                textView.window?.selectNextKeyView(nil)
+                if tabNavigatesFocus {
+                    textView.window?.selectNextKeyView(nil)
+                } else {
+                    textView.insertText("\t", replacementRange: textView.selectedRange())
+                }
                 return true
             }
             if commandSelector == #selector(NSResponder.insertBacktab(_:)) {
-                textView.window?.selectPreviousKeyView(nil)
+                if tabNavigatesFocus {
+                    textView.window?.selectPreviousKeyView(nil)
+                } else {
+                    // When inserting tabs, Shift-Tab does nothing (no dedent yet)
+                }
                 return true
             }
             guard commandSelector == #selector(NSResponder.insertNewline(_:)) else {

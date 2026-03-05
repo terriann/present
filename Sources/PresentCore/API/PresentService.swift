@@ -376,14 +376,13 @@ public final class PresentService: PresentAPI, Sendable {
                       AND id != ?
                       AND startedAt < ? AND endedAt > ?
                     """
-                if let checkEnd {
-                    let overlapCount = try Int.fetchOne(db, sql: overlapSQL, arguments: [
-                        SessionState.completed.rawValue, id,
-                        checkEnd, checkStart
-                    ]) ?? 0
-                    if overlapCount > 0 {
-                        throw PresentError.sessionOverlap
-                    }
+                let effectiveEnd = checkEnd ?? Date()
+                let overlapCount = try Int.fetchOne(db, sql: overlapSQL, arguments: [
+                    SessionState.completed.rawValue, id,
+                    effectiveEnd, checkStart
+                ]) ?? 0
+                if overlapCount > 0 {
+                    throw PresentError.sessionOverlap
                 }
 
                 // Check against active sessions (exclude self)
@@ -602,6 +601,98 @@ public final class PresentService: PresentAPI, Sendable {
 
             try session.update(db)
             return session
+        }
+    }
+
+    public func switchSession(to activityId: Int64, type: SessionType, timerMinutes: Int? = nil, breakMinutes: Int? = nil) async throws -> (stopped: Session, started: Session) {
+        if let timerMinutes {
+            try Validation.validateRange(timerMinutes, range: Constants.sessionMinutesRange, fieldName: "Timer duration")
+        }
+        if let breakMinutes {
+            try Validation.validateRange(breakMinutes, range: Constants.breakDurationRange, fieldName: "Break duration")
+        }
+
+        return try await dbWriter.write { db in
+            // --- Stop the active session ---
+            guard var oldSession = try Session
+                .filter(Session.Columns.state == SessionState.running.rawValue || Session.Columns.state == SessionState.paused.rawValue)
+                .fetchOne(db) else {
+                throw PresentError.noActiveSession
+            }
+
+            let now = Date()
+
+            // If paused, accumulate remaining pause time
+            if oldSession.state == .paused, let pausedAt = oldSession.lastPausedAt {
+                let pauseDuration = Int(now.timeIntervalSince(pausedAt))
+                oldSession.totalPausedSeconds += pauseDuration
+            }
+
+            // If running, close the open segment
+            if oldSession.state == .running,
+               var openSegment = try SessionSegment
+                .filter(SessionSegment.Columns.sessionId == oldSession.id!)
+                .filter(SessionSegment.Columns.endedAt == nil)
+                .fetchOne(db) {
+                openSegment.endedAt = now
+                try openSegment.update(db)
+            }
+
+            oldSession.state = .completed
+            oldSession.endedAt = now
+            oldSession.lastPausedAt = nil
+
+            // Compute duration from sum of all closed segments
+            let segments = try SessionSegment
+                .filter(SessionSegment.Columns.sessionId == oldSession.id!)
+                .filter(SessionSegment.Columns.endedAt != nil)
+                .fetchAll(db)
+            oldSession.durationSeconds = Self.sumSegmentDurations(segments)
+
+            try oldSession.update(db)
+
+            // --- Start the new session ---
+            guard let activity = try Activity.fetchOne(db, key: activityId) else {
+                throw PresentError.activityNotFound(activityId)
+            }
+            if activity.isArchived {
+                throw PresentError.activityIsArchived(activityId)
+            }
+            if activity.isSystem && type == .rhythm {
+                throw PresentError.rhythmNotAllowedForSystemActivity
+            }
+
+            var newSession = Session(
+                activityId: activityId,
+                sessionType: type,
+                startedAt: now,
+                timerLengthMinutes: timerMinutes,
+                state: .running,
+                createdAt: now
+            )
+
+            // For rhythm sessions, store break duration and determine the session index
+            if type == .rhythm {
+                newSession.breakMinutes = breakMinutes
+
+                let lastRhythm = try Session
+                    .filter(Session.Columns.sessionType == SessionType.rhythm.rawValue)
+                    .filter(Session.Columns.state == SessionState.completed.rawValue)
+                    .order(Session.Columns.id.desc)
+                    .fetchOne(db)
+
+                let lastIndex = lastRhythm?.rhythmSessionIndex ?? 0
+                newSession.rhythmSessionIndex = (lastIndex % 4) + 1
+            }
+
+            try newSession.insert(db)
+            newSession.id = db.lastInsertedRowID
+
+            // Open the first segment
+            let segment = SessionSegment(sessionId: newSession.id!, startedAt: now)
+            try segment.insert(db)
+
+            return (stopped: oldSession, started: newSession)
         }
     }
 

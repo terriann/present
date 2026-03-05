@@ -15,6 +15,7 @@ public protocol PresentAPI: Sendable {
     func lastCompletedNonSystemSession(since: Date) async throws -> (Session, Activity)?
     func earliestSessionDate() async throws -> Date?
     func updateSession(id: Int64, _ input: UpdateSessionInput) async throws -> Session
+    func switchSession(to activityId: Int64, type: SessionType, timerMinutes: Int?, breakMinutes: Int?) async throws -> (stopped: Session, started: Session)
     func convertSessionType(_ input: ConvertSessionInput) async throws -> Session
     func deleteSession(id: Int64) async throws
 
@@ -81,6 +82,10 @@ public protocol PresentAPI: Sendable {
 public extension PresentAPI {
     func startSession(activityId: Int64, type: SessionType, timerMinutes: Int? = nil, breakMinutes: Int? = nil) async throws -> Session {
         try await startSession(activityId: activityId, type: type, timerMinutes: timerMinutes, breakMinutes: breakMinutes, note: nil, link: nil)
+    }
+
+    func switchSession(to activityId: Int64, type: SessionType, timerMinutes: Int? = nil, breakMinutes: Int? = nil) async throws -> (stopped: Session, started: Session) {
+        try await switchSession(to: activityId, type: type, timerMinutes: timerMinutes, breakMinutes: breakMinutes)
     }
 
     func listSessions(from: Date, to: Date, type: SessionType? = nil, activityId: Int64? = nil, includeArchived: Bool = true) async throws -> [(Session, Activity)] {

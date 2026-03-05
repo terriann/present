@@ -11,6 +11,7 @@ struct ActivitySessionCard: View {
     let activityColorMap: [String: Color]
     var dayPortions: [Int64: Int] = [:]
     var includeActiveSession: Bool = false
+    var resetToken: AnyHashable?
     var onReload: (() -> Void)?
 
     @Environment(AppState.self) private var appState
@@ -64,6 +65,9 @@ struct ActivitySessionCard: View {
         }
         .onChange(of: appState.isSessionActive) { _, isActive in
             sortOrder = isActive ? .mostRecent : .timeSpent
+        }
+        .onChange(of: resetToken) {
+            expandedActivities.removeAll()
         }
         .onAppear {
             guard !sortInitialized else { return }

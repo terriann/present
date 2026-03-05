@@ -100,6 +100,7 @@ struct ReportsView: View {
                     sessionEntries: sessionEntries,
                     activityColorMap: activityColorMap,
                     includeActiveSession: isShowingToday,
+                    resetToken: [selectedDate.description, selectedPeriod.rawValue] as [AnyHashable],
                     onReload: { reloadReport(clearData: false) }
                 )
                 ReportCLIPromoCard()
