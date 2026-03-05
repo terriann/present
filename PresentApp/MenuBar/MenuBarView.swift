@@ -175,6 +175,7 @@ struct MenuBarView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(isExpanded ? "Hide activities" : "Show activities")
+        .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
         .help(isExpanded ? "Hide activities" : "Show activities")
         .onHover { hovering in isChevronHovered = hovering }
     }
