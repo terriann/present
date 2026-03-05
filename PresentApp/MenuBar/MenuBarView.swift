@@ -233,11 +233,7 @@ struct MenuBarView: View {
                                 selectedSessionType = type
                             }
                         } label: {
-                            Label {
-                                Text(SessionTypeConfig.config(for: type).displayName)
-                            } icon: {
-                                Image(systemName: sessionTypeIcon(for: type))
-                            }
+                            Text(SessionTypeConfig.config(for: type).displayName)
                             .font(scaledFont(.caption, weight: isSelected ? .semibold : .regular))
                             .padding(.horizontal, 10 * zoomScale)
                             .padding(.vertical, 6 * zoomScale)
@@ -526,14 +522,6 @@ struct MenuBarView: View {
                 selectedIndex = nil
                 handleActivityTap(activity: newActivity)
             }
-        }
-    }
-
-    private func sessionTypeIcon(for type: SessionType) -> String {
-        switch type {
-        case .work: "infinity"
-        case .timebound: "timer"
-        case .rhythm: "arrow.triangle.2.circlepath"
         }
     }
 
