@@ -22,6 +22,7 @@ struct MenuBarView: View {
     @State private var switchActivityTarget: Activity?
     @State private var switchFromActivityTitle: String?
     @State private var isChevronHovered = false
+    @State private var hoveredSessionType: SessionType?
     @FocusState private var isSearchFocused: Bool
     @FocusState private var isPanelFocused: Bool
 
@@ -344,6 +345,7 @@ struct MenuBarView: View {
                 HStack(spacing: 4) {
                     ForEach(menuBarSessionTypes, id: \.self) { type in
                         let isSelected = selectedSessionType == type
+                        let isHovered = hoveredSessionType == type
                         Button {
                             withAdaptiveAnimation(.easeInOut(duration: 0.15)) {
                                 selectedSessionType = type
@@ -353,10 +355,19 @@ struct MenuBarView: View {
                             .font(scaledFont(.caption, weight: isSelected ? .semibold : .regular))
                             .padding(.horizontal, 10 * zoomScale)
                             .padding(.vertical, 6 * zoomScale)
-                            .background(isSelected ? theme.accent.opacity(0.15) : Color.clear, in: Capsule())
+                            .background(
+                                isSelected ? theme.accent.opacity(0.15) :
+                                isHovered ? Color.primary.opacity(0.08) :
+                                Color.clear,
+                                in: Capsule()
+                            )
                             .foregroundStyle(isSelected ? theme.accent : .secondary)
+                            .contentShape(Capsule())
                         }
                         .buttonStyle(.plain)
+                        .onHover { hovering in
+                            hoveredSessionType = hovering ? type : nil
+                        }
                     }
                 }
                 .padding(.bottom, Constants.spacingCompact * zoomScale)
