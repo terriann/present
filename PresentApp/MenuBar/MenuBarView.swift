@@ -57,7 +57,8 @@ struct MenuBarView: View {
                 bottomBar
             }
         }
-        .frame(width: 320 * zoomScale)
+        .frame(width: (switchActivityTarget != nil ? 400 : 320) * zoomScale)
+        .adaptiveAnimation(.easeInOut(duration: 0.2), value: switchActivityTarget != nil)
         .focusable()
         .focused($isPanelFocused)
         .focusEffectDisabled()
@@ -89,12 +90,13 @@ struct MenuBarView: View {
             Text("Time to move on?")
                 .font(scaledFont(.headline))
 
-            HStack(alignment: .top, spacing: Constants.spacingCompact) {
+            HStack(alignment: .center, spacing: Constants.spacingCompact) {
                 // Current session
                 if let currentTitle = switchFromActivityTitle,
                    let session = appState.currentSession {
                     switchSessionColumn(
                         activityTitle: currentTitle,
+                        sessionType: session.sessionType,
                         sessionTypeDetail: switchSessionTypeDetail(for: session)
                     )
                     .foregroundStyle(.secondary)
@@ -104,24 +106,18 @@ struct MenuBarView: View {
                     .font(scaledFont(.title2, weight: .medium))
                     .foregroundStyle(.secondary)
                     .accessibilityHidden(true)
-                    .padding(.top, Constants.spacingTight)
 
                 // Target session
                 if let target = switchActivityTarget {
                     switchSessionColumn(
                         activityTitle: target.title,
+                        sessionType: switchTargetSessionType,
                         sessionTypeDetail: switchTargetTypeDetail
                     )
                 }
             }
 
-            HStack(spacing: Constants.spacingCompact) {
-                Button("Cancel") {
-                    switchActivityTarget = nil
-                    switchFromActivityTitle = nil
-                }
-                .keyboardShortcut(.cancelAction)
-
+            VStack(spacing: Constants.spacingCompact) {
                 Button("Begin \(switchActivityTarget?.title ?? "")") {
                     guard let target = switchActivityTarget else { return }
                     switchActivityTarget = nil
@@ -134,13 +130,27 @@ struct MenuBarView: View {
                     }
                 }
                 .keyboardShortcut(.defaultAction)
+
+                Button("Cancel") {
+                    switchActivityTarget = nil
+                    switchFromActivityTitle = nil
+                }
+                .buttonStyle(.plain)
+                .font(scaledFont(.caption))
+                .foregroundStyle(.secondary)
+                .keyboardShortcut(.cancelAction)
             }
+            .padding(.top, Constants.spacingCompact)
         }
         .padding(Constants.spacingPage)
     }
 
-    private func switchSessionColumn(activityTitle: String, sessionTypeDetail: String) -> some View {
+    private func switchSessionColumn(activityTitle: String, sessionType: SessionType, sessionTypeDetail: String) -> some View {
         VStack(spacing: Constants.spacingTight) {
+            Image(systemName: sessionTypeIcon(for: sessionType))
+                .font(scaledFont(.title3))
+                .accessibilityHidden(true)
+                .padding(.bottom, Constants.spacingCard)
             Text(activityTitle)
                 .font(scaledFont(.body, weight: .medium))
                 .lineLimit(1)
@@ -149,6 +159,15 @@ struct MenuBarView: View {
         }
         .frame(maxWidth: .infinity)
     }
+
+    private func sessionTypeIcon(for type: SessionType) -> String {
+        switch type {
+        case .work: "infinity"
+        case .timebound: "timer"
+        case .rhythm: "arrow.triangle.2.circlepath"
+        }
+    }
+
 
     /// Format session type detail for the current (running) session, matching `ActivitySessionCard.sessionTypeLabel`.
     private func switchSessionTypeDetail(for session: Session) -> String {
