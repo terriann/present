@@ -38,6 +38,17 @@ final class SessionManager {
         try await service.stopSession()
     }
 
+    func switchSession(to activityId: Int64, type: SessionType, timerMinutes: Int? = nil, breakMinutes: Int? = nil) async throws -> (stopped: Session, started: Session, activity: Activity) {
+        let result = try await service.switchSession(
+            to: activityId,
+            type: type,
+            timerMinutes: timerMinutes,
+            breakMinutes: breakMinutes
+        )
+        let activity = try await service.getActivity(id: activityId)
+        return (stopped: result.stopped, started: result.started, activity: activity)
+    }
+
     func cancelSession() async throws {
         try await service.cancelSession()
     }

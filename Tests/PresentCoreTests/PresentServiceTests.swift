@@ -183,6 +183,103 @@ struct PresentServiceTests {
         _ = try await service.stopSession()
     }
 
+    // MARK: - Switch Session
+
+    @Test func switchSessionAtomically() async throws {
+        let service = try makeService()
+        let a1 = try await service.createActivity(CreateActivityInput(title: "Activity A"))
+        let a2 = try await service.createActivity(CreateActivityInput(title: "Activity B"))
+
+        _ = try await service.startSession(activityId: a1.id!, type: .work)
+
+        let result = try await service.switchSession(to: a2.id!, type: .work)
+        #expect(result.stopped.state == .completed)
+        #expect(result.stopped.activityId == a1.id!)
+        #expect(result.stopped.durationSeconds != nil)
+        #expect(result.started.state == .running)
+        #expect(result.started.activityId == a2.id!)
+
+        // Verify exactly one active session remains
+        let current = try await service.currentSession()
+        #expect(current != nil)
+        #expect(current?.0.id == result.started.id)
+    }
+
+    @Test func switchSessionNoActiveSessionFails() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Target"))
+
+        await #expect(throws: PresentError.self) {
+            try await service.switchSession(to: activity.id!, type: .work)
+        }
+    }
+
+    @Test func switchSessionToArchivedActivityFails() async throws {
+        let service = try makeService()
+        let a1 = try await service.createActivity(CreateActivityInput(title: "Active"))
+        let a2 = try await service.createActivity(CreateActivityInput(title: "Archived"))
+        // Create a backdated session with >= 10 minutes so archive doesn't prompt-delete
+        let now = Date()
+        _ = try await service.createBackdatedSession(CreateBackdatedSessionInput(
+            activityId: a2.id!, startedAt: now.addingTimeInterval(-700), endedAt: now.addingTimeInterval(-100)
+        ))
+        let archiveResult = try await service.archiveActivity(id: a2.id!)
+        #expect(archiveResult == .archived)
+
+        _ = try await service.startSession(activityId: a1.id!, type: .work)
+
+        await #expect(throws: PresentError.self) {
+            try await service.switchSession(to: a2.id!, type: .work)
+        }
+
+        // Original session should still be active (transaction rolled back)
+        let current = try await service.currentSession()
+        #expect(current != nil)
+        #expect(current?.0.activityId == a1.id!)
+        #expect(current?.0.state == .running)
+    }
+
+    @Test func switchSessionToNonexistentActivityFails() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Source"))
+        _ = try await service.startSession(activityId: activity.id!, type: .work)
+
+        await #expect(throws: PresentError.self) {
+            try await service.switchSession(to: 99999, type: .work)
+        }
+
+        // Original session should still be active
+        let current = try await service.currentSession()
+        #expect(current != nil)
+        #expect(current?.0.activityId == activity.id!)
+    }
+
+    @Test func switchSessionFromPausedState() async throws {
+        let service = try makeService()
+        let a1 = try await service.createActivity(CreateActivityInput(title: "Paused Source"))
+        let a2 = try await service.createActivity(CreateActivityInput(title: "Target"))
+
+        _ = try await service.startSession(activityId: a1.id!, type: .work)
+        _ = try await service.pauseSession()
+
+        let result = try await service.switchSession(to: a2.id!, type: .work)
+        #expect(result.stopped.state == .completed)
+        #expect(result.stopped.totalPausedSeconds >= 0)
+        #expect(result.started.state == .running)
+    }
+
+    @Test func switchSessionPreservesSessionType() async throws {
+        let service = try makeService()
+        let a1 = try await service.createActivity(CreateActivityInput(title: "Source"))
+        let a2 = try await service.createActivity(CreateActivityInput(title: "Target"))
+
+        _ = try await service.startSession(activityId: a1.id!, type: .work)
+
+        let result = try await service.switchSession(to: a2.id!, type: .timebound, timerMinutes: 25)
+        #expect(result.started.sessionType == .timebound)
+        #expect(result.started.timerLengthMinutes == 25)
+    }
+
     // MARK: - Notes
 
     @Test func appendNote() async throws {

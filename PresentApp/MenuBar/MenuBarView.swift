@@ -83,8 +83,7 @@ struct MenuBarView: View {
                 switchActivityTarget = nil
                 switchFromActivityTitle = nil
                 Task {
-                    await appState.stopSession()
-                    await startSessionForType(activity: target)
+                    await switchSessionForType(activity: target)
                     withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
                         isExpanded = false
                     }
@@ -472,6 +471,33 @@ struct MenuBarView: View {
         default:
             await appState.startSession(
                 activityId: activityId,
+                type: effectiveType
+            )
+        }
+    }
+
+    private func switchSessionForType(activity: Activity) async {
+        guard let activityId = activity.id else { return }
+        let effectiveType = (activity.isSystem && selectedSessionType == .rhythm) ? .work : selectedSessionType
+
+        switch effectiveType {
+        case .rhythm:
+            let option = selectedRhythmOption ?? appState.rhythmDurationOptions.first
+            await appState.switchSession(
+                to: activityId,
+                type: .rhythm,
+                timerMinutes: option?.focusMinutes,
+                breakMinutes: option?.breakMinutes
+            )
+        case .timebound:
+            await appState.switchSession(
+                to: activityId,
+                type: .timebound,
+                timerMinutes: timeboundMinutes
+            )
+        default:
+            await appState.switchSession(
+                to: activityId,
                 type: effectiveType
             )
         }
