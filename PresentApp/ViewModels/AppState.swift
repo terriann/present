@@ -250,8 +250,9 @@ final class AppState {
             timer.currentSession = nil
             timer.stopTimer()
 
-            // Start linger unless handleTimerCompletion already did
+            // Play completion sound and start linger unless handleTimerCompletion already did
             if completedTimerText == nil {
+                SoundManager.shared.play(.shimmer)
                 timer.startCompletedTimerLinger(text: finalText, isCountdown: false)
             }
 
