@@ -376,14 +376,13 @@ public final class PresentService: PresentAPI, Sendable {
                       AND id != ?
                       AND startedAt < ? AND endedAt > ?
                     """
-                if let checkEnd {
-                    let overlapCount = try Int.fetchOne(db, sql: overlapSQL, arguments: [
-                        SessionState.completed.rawValue, id,
-                        checkEnd, checkStart
-                    ]) ?? 0
-                    if overlapCount > 0 {
-                        throw PresentError.sessionOverlap
-                    }
+                let effectiveEnd = checkEnd ?? Date()
+                let overlapCount = try Int.fetchOne(db, sql: overlapSQL, arguments: [
+                    SessionState.completed.rawValue, id,
+                    effectiveEnd, checkStart
+                ]) ?? 0
+                if overlapCount > 0 {
+                    throw PresentError.sessionOverlap
                 }
 
                 // Check against active sessions (exclude self)

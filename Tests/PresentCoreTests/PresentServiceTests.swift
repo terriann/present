@@ -973,6 +973,31 @@ struct PresentServiceTests {
         #expect(session.state == .completed)
     }
 
+    // MARK: - Update Session Overlap
+
+    @Test func updateActiveSessionStartOverlapsCompletedSessionThrows() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Overlap"))
+
+        // Create a completed session: 3h ago to 2h ago
+        let completedStart = Date().addingTimeInterval(-10800)
+        let completedEnd = Date().addingTimeInterval(-7200)
+        _ = try await service.createBackdatedSession(CreateBackdatedSessionInput(
+            activityId: activity.id!,
+            startedAt: completedStart,
+            endedAt: completedEnd
+        ))
+
+        // Start a new (active) session
+        let active = try await service.startSession(activityId: activity.id!, type: .work)
+
+        // Move active session's start into the completed session's range (2.5h ago)
+        let overlappingStart = Date().addingTimeInterval(-9000)
+        await #expect(throws: PresentError.self) {
+            try await service.updateSession(id: active.id!, UpdateSessionInput(startedAt: overlappingStart))
+        }
+    }
+
     // MARK: - Activity Summary
 
     @Test func activitySummaryDateRange() async throws {
