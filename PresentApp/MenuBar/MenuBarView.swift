@@ -337,7 +337,12 @@ struct MenuBarView: View {
                             .font(scaledFont(.caption))
                             .foregroundStyle(activitySort == "recent" ? theme.accent : .secondary)
                             .padding(6 * zoomScale)
-                            .background(isSortRecentHovered ? Color.primary.opacity(0.08) : Color.clear, in: RoundedRectangle(cornerRadius: 4))
+                            .background(
+                                activitySort == "recent" ? theme.accent.opacity(0.15) :
+                                isSortRecentHovered ? Color.primary.opacity(0.08) :
+                                Color.clear,
+                                in: RoundedRectangle(cornerRadius: 4)
+                            )
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
@@ -352,7 +357,12 @@ struct MenuBarView: View {
                             .font(scaledFont(.caption))
                             .foregroundStyle(activitySort == "alphabetical" ? theme.accent : .secondary)
                             .padding(6 * zoomScale)
-                            .background(isSortAlphaHovered ? Color.primary.opacity(0.08) : Color.clear, in: RoundedRectangle(cornerRadius: 4))
+                            .background(
+                                activitySort == "alphabetical" ? theme.accent.opacity(0.15) :
+                                isSortAlphaHovered ? Color.primary.opacity(0.08) :
+                                Color.clear,
+                                in: RoundedRectangle(cornerRadius: 4)
+                            )
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
