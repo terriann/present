@@ -29,7 +29,9 @@ struct MenuBarView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if appState.isSessionRunning {
+            if switchActivityTarget != nil {
+                switchConfirmationBar
+            } else if appState.isSessionRunning {
                 currentSessionSection
                 chevronToggle
 
@@ -64,35 +66,123 @@ struct MenuBarView: View {
             isExpanded = false
         }
         .onKeyPress(.escape) {
+            if switchActivityTarget != nil {
+                switchActivityTarget = nil
+                switchFromActivityTitle = nil
+                return .handled
+            }
             dismiss()
             return .handled
         }
-        .alert(
-            "Switch Activity?",
-            isPresented: Binding(
-                get: { switchActivityTarget != nil },
-                set: { if !$0 { switchActivityTarget = nil; switchFromActivityTitle = nil } }
-            )
-        ) {
-            Button("Cancel", role: .cancel) {
-                switchActivityTarget = nil
-                switchFromActivityTitle = nil
-            }
-            Button("Switch") {
-                guard let target = switchActivityTarget else { return }
-                switchActivityTarget = nil
-                switchFromActivityTitle = nil
-                Task {
-                    await switchSessionForType(activity: target)
-                    withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
-                        isExpanded = false
-                    }
+    }
+
+    // MARK: - Switch Confirmation
+
+    /// The effective session type for the switch target, accounting for system activity restrictions.
+    private var switchTargetSessionType: SessionType {
+        guard let target = switchActivityTarget else { return selectedSessionType }
+        return (target.isSystem && selectedSessionType == .rhythm) ? .work : selectedSessionType
+    }
+
+    private var switchConfirmationBar: some View {
+        VStack(spacing: Constants.spacingCard) {
+            Text("Time to move on?")
+                .font(scaledFont(.headline))
+
+            HStack(alignment: .top, spacing: Constants.spacingCompact) {
+                // Current session
+                if let currentTitle = switchFromActivityTitle,
+                   let session = appState.currentSession {
+                    switchSessionColumn(
+                        activityTitle: currentTitle,
+                        sessionTypeDetail: switchSessionTypeDetail(for: session)
+                    )
+                    .foregroundStyle(.secondary)
+                }
+
+                Image(systemName: "arrow.right")
+                    .font(scaledFont(.title2, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+                    .padding(.top, Constants.spacingTight)
+
+                // Target session
+                if let target = switchActivityTarget {
+                    switchSessionColumn(
+                        activityTitle: target.title,
+                        sessionTypeDetail: switchTargetTypeDetail
+                    )
                 }
             }
-        } message: {
-            if let title = switchFromActivityTitle {
-                Text("This will stop your current session: \(title)")
+
+            HStack(spacing: Constants.spacingCompact) {
+                Button("Cancel") {
+                    switchActivityTarget = nil
+                    switchFromActivityTitle = nil
+                }
+                .keyboardShortcut(.cancelAction)
+
+                Button("Begin \(switchActivityTarget?.title ?? "")") {
+                    guard let target = switchActivityTarget else { return }
+                    switchActivityTarget = nil
+                    switchFromActivityTitle = nil
+                    Task {
+                        await switchSessionForType(activity: target)
+                        withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
+                            isExpanded = false
+                        }
+                    }
+                }
+                .keyboardShortcut(.defaultAction)
             }
+        }
+        .padding(Constants.spacingPage)
+    }
+
+    private func switchSessionColumn(activityTitle: String, sessionTypeDetail: String) -> some View {
+        VStack(spacing: Constants.spacingTight) {
+            Text(activityTitle)
+                .font(scaledFont(.body, weight: .medium))
+                .lineLimit(1)
+            Text(sessionTypeDetail)
+                .font(scaledFont(.caption))
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    /// Format session type detail for the current (running) session, matching `ActivitySessionCard.sessionTypeLabel`.
+    private func switchSessionTypeDetail(for session: Session) -> String {
+        let base = SessionTypeConfig.config(for: session.sessionType).displayName
+        switch session.sessionType {
+        case .timebound:
+            if let minutes = session.timerLengthMinutes {
+                return "\(base) \u{00B7} \(minutes)m"
+            }
+        case .rhythm:
+            if let work = session.timerLengthMinutes, let brk = session.breakMinutes {
+                return "\(base) \u{00B7} \(RhythmOption(focusMinutes: work, breakMinutes: brk).displayLabel)"
+            }
+        case .work:
+            break
+        }
+        return base
+    }
+
+    /// Format session type detail for the switch target based on the selected session type picker.
+    private var switchTargetTypeDetail: String {
+        let type = switchTargetSessionType
+        let base = SessionTypeConfig.config(for: type).displayName
+        switch type {
+        case .timebound:
+            return "\(base) \u{00B7} \(timeboundMinutes)m"
+        case .rhythm:
+            let option = selectedRhythmOption ?? appState.rhythmDurationOptions.first
+            if let option {
+                return "\(base) \u{00B7} \(option.displayLabel)"
+            }
+            return base
+        case .work:
+            return base
         }
     }
 
