@@ -66,6 +66,10 @@ struct MenuBarView: View {
             isPanelFocused = true
             isExpanded = false
         }
+        .onDisappear {
+            switchActivityTarget = nil
+            switchFromActivityTitle = nil
+        }
         .onKeyPress(.escape) {
             if switchActivityTarget != nil {
                 switchActivityTarget = nil
