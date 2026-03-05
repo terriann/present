@@ -23,6 +23,7 @@ struct MenuBarView: View {
     @State private var switchFromActivityTitle: String?
     @State private var isChevronHovered = false
     @State private var hoveredSessionType: SessionType?
+    @State private var hoveredRhythmOption: RhythmOption?
     @FocusState private var isSearchFocused: Bool
     @FocusState private var isPanelFocused: Bool
 
@@ -377,6 +378,7 @@ struct MenuBarView: View {
                     HStack(spacing: 4) {
                         ForEach(Array(appState.rhythmDurationOptions.prefix(4)), id: \.self) { option in
                             let isSelected = selectedRhythmOption == option
+                            let isHovered = hoveredRhythmOption == option
                             Button {
                                 selectedRhythmOption = option
                             } label: {
@@ -384,10 +386,19 @@ struct MenuBarView: View {
                                     .font(scaledFont(.caption2, weight: isSelected ? .semibold : .regular))
                                     .padding(.horizontal, Constants.spacingCompact * zoomScale)
                                     .padding(.vertical, 3 * zoomScale)
-                                    .background(isSelected ? theme.accent.opacity(0.12) : Color.secondary.opacity(0.08), in: Capsule())
+                                    .background(
+                                        isSelected ? theme.accent.opacity(0.12) :
+                                        isHovered ? Color.primary.opacity(0.08) :
+                                        Color.clear,
+                                        in: Capsule()
+                                    )
                                     .foregroundStyle(isSelected ? theme.accent : .secondary)
+                                    .contentShape(Capsule())
                             }
                             .buttonStyle(.plain)
+                            .onHover { hovering in
+                                hoveredRhythmOption = hovering ? option : nil
+                            }
                         }
                     }
                     .padding(.bottom, 6 * zoomScale)
