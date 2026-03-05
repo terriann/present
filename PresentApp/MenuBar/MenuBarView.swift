@@ -20,6 +20,7 @@ struct MenuBarView: View {
     @State private var showConvertPicker = false
     @State private var isExpanded = false
     @State private var switchActivityTarget: Activity?
+    @State private var switchFromActivityTitle: String?
     @State private var isChevronHovered = false
     @FocusState private var isSearchFocused: Bool
     @FocusState private var isPanelFocused: Bool
@@ -70,15 +71,17 @@ struct MenuBarView: View {
             "Switch Activity?",
             isPresented: Binding(
                 get: { switchActivityTarget != nil },
-                set: { if !$0 { switchActivityTarget = nil } }
+                set: { if !$0 { switchActivityTarget = nil; switchFromActivityTitle = nil } }
             )
         ) {
             Button("Cancel", role: .cancel) {
                 switchActivityTarget = nil
+                switchFromActivityTitle = nil
             }
             Button("Switch") {
                 guard let target = switchActivityTarget else { return }
                 switchActivityTarget = nil
+                switchFromActivityTitle = nil
                 Task {
                     await appState.stopSession()
                     await startSessionForType(activity: target)
@@ -88,8 +91,8 @@ struct MenuBarView: View {
                 }
             }
         } message: {
-            if let currentActivity = appState.currentActivity {
-                Text("This will stop your current session: \(currentActivity.title)")
+            if let title = switchFromActivityTitle {
+                Text("This will stop your current session: \(title)")
             }
         }
     }
@@ -437,6 +440,7 @@ struct MenuBarView: View {
 
     private func handleActivityTap(activity: Activity) {
         if appState.isSessionRunning {
+            switchFromActivityTitle = appState.currentActivity?.title
             switchActivityTarget = activity
         } else {
             Task {
