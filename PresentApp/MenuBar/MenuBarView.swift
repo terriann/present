@@ -413,7 +413,7 @@ struct MenuBarView: View {
                     .frame(height: 200 * zoomScale)
                     .onChange(of: selectedIndex) { _, newValue in
                         if let newValue {
-                            withAnimation {
+                            withAdaptiveAnimation(.easeInOut) {
                                 proxy.scrollTo(newValue, anchor: .center)
                             }
                         }
