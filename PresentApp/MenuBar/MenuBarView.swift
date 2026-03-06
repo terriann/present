@@ -573,7 +573,7 @@ struct MenuBarView: View {
     }
 
     private func handleActivityTap(activity: Activity) {
-        if appState.isSessionRunning {
+        if appState.isSessionActive {
             switchFromActivityTitle = appState.currentActivity?.title
             switchActivityTarget = activity
         } else {

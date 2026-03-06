@@ -58,6 +58,7 @@ struct PresentApp: App {
                     }
                 }
                 .onChange(of: themeManager.appearanceMode) {
+                    themeManager.applyAppearance()
                     appDelegate.floatingAlertManager?.updatePanelAppearance()
                 }
                 .onDisappear { appState.showDockIcon(false) }
@@ -107,6 +108,7 @@ struct PresentApp: App {
                let mode = AppearanceMode(rawValue: value) {
                 themeManager.appearanceMode = mode
             }
+            themeManager.applyAppearance()
         }
     }
 

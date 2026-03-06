@@ -13,10 +13,15 @@ struct ActivitiesDetailView: View {
     @State private var selectedSessionType: SessionType = .work
     @State private var selectedRhythmOption: RhythmOption?
     @State private var timeboundMinutes: Int = 25
+    @State private var titleText: String
+    @FocusState private var isTitleFocused: Bool
+    var startInEditMode: Bool = false
 
-    init(activity: Activity) {
+    init(activity: Activity, startInEditMode: Bool = false) {
         _activity = State(initialValue: activity)
         _notes = State(initialValue: activity.notes ?? "")
+        _titleText = State(initialValue: activity.title)
+        self.startInEditMode = startInEditMode
     }
 
     var body: some View {
@@ -104,15 +109,26 @@ struct ActivitiesDetailView: View {
             // Left: title + badge
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    InlineEditableField(
-                        value: activity.title,
-                        placeholder: "Activity title",
-                        font: .statValue,
-                        isEditable: isEditable,
-                        onSave: { newTitle in
-                            Task { await updateTitle(newTitle) }
-                        }
-                    )
+                    if isEditable {
+                        TextField("Activity title", text: $titleText)
+                            .font(.statValue)
+                            .textFieldStyle(.plain)
+                            .focused($isTitleFocused)
+                            .onSubmit { Task { await saveTitle() } }
+                            .onChange(of: isTitleFocused) {
+                                if !isTitleFocused {
+                                    Task { await saveTitle() }
+                                }
+                            }
+                            .onAppear {
+                                if startInEditMode {
+                                    isTitleFocused = true
+                                }
+                            }
+                    } else {
+                        Text(activity.title)
+                            .font(.statValue)
+                    }
 
                     if activity.isSystem {
                         Text("System")
@@ -373,6 +389,7 @@ struct ActivitiesDetailView: View {
         guard let activityId = activity.id else { return }
         do {
             activity = try await appState.service.getActivity(id: activityId)
+            titleText = activity.title
             notes = activity.notes ?? ""
             await loadTags()
             await appState.refreshAll()
@@ -403,15 +420,22 @@ struct ActivitiesDetailView: View {
         return try await appState.service.tagsForActivity(activityId: activityId)
     }
 
-    private func updateTitle(_ newTitle: String) async {
-        guard !newTitle.isEmpty, let activityId = activity.id else { return }
+    private func saveTitle() async {
+        let trimmed = titleText.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty, trimmed != activity.title, let activityId = activity.id else {
+            // Revert to current title if empty or unchanged
+            titleText = activity.title
+            return
+        }
         do {
             activity = try await appState.service.updateActivity(
                 id: activityId,
-                UpdateActivityInput(title: newTitle)
+                UpdateActivityInput(title: trimmed)
             )
+            titleText = activity.title
             await appState.refreshAll()
         } catch {
+            titleText = activity.title
             appState.showError(error, context: "Could not update title")
         }
     }

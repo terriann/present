@@ -54,6 +54,7 @@ Everything should be effortlessly editable through simple interactions that do n
 - **Stay in context** — don't navigate the user away from what they're looking at to make a change. If an edit can happen in a popover, inline field, or the current view, it should.
 - **Commit without ceremony** — save on blur, on return, or on dismiss. Don't require explicit save buttons or confirmation for low-risk, easily reversible edits. Reserve confirmation for destructive or irreversible actions (delete, cancel, discard).
 - **Signal navigation with ellipsis** — if an action opens a separate window, sheet, or dialog, suffix the label with an ellipsis (`…`). This tells the user the action won't complete inline and another view is coming (e.g., "Export…", "Edit Details…").
+- **No hover highlights on standard navigation** — macOS sidebar and list navigation items use a two-state model (unselected / selected) with no hover intermediate. This follows [Apple HIG — Sidebars](https://developer.apple.com/design/human-interface-guidelines/sidebars) and native app conventions (Finder, Mail, Notes, Music, Safari, Xcode). Do not add background-fill hover effects to sidebar items, tab bars, or standard list navigation. Reserve `HoverHighlightModifier` / `.hoverHighlight()` for contexts where hover reveals additional information or controls (e.g., action buttons on list rows, chart tooltips, card interactions). See also [Apple HIG — Pointing devices](https://developer.apple.com/design/human-interface-guidelines/pointing-devices).
 
 ## Architecture
 

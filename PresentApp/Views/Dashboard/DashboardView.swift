@@ -249,11 +249,6 @@ struct DashboardView: View {
                         .frame(minWidth: 320, maxWidth: max(320, contentWidth * 0.3))
                 }
             }
-            .overlay {
-                // Logo bloom fills the space between greeting and panel
-                LogoBloomView()
-                    .allowsHitTesting(false)
-            }
 
             GroupBox {
                 Text("Today at a Glance")
