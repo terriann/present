@@ -5,10 +5,10 @@ struct ActivitiesListView: View {
     @Environment(AppState.self) private var appState
     @Environment(ThemeManager.self) private var theme
     @State private var activities: [Activity] = []
-    @State private var showingCreateSheet = false
     @State private var showArchived = false
     @State private var selectedActivity: Activity?
     @State private var searchText = ""
+    @State private var newlyCreatedActivityId: Int64?
     @FocusState private var isSearchFocused: Bool
 
     var body: some View {
@@ -39,7 +39,7 @@ struct ActivitiesListView: View {
                     .foregroundStyle(.secondary)
 
                 Button {
-                    showingCreateSheet = true
+                    Task { await createAndSelectActivity() }
                 } label: {
                     Label("New Activity", systemImage: "plus")
                 }
@@ -87,7 +87,10 @@ struct ActivitiesListView: View {
 
                     // Detail view
                     if let activity = selectedActivity {
-                        ActivitiesDetailView(activity: activity)
+                        ActivitiesDetailView(
+                            activity: activity,
+                            startInEditMode: activity.id == newlyCreatedActivityId
+                        )
                             .id(activity.id)
                             .environment(appState)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -104,9 +107,6 @@ struct ActivitiesListView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .navigationTitle("Activities")
-        .sheet(isPresented: $showingCreateSheet) {
-            ActivitiesFormSheet(mode: .create)
-        }
         .task { await loadActivities() }
         .onChange(of: appState.refreshCounter) {
             Task { await loadActivities() }
@@ -132,6 +132,20 @@ struct ActivitiesListView: View {
             )
         } catch {
             // Fail silently — list stays as-is
+        }
+    }
+
+    private func createAndSelectActivity() async {
+        do {
+            let activity = try await appState.service.createActivity(
+                CreateActivityInput(title: "Untitled Activity")
+            )
+            newlyCreatedActivityId = activity.id
+            await loadActivities()
+            selectedActivity = activity
+            await appState.refreshAll()
+        } catch {
+            appState.showError(error, context: "Could not create activity")
         }
     }
 
