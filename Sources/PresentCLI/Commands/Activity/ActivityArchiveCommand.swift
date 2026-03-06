@@ -19,18 +19,24 @@ struct ActivityArchiveCommand: AsyncParsableCommand {
 
             # Archive and check the result
             $ present-cli activity archive 3 --field result
+
+            # Archive regardless of tracked time
+            $ present-cli activity archive 3 --force
             """
     )
 
     @Argument(help: "Activity ID to archive.")
     var id: Int64
 
+    @Flag(help: "Archive even if tracked time is below the deletion threshold.")
+    var force = false
+
     @OptionGroup var outputOptions: OutputOptions
 
     func run() async throws {
         try outputOptions.validateOptions()
         let service = try CLIServiceFactory.makeService()
-        let result = try await service.archiveActivity(id: id)
+        let result = try await service.archiveActivity(id: id, force: force)
         let activity = try await service.getActivity(id: id)
         let tags = try await service.tagsForActivity(activityId: id)
 

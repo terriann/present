@@ -48,7 +48,7 @@ struct ActivitiesDetailView: View {
                 Task {
                     guard let activityId = activity.id else { return }
                     do {
-                        _ = try await appState.service.archiveActivity(id: activityId)
+                        _ = try await appState.service.archiveActivity(id: activityId, force: true)
                         await reload()
                     } catch {
                         appState.showError(error, context: "Could not archive activity")
