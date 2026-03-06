@@ -44,6 +44,15 @@ public final class ThemeManager {
         }
     }
 
+    /// Applies the current appearance mode to the entire app process.
+    ///
+    /// Sets `NSApp.appearance` so that all windows — including the MenuBarExtra
+    /// popover, which doesn't respect SwiftUI's `.preferredColorScheme()` — use
+    /// the correct appearance. Call this whenever `appearanceMode` changes.
+    public func applyAppearance() {
+        NSApp?.appearance = nsAppearance
+    }
+
     public init() {
         let isDark = NSApp?.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
         systemIsDark = isDark
