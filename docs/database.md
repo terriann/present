@@ -243,7 +243,6 @@ All values are stored as TEXT strings regardless of logical type.
 
 | Key | Default | Type | Purpose |
 | --- | ------- | ---- | ------- |
-| `externalIdBaseUrl` | `""` | String | Base URL for links |
 | `defaultRhythmMinutes` | `"25"` | Int | Pomodoro focus duration |
 | `longBreakMinutes` | `"15"` | Int | Long break duration |
 | `rhythmCycleLength` | `"4"` | Int | Sessions before long break |

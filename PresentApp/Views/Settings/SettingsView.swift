@@ -69,7 +69,6 @@ struct GeneralSettingsTab: View {
     @Environment(AppState.self) private var appState
     @Environment(ThemeManager.self) private var theme
     @State private var launchOnLogin = SMAppService.mainApp.status == .enabled
-    @State private var baseUrl = ""
     @State private var weekStartDay = "sunday"
     @State private var appearanceMode: AppearanceMode = .system
 
@@ -184,23 +183,6 @@ struct GeneralSettingsTab: View {
                 }
             }
 
-            Section("External ID") {
-                TextField("Base URL", text: $baseUrl, prompt: Text("https://linear.app/team/issue/"))
-                    .onAppear { loadBaseUrl() }
-                    .onChange(of: baseUrl) {
-                        Task {
-                            try? await appState.service.setPreference(
-                                key: PreferenceKey.externalIdBaseUrl,
-                                value: baseUrl
-                            )
-                        }
-                    }
-
-                Text("Activity external IDs will be appended to this URL to create clickable links.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
             dangerZoneSection
         }
         .formStyle(.grouped)
@@ -272,12 +254,6 @@ struct GeneralSettingsTab: View {
     }
 
     // MARK: - Helpers
-
-    private func loadBaseUrl() {
-        Task {
-            baseUrl = try await appState.service.getPreference(key: PreferenceKey.externalIdBaseUrl) ?? ""
-        }
-    }
 
     private func loadWeekStartDay() {
         Task {

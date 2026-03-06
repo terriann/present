@@ -21,7 +21,6 @@ extension Preference: FetchableRecord, PersistableRecord {
 }
 
 public enum PreferenceKey {
-    public static let externalIdBaseUrl = "externalIdBaseUrl"
     public static let defaultRhythmMinutes = "defaultRhythmMinutes"
     public static let longBreakMinutes = "longBreakMinutes"
     public static let rhythmCycleLength = "rhythmCycleLength"
@@ -37,7 +36,6 @@ public enum PreferenceKey {
     public static let menuBarActivitySort = "menuBarActivitySort"
 
     public static let defaults: [(String, String)] = [
-        (externalIdBaseUrl, ""),
         (defaultRhythmMinutes, "25"),
         (longBreakMinutes, "15"),
         (rhythmCycleLength, "4"),
