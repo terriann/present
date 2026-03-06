@@ -60,7 +60,7 @@ public final class ThemeManager {
         appearanceObservation = NSApp?.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
             Task { @MainActor [weak self] in
                 let nowDark = NSApp?.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-                self?.systemIsDark = nowDark ?? false
+                self?.systemIsDark = nowDark
             }
         }
     }
