@@ -309,6 +309,36 @@ struct MonthlySummaryTests {
         #expect(summary.sessionCount == 1)
     }
 
+    // MARK: - Last Week Skipping (#179)
+
+    /// February 2026: Feb 1 is Sunday, Monday week start.
+    /// The loop must visit the week of Feb 23 (Mon) which contains Feb 25.
+    /// Before the fix, advancing by 7 from the mid-week `current` caused
+    /// the loop to exit at Mar 1 without ever visiting the Feb 23 week.
+    @Test func februaryWithSundayStartDoesNotSkipLastWeek() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Work"))
+
+        // Feb 25 2026 (Wed) — in the last full week of Feb
+        try await addSession(service: service, activityId: activity.id!,
+            start: makeDate(year: 2026, month: 2, day: 25, hour: 10),
+            end: makeDate(year: 2026, month: 2, day: 25, hour: 12))
+
+        let summary = try await service.monthlySummary(
+            monthOf: makeDate(year: 2026, month: 2, day: 1),
+            includeArchived: false, weekStartDay: 2
+        )
+
+        #expect(summary.totalSeconds == 7200) // 2h
+        #expect(summary.sessionCount == 1)
+
+        let cal = Calendar.current
+        let hasFeb25 = summary.dailyBreakdown.contains {
+            cal.component(.day, from: $0.date) == 25 && $0.totalSeconds > 0
+        }
+        #expect(hasFeb25)
+    }
+
     // MARK: - Archived Filtering
 
     @Test func archivedActivityExcludedWhenNotIncluded() async throws {

@@ -1708,7 +1708,7 @@ public final class PresentService: PresentAPI, Sendable {
                 let weekly = try await weeklySummary(weekOf: current, includeArchived: includeArchived, weekStartDay: weekStartDay, roundToMinute: roundToMinute)
                 weeklyBreakdown.append(weekly)
             }
-            guard let nextWeek = calendar.date(byAdding: .day, value: 7, to: current) else { break }
+            guard let nextWeek = calendar.date(byAdding: .day, value: 7, to: weekStart) else { break }
             current = nextWeek
         }
 
