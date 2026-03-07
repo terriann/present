@@ -56,6 +56,14 @@ struct SessionContextMenuModifier: ViewModifier {
 
                 Divider()
 
+                Button {
+                    appState.navigate(to: .showActivity(session.activityId))
+                } label: {
+                    Label("Edit Activity", systemImage: "square.and.pencil")
+                }
+
+                Divider()
+
                 Button(role: .destructive) {
                     showingDeleteConfirm = true
                 } label: {
