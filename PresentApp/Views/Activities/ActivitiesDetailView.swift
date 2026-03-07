@@ -49,17 +49,6 @@ struct ActivitiesDetailView: View {
         }
         .alert("Archive Activity?", isPresented: $showingArchiveConfirm) {
             Button("Cancel", role: .cancel) {}
-            Button("Archive") {
-                Task {
-                    guard let activityId = activity.id else { return }
-                    do {
-                        _ = try await appState.archiveActivity(id: activityId, force: true)
-                        await reload()
-                    } catch {
-                        appState.showError(error, context: "Could not archive activity")
-                    }
-                }
-            }
             Button("Delete Instead", role: .destructive) {
                 Task {
                     guard let activityId = activity.id else { return }
@@ -69,6 +58,17 @@ struct ActivitiesDetailView: View {
                         await appState.refreshAll()
                     } catch {
                         appState.showError(error, context: "Could not delete activity")
+                    }
+                }
+            }
+            Button("Archive") {
+                Task {
+                    guard let activityId = activity.id else { return }
+                    do {
+                        _ = try await appState.archiveActivity(id: activityId, force: true)
+                        await reload()
+                    } catch {
+                        appState.showError(error, context: "Could not archive activity")
                     }
                 }
             }
