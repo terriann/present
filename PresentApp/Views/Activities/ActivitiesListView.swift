@@ -5,6 +5,7 @@ struct ActivitiesListView: View {
     @Environment(AppState.self) private var appState
     @Environment(ThemeManager.self) private var theme
     @State private var activities: [Activity] = []
+    @State private var activityTags: [Int64: [Tag]] = [:]
     @State private var showArchived = false
     @State private var selectedActivity: Activity?
     @State private var searchText = ""
@@ -67,14 +68,18 @@ struct ActivitiesListView: View {
                                     Button {
                                         selectedActivity = activity
                                     } label: {
-                                        ActivityRow(activity: activity)
+                                        ActivityRow(
+                                            activity: activity,
+                                            tags: activityTags[activity.id ?? 0] ?? []
+                                        )
                                             .frame(maxWidth: .infinity, alignment: .leading)
                                             .contentShape(Rectangle())
                                     }
                                     .buttonStyle(.plain)
                                     .listRowBackground(
                                         RoundedRectangle(cornerRadius: 6)
-                                            .fill(selectedActivity == activity ? theme.accent.opacity(0.15) : Color.clear)
+                                            .fill(selectedActivity == activity ? theme.accent.opacity(0.2) : Color.clear)
+                                            .padding(.horizontal, Constants.spacingTight)
                                     )
                                 }
                             }
@@ -131,6 +136,10 @@ struct ActivitiesListView: View {
             activities = try await appState.service.listActivities(
                 includeArchived: true, includeSystem: true
             )
+            let ids = activities.compactMap(\.id)
+            if !ids.isEmpty {
+                activityTags = try await appState.service.tagsForActivities(activityIds: ids)
+            }
         } catch {
             // Fail silently — list stays as-is
         }
@@ -183,53 +192,58 @@ struct ActivitiesListView: View {
 
 struct ActivityRow: View {
     let activity: Activity
+    let tags: [Tag]
     @Environment(ThemeManager.self) private var theme
 
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack {
-                    if activity.isSystem {
-                        Image(systemName: "cup.and.saucer")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    Text(activity.title)
-                        .font(.body.bold())
-
-                    if activity.isSystem {
-                        Text("System")
-                            .font(.caption2)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(theme.accent.opacity(0.2), in: Capsule())
-                    }
-
-                    if activity.isArchived {
-                        Text("Archived")
-                            .font(.caption2)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(.secondary.opacity(0.2), in: Capsule())
-                    }
-                }
-
-                if let externalId = activity.externalId, !externalId.isEmpty {
-                    Text(externalId)
+        VStack(alignment: .leading, spacing: Constants.spacingTight) {
+            // MARK: - Title row
+            HStack {
+                if activity.isSystem {
+                    Image(systemName: "cup.and.saucer")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+
+                Text(activity.title)
+                    .font(.body.bold())
+
+                if activity.isSystem {
+                    Text("System")
+                        .font(.caption2)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(theme.accent.opacity(0.2), in: Capsule())
+                }
+
+                if activity.isArchived {
+                    Text("Archived")
+                        .font(.caption2)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(.secondary.opacity(0.2), in: Capsule())
+                }
             }
 
-            Spacer()
+            // MARK: - Subtitle row (tags + external ID)
+            if !tags.isEmpty || activity.externalId.map({ !$0.isEmpty }) == true {
+                HStack(spacing: Constants.spacingTight) {
+                    ForEach(tags) { tag in
+                        Text(tag.name)
+                            .font(.caption2)
+                            .padding(.horizontal, Constants.spacingCompact)
+                            .padding(.vertical, Constants.spacingTight)
+                            .background(.secondary.opacity(0.15), in: Capsule())
+                    }
 
-            if !activity.isSystem {
-                Text(TimeFormatting.formatDate(activity.updatedAt))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    if let externalId = activity.externalId, !externalId.isEmpty {
+                        Text(externalId)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
             }
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, Constants.spacingCompact)
     }
 }
