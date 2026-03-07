@@ -131,7 +131,7 @@ struct ActivitiesListView: View {
                         .buttonStyle(.plain)
                         .listRowBackground(
                             RoundedRectangle(cornerRadius: 6)
-                                .fill(selectedActivity == activity
+                                .fill(selectedActivity?.id == activity.id
                                     ? theme.accent.opacity(0.2)
                                     : Color.clear)
                                 .padding(.horizontal, Constants.spacingTight)
@@ -170,7 +170,7 @@ struct ActivitiesListView: View {
             )
             newlyCreatedActivityId = activity.id
             await loadActivities()
-            selectedActivity = activity
+            selectedActivity = activities.first(where: { $0.id == activity.id })
             await appState.refreshAll()
         } catch {
             appState.showError(error, context: "Could not create activity")
