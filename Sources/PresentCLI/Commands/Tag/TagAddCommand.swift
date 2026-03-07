@@ -36,7 +36,7 @@ struct TagAddCommand: AsyncParsableCommand {
 
         case .text:
             if try outputOptions.printTextField(tag.toTextFields()) { break }
-            print("Added tag: \(tag.name) [\(tag.id!)]")
+            print("Added tag: \(tag.name) [\(tag.id ?? 0)]")
 
         case .csv:
             print("CSV output not supported for tag add.")

@@ -152,8 +152,24 @@ struct ReportStackedBarChart: View {
             }
         }
         .chartLegend(.hidden)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Time by \(selectedPeriod.timeLabel) chart")
+        .accessibilityValue(chartAccessibilityValue)
         .frame(height: 250)
         .padding(Constants.spacingCard)
+    }
+
+    // MARK: - Accessibility
+
+    private var chartAccessibilityValue: String {
+        let multiplier: Double = selectedPeriod == .daily ? 60 : 3600
+        var grouped: [String: Double] = [:]
+        for entry in entries {
+            grouped[entry.activity, default: 0] += entry.value
+        }
+        let sorted = grouped.sorted { $0.value > $1.value }
+        return sorted.map { "\($0.key): \(TimeFormatting.formatDuration(seconds: Int(($0.value * multiplier).rounded())))" }
+            .joined(separator: ", ")
     }
 
     // MARK: - Legend

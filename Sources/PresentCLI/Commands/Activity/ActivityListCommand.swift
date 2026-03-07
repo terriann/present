@@ -35,7 +35,7 @@ struct ActivityListCommand: AsyncParsableCommand {
         switch outputOptions.format {
         case .json:
             try outputOptions.printJSONArray(activities.map {
-                $0.toJSONDict(tags: tagsByActivity[$0.id!] ?? [])
+                $0.toJSONDict(tags: tagsByActivity[$0.id ?? 0] ?? [])
             })
 
         case .text:
@@ -51,7 +51,7 @@ struct ActivityListCommand: AsyncParsableCommand {
 
             for activity in activities {
                 let archived = activity.isArchived ? " [archived]" : ""
-                print("  [\(activity.id!)] \(activity.title)\(archived)")
+                print("  [\(activity.id ?? 0)] \(activity.title)\(archived)")
             }
 
         case .csv:
@@ -60,7 +60,7 @@ struct ActivityListCommand: AsyncParsableCommand {
                 let escapedTitle = activity.title.contains(",") ? "\"\(activity.title)\"" : activity.title
                 let externalId = activity.externalId ?? ""
                 let link = activity.link ?? ""
-                print("\(activity.id!),\(escapedTitle),\(activity.isArchived),\(externalId),\(link)")
+                print("\(activity.id ?? 0),\(escapedTitle),\(activity.isArchived),\(externalId),\(link)")
             }
         }
     }

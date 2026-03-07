@@ -35,9 +35,10 @@ public struct IPCClient: Sendable {
         }
         guard connectResult == 0 else { return }
 
-        let data = message.data
+        guard let data = message.data, !data.isEmpty else { return }
         data.withUnsafeBytes { buffer in
-            _ = Foundation.write(fd, buffer.baseAddress!, buffer.count)
+            guard let baseAddress = buffer.baseAddress else { return }
+            _ = Foundation.write(fd, baseAddress, buffer.count)
         }
     }
 }

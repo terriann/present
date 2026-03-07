@@ -14,17 +14,17 @@ struct SpinningClockIcon: View {
             .rotationEffect(.degrees(degrees))
             .onAppear {
                 guard isRunning, !reduceMotion else { return }
-                withAnimation(.linear(duration: 3).repeatForever(autoreverses: false)) {
+                withAdaptiveAnimation(.linear(duration: 3).repeatForever(autoreverses: false)) {
                     degrees = 360
                 }
             }
             .onChange(of: isRunning) { _, running in
                 if running, !reduceMotion {
-                    withAnimation(.linear(duration: 3).repeatForever(autoreverses: false)) {
+                    withAdaptiveAnimation(.linear(duration: 3).repeatForever(autoreverses: false)) {
                         degrees = 360
                     }
                 } else {
-                    withAnimation(.default) { degrees = 0 }
+                    withAdaptiveAnimation(.default) { degrees = 0 }
                 }
             }
     }

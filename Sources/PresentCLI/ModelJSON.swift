@@ -18,7 +18,7 @@ extension Activity {
         var dict = toNestedJSONDict()
         // Top-level uses "id" not "activityId"
         dict.removeValue(forKey: "activityId")
-        dict["id"] = id!
+        dict["id"] = id ?? 0
         dict["tags"] = tags.map { $0.toJSONDict() }
         return dict
     }
@@ -30,7 +30,7 @@ extension Activity {
         isoFormatter.formatOptions = [.withInternetDateTime]
 
         var dict: [String: Any] = [
-            "activityId": id!,
+            "activityId": id ?? 0,
             "title": title,
             "externalId": externalId as Any,
             "link": link as Any,
@@ -46,7 +46,7 @@ extension Activity {
     /// Standard text field mapping for --field support.
     func toTextFields(tags: [Tag] = []) -> [String: String] {
         var fields: [String: String] = [
-            "id": "\(id!)",
+            "id": "\(id ?? 0)",
             "title": title,
             "isArchived": "\(isArchived)",
             "isSystem": "\(isSystem)",
@@ -72,7 +72,7 @@ extension Session {
         isoFormatter.formatOptions = [.withInternetDateTime]
 
         var dict: [String: Any] = [
-            "sessionId": id!,
+            "sessionId": id ?? 0,
             "type": sessionType.rawValue,
             "state": state.rawValue,
             "startedAt": isoFormatter.string(from: startedAt),
@@ -111,7 +111,7 @@ extension Session {
     /// Text fields remain flat for easy extraction.
     func toTextFields(activity: Activity? = nil) -> [String: String] {
         var fields: [String: String] = [
-            "sessionId": "\(id!)",
+            "sessionId": "\(id ?? 0)",
             "activityId": "\(activityId)",
             "type": SessionTypeConfig.config(for: sessionType).displayName,
             "state": state.rawValue,
@@ -152,7 +152,7 @@ extension Tag {
         let isoFormatter = ISO8601DateFormatter()
         isoFormatter.formatOptions = [.withInternetDateTime]
         return [
-            "id": id!,
+            "id": id ?? 0,
             "name": name,
             "createdAt": isoFormatter.string(from: createdAt),
             "updatedAt": isoFormatter.string(from: updatedAt),
@@ -164,7 +164,7 @@ extension Tag {
         let isoFormatter = ISO8601DateFormatter()
         isoFormatter.formatOptions = [.withInternetDateTime]
         return [
-            "tagId": id!,
+            "tagId": id ?? 0,
             "name": name,
             "createdAt": isoFormatter.string(from: createdAt),
             "updatedAt": isoFormatter.string(from: updatedAt),
@@ -174,7 +174,7 @@ extension Tag {
     /// Standard text field mapping for --field support.
     func toTextFields() -> [String: String] {
         [
-            "id": "\(id!)",
+            "id": "\(id ?? 0)",
             "name": name,
             "createdAt": TimeFormatting.formatDate(createdAt),
             "updatedAt": TimeFormatting.formatDate(updatedAt),

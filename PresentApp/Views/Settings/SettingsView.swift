@@ -224,6 +224,7 @@ struct GeneralSettingsTab: View {
             HStack(spacing: Constants.spacingCompact) {
                 Image(systemName: "terminal")
                     .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
                 Text("Need more control? Use `present-cli` for advanced delete operations.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -341,6 +342,7 @@ struct CLISettingsTab: View {
             Image(systemName: icon)
                 .foregroundStyle(.secondary)
                 .frame(width: 16)
+                .accessibilityHidden(true)
             Text(text)
                 .font(.callout)
         }
@@ -443,6 +445,8 @@ struct SessionSettingsTab: View {
                         }
                         .buttonStyle(.plain)
                         .disabled(durationOptions.count <= 1)
+                        .accessibilityLabel("Remove \(option.settingsLabel)")
+                        .help("Remove rhythm option")
                     }
                 }
 
@@ -486,6 +490,8 @@ struct SessionSettingsTab: View {
                                 addDurationOption()
                                 return .handled
                             }
+                            .accessibilityLabel("Add rhythm option")
+                            .help("Add rhythm option")
                         }
 
                         if let error = durationValidationError {

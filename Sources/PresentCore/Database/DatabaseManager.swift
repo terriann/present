@@ -22,7 +22,9 @@ public final class DatabaseManager: Sendable {
     }
 
     public static var defaultDatabasePath: String {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        guard let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
+            fatalError("Application Support directory unavailable")
+        }
         let presentDir = appSupport.appendingPathComponent("Present", isDirectory: true)
         try? FileManager.default.createDirectory(at: presentDir, withIntermediateDirectories: true)
         return presentDir.appendingPathComponent("present.sqlite").path

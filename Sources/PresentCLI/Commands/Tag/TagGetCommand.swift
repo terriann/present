@@ -35,7 +35,7 @@ struct TagGetCommand: AsyncParsableCommand {
 
         case .text:
             if try outputOptions.printTextField(tag.toTextFields()) { break }
-            print("[\(tag.id!)] \(tag.name)")
+            print("[\(tag.id ?? 0)] \(tag.name)")
 
         case .csv:
             print("CSV output not supported for tag get.")

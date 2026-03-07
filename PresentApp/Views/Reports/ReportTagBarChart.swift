@@ -124,8 +124,18 @@ struct ReportTagBarChart: View {
                 }
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Tag distribution chart")
+        .accessibilityValue(tagChartAccessibilityValue(sorted: sorted))
         .frame(height: barHeight)
         .padding(Constants.spacingCard)
+    }
+
+    // MARK: - Accessibility
+
+    private func tagChartAccessibilityValue(sorted: [TagActivitySummary]) -> String {
+        sorted.map { "\($0.tagName): \(TimeFormatting.formatDuration(seconds: $0.totalSeconds))" }
+            .joined(separator: ", ")
     }
 
     // MARK: - Opacity

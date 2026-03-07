@@ -50,10 +50,11 @@ private struct AnimatedSteamWisp: View {
             .foregroundStyle(.secondary)
             .frame(width: strokeWidth * 4, height: height)
             .opacity(reduceMotion ? 0.25 : (animating ? 0.45 : 0.1))
-            .animation(
-                reduceMotion ? nil : .easeInOut(duration: duration)
+            .adaptiveAnimation(
+                .easeInOut(duration: duration)
                     .delay(initialDelay)
                     .repeatForever(autoreverses: true),
+                reduced: .linear(duration: 0),
                 value: animating
             )
             .onAppear {

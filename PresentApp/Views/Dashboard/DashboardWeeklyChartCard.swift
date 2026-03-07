@@ -145,8 +145,25 @@ struct DashboardWeeklyChartCard: View {
             }
         }
         .chartLegend(.hidden)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Weekly activity chart")
+        .accessibilityValue(chartAccessibilityValue(entries: entries))
         .frame(height: 250)
         .padding(Constants.spacingCard)
+    }
+
+    // MARK: - Accessibility
+
+    private func chartAccessibilityValue(entries: [DashboardBarEntry]) -> String {
+        var totals: [(activity: String, seconds: Int)] = []
+        var grouped: [String: Double] = [:]
+        for entry in entries {
+            grouped[entry.activity, default: 0] += entry.value
+        }
+        totals = grouped.map { (activity: $0.key, seconds: Int(($0.value * 3600).rounded())) }
+            .sorted { $0.seconds > $1.seconds }
+        return totals.map { "\($0.activity): \(TimeFormatting.formatDuration(seconds: $0.seconds))" }
+            .joined(separator: ", ")
     }
 
     // MARK: - Tooltip

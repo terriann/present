@@ -40,7 +40,7 @@ struct ActivityNoteCommand: AsyncParsableCommand {
 
         if let explicitId = id {
             let activity = try await service.getActivity(id: explicitId)
-            activityId = activity.id!
+            activityId = activity.id ?? 0
             activityTitle = activity.title
         } else {
             guard let (session, activity) = try await service.currentSession() else {

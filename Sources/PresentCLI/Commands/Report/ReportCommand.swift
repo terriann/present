@@ -65,9 +65,17 @@ struct ReportCommand: AsyncParsableCommand {
                 print("Invalid date format: \(before). Use YYYY-MM-DD.")
                 throw ExitCode.failure
             }
-            toDate = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: parsed))!
+            guard let nextDay = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: parsed)) else {
+                print("Failed to compute date range.")
+                throw ExitCode.failure
+            }
+            toDate = nextDay
         } else {
-            toDate = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: Date()))!
+            guard let nextDay = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: Date())) else {
+                print("Failed to compute date range.")
+                throw ExitCode.failure
+            }
+            toDate = nextDay
         }
 
         let service = try CLIServiceFactory.makeService()
@@ -81,7 +89,7 @@ struct ReportCommand: AsyncParsableCommand {
 
         let fromStr = isoFormatter.string(from: fromDate)
         // toDate is exclusive (day after before), so subtract a day for display
-        let toDisplayDate = calendar.date(byAdding: .day, value: -1, to: toDate)!
+        let toDisplayDate = calendar.date(byAdding: .day, value: -1, to: toDate) ?? toDate
         let toStr = isoFormatter.string(from: toDisplayDate)
 
         switch outputOptions.format {

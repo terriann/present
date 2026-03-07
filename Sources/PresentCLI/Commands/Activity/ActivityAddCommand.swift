@@ -48,7 +48,7 @@ struct ActivityAddCommand: AsyncParsableCommand {
 
         case .text:
             if try outputOptions.printTextField(activity.toTextFields(tags: [])) { break }
-            print("Added activity: \(activity.title) [\(activity.id!)]")
+            print("Added activity: \(activity.title) [\(activity.id ?? 0)]")
 
         case .csv:
             print("CSV output not supported for activity add.")

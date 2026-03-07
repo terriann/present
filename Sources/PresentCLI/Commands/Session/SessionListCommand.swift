@@ -77,7 +77,11 @@ struct SessionListCommand: AsyncParsableCommand {
                 print("Invalid date format: \(before). Use YYYY-MM-DD.")
                 throw ExitCode.failure
             }
-            toDate = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: parsed))!
+            guard let nextDay = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: parsed)) else {
+                print("Failed to compute date range.")
+                throw ExitCode.failure
+            }
+            toDate = nextDay
         } else {
             toDate = Date.distantFuture
         }
@@ -102,7 +106,7 @@ struct SessionListCommand: AsyncParsableCommand {
                 throw ExitCode.failure
             }
             if matches.count == 1 {
-                activityId = matches.first!.id
+                activityId = matches.first?.id
             } else {
                 activityId = nil
             }
@@ -178,7 +182,7 @@ struct SessionListCommand: AsyncParsableCommand {
                 let timeStr = TimeFormatting.formatTime(session.startedAt)
                 let duration = session.durationSeconds.map { TimeFormatting.formatDuration(seconds: $0) } ?? "\u{2014}"
                 let typeLabel = SessionTypeConfig.config(for: session.sessionType).displayName
-                print("  [\(session.id!)] \(dateStr) \(timeStr) \u{2014} \(act.title) (\(typeLabel)) \(duration)")
+                print("  [\(session.id ?? 0)] \(dateStr) \(timeStr) \u{2014} \(act.title) (\(typeLabel)) \(duration)")
             }
 
             if totalPages > 1 {
@@ -193,7 +197,7 @@ struct SessionListCommand: AsyncParsableCommand {
                 let escapedTitle = act.title.contains(",") ? "\"\(act.title)\"" : act.title
                 let endedStr = session.endedAt.map { isoFormatter.string(from: $0) } ?? ""
                 let durationStr = session.durationSeconds.map { String($0) } ?? ""
-                print("\(session.id!),\(escapedTitle),\(session.sessionType.rawValue),\(session.state.rawValue),\(isoFormatter.string(from: session.startedAt)),\(endedStr),\(durationStr)")
+                print("\(session.id ?? 0),\(escapedTitle),\(session.sessionType.rawValue),\(session.state.rawValue),\(isoFormatter.string(from: session.startedAt)),\(endedStr),\(durationStr)")
             }
         }
     }
