@@ -69,6 +69,8 @@ struct MenuBarView: View {
             isExpanded = false
         }
         .onDisappear {
+            searchText = ""
+            selectedIndex = nil
             switchActivityTarget = nil
             switchFromActivityTitle = nil
         }
@@ -573,6 +575,8 @@ struct MenuBarView: View {
     }
 
     private func handleActivityTap(activity: Activity) {
+        searchText = ""
+        selectedIndex = nil
         if appState.isSessionActive {
             switchFromActivityTitle = appState.currentActivity?.title
             switchActivityTarget = activity
