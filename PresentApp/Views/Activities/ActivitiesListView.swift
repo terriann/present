@@ -151,12 +151,12 @@ struct ActivitiesListView: View {
 
     private func loadActivities() async {
         do {
-            activities = try await appState.service.listActivities(
+            activities = try await appState.listActivities(
                 includeArchived: true, includeSystem: true
             )
             let ids = activities.compactMap(\.id)
             if !ids.isEmpty {
-                activityTags = try await appState.service.tagsForActivities(activityIds: ids)
+                activityTags = try await appState.tagsForActivities(activityIds: ids)
             }
         } catch {
             // Fail silently — list stays as-is
@@ -165,7 +165,7 @@ struct ActivitiesListView: View {
 
     private func createAndSelectActivity() async {
         do {
-            let activity = try await appState.service.createActivity(
+            let activity = try await appState.createActivity(
                 CreateActivityInput(title: "Untitled Activity")
             )
             newlyCreatedActivityId = activity.id
@@ -187,7 +187,7 @@ struct ActivitiesListView: View {
             selectedActivity = match
         } else {
             Task {
-                if let activity = try? await appState.service.getActivity(id: targetId) {
+                if let activity = try? await appState.getActivity(id: targetId) {
                     selectedActivity = activity
                 }
             }

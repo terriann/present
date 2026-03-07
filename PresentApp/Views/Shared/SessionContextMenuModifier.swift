@@ -174,7 +174,7 @@ struct SessionContextMenuModifier: ViewModifier {
     private func performDelete() async {
         guard let sessionId = session.id else { return }
         do {
-            try await appState.service.deleteSession(id: sessionId)
+            try await appState.deleteSession(id: sessionId)
             SoundManager.shared.play(.dip)
             await appState.refreshAll()
             onDelete?()
@@ -188,7 +188,7 @@ struct SessionContextMenuModifier: ViewModifier {
         do {
             // Stop the active session first, then delete it
             await appState.stopSession()
-            try await appState.service.deleteSession(id: sessionId)
+            try await appState.deleteSession(id: sessionId)
             SoundManager.shared.play(.dip)
             await appState.refreshAll()
             onDelete?()

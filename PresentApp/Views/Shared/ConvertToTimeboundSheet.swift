@@ -102,7 +102,7 @@ struct ConvertSessionSheet: View {
         .frame(minWidth: 340)
         .task {
             targetType = initialTargetType ?? targets.first ?? .work
-            timeboundMinutes = (try? await appState.service.getPreference(key: PreferenceKey.defaultTimeboundMinutes)).flatMap(Int.init) ?? Constants.defaultTimeboundMinutes
+            timeboundMinutes = (try? await appState.getPreference(key: PreferenceKey.defaultTimeboundMinutes)).flatMap(Int.init) ?? Constants.defaultTimeboundMinutes
             rhythmOption = appState.rhythmDurationOptions.first
         }
     }

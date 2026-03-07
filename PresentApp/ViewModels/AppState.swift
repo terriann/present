@@ -96,7 +96,7 @@ final class AppState {
 
     // MARK: - Services
 
-    private(set) var service: any PresentAPI
+    private var service: any PresentAPI
     private let dbManager: DatabaseManager
 
     // MARK: - Computed Properties
@@ -465,6 +465,118 @@ final class AppState {
             message: message,
             scene: scene
         )
+    }
+
+    // MARK: - Preferences
+
+    func getPreference(key: String) async throws -> String? {
+        try await service.getPreference(key: key)
+    }
+
+    func setPreference(key: String, value: String) async throws {
+        try await service.setPreference(key: key, value: value)
+    }
+
+    // MARK: - Activities
+
+    func getActivity(id: Int64) async throws -> Activity {
+        try await service.getActivity(id: id)
+    }
+
+    func listActivities(includeArchived: Bool = false, includeSystem: Bool = false) async throws -> [Activity] {
+        try await service.listActivities(includeArchived: includeArchived, includeSystem: includeSystem)
+    }
+
+    func createActivity(_ input: CreateActivityInput) async throws -> Activity {
+        try await service.createActivity(input)
+    }
+
+    func updateActivity(id: Int64, _ input: UpdateActivityInput) async throws -> Activity {
+        try await service.updateActivity(id: id, input)
+    }
+
+    func archiveActivity(id: Int64, force: Bool = false) async throws -> ArchiveResult {
+        try await service.archiveActivity(id: id, force: force)
+    }
+
+    func unarchiveActivity(id: Int64) async throws -> Activity {
+        try await service.unarchiveActivity(id: id)
+    }
+
+    func deleteActivity(id: Int64) async throws {
+        try await service.deleteActivity(id: id)
+    }
+
+    // MARK: - Tags
+
+    func findOrCreateTag(name: String) async throws -> Tag {
+        try await service.findOrCreateTag(name: name)
+    }
+
+    func tagActivity(activityId: Int64, tagId: Int64) async throws {
+        try await service.tagActivity(activityId: activityId, tagId: tagId)
+    }
+
+    func untagActivity(activityId: Int64, tagId: Int64) async throws {
+        try await service.untagActivity(activityId: activityId, tagId: tagId)
+    }
+
+    func tagsForActivity(activityId: Int64) async throws -> [Tag] {
+        try await service.tagsForActivity(activityId: activityId)
+    }
+
+    func tagsForActivities(activityIds: [Int64]) async throws -> [Int64: [Tag]] {
+        try await service.tagsForActivities(activityIds: activityIds)
+    }
+
+    // MARK: - Sessions (Query)
+
+    func deleteSession(id: Int64) async throws {
+        try await service.deleteSession(id: id)
+    }
+
+    func listSessions(from: Date, to: Date, type: SessionType? = nil, activityId: Int64? = nil, includeArchived: Bool = false) async throws -> [(Session, Activity)] {
+        try await service.listSessions(from: from, to: to, type: type, activityId: activityId, includeArchived: includeArchived)
+    }
+
+    func segmentsForSessions(sessionIds: [Int64]) async throws -> [Int64: [SessionSegment]] {
+        try await service.segmentsForSessions(sessionIds: sessionIds)
+    }
+
+    func sessionDayPortions(sessionIds: [Int64], date: Date) async throws -> [Int64: Int] {
+        try await service.sessionDayPortions(sessionIds: sessionIds, date: date)
+    }
+
+    // MARK: - Reports
+
+    func dailySummary(date: Date, includeArchived: Bool, roundToMinute: Bool) async throws -> DailySummary {
+        try await service.dailySummary(date: date, includeArchived: includeArchived, roundToMinute: roundToMinute)
+    }
+
+    func weeklySummary(weekOf: Date, includeArchived: Bool, weekStartDay: Int = 1, roundToMinute: Bool = false) async throws -> WeeklySummary {
+        try await service.weeklySummary(weekOf: weekOf, includeArchived: includeArchived, weekStartDay: weekStartDay, roundToMinute: roundToMinute)
+    }
+
+    func monthlySummary(monthOf: Date, includeArchived: Bool, weekStartDay: Int = 1, roundToMinute: Bool = false) async throws -> MonthlySummary {
+        try await service.monthlySummary(monthOf: monthOf, includeArchived: includeArchived, weekStartDay: weekStartDay, roundToMinute: roundToMinute)
+    }
+
+    func tagActivitySummary(from: Date, to: Date, includeArchived: Bool, roundToMinute: Bool) async throws -> [TagActivitySummary] {
+        try await service.tagActivitySummary(from: from, to: to, includeArchived: includeArchived, roundToMinute: roundToMinute)
+    }
+
+    func earliestSessionDate() async throws -> Date? {
+        try await service.earliestSessionDate()
+    }
+
+    // MARK: - Bulk Operations
+
+    func countSessions(in range: BulkDeleteRange) async throws -> Int {
+        try await service.countSessions(in: range)
+    }
+
+    func deleteSessions(in range: BulkDeleteRange) async throws -> BulkDeleteResult {
+        try await service.deleteSessions(in: range)
     }
 
     // MARK: - Dock Icon

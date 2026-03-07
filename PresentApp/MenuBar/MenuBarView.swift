@@ -578,8 +578,8 @@ struct MenuBarView: View {
                 isSearchFocused = true
             }
             Task {
-                timeboundMinutes = (try? await appState.service.getPreference(key: PreferenceKey.defaultTimeboundMinutes)).flatMap(Int.init) ?? Constants.defaultTimeboundMinutes
-                activitySort = (try? await appState.service.getPreference(key: PreferenceKey.menuBarActivitySort)) ?? "recent"
+                timeboundMinutes = (try? await appState.getPreference(key: PreferenceKey.defaultTimeboundMinutes)).flatMap(Int.init) ?? Constants.defaultTimeboundMinutes
+                activitySort = (try? await appState.getPreference(key: PreferenceKey.menuBarActivitySort)) ?? "recent"
             }
         }
         .syncRhythmSelection($selectedRhythmOption)
@@ -668,7 +668,7 @@ struct MenuBarView: View {
     private func createActivityRow(title: String, isSelected: Bool = false) -> some View {
         CreateActivityButton(title: title, theme: theme, scaledFont: scaledFont, isSelected: isSelected) {
             Task {
-                guard let newActivity = try? await appState.service.createActivity(
+                guard let newActivity = try? await appState.createActivity(
                     CreateActivityInput(title: title)
                 ) else { return }
                 searchText = ""
@@ -696,7 +696,7 @@ struct MenuBarView: View {
             let title = searchText.trimmingCharacters(in: .whitespaces)
             guard !title.isEmpty else { return }
             Task {
-                guard let newActivity = try? await appState.service.createActivity(
+                guard let newActivity = try? await appState.createActivity(
                     CreateActivityInput(title: title)
                 ) else { return }
                 searchText = ""
@@ -709,7 +709,7 @@ struct MenuBarView: View {
     private func setActivitySort(_ sort: String) {
         activitySort = sort
         Task {
-            try? await appState.service.setPreference(key: PreferenceKey.menuBarActivitySort, value: sort)
+            try? await appState.setPreference(key: PreferenceKey.menuBarActivitySort, value: sort)
         }
     }
 

@@ -53,7 +53,7 @@ struct ActivitiesDetailView: View {
                 Task {
                     guard let activityId = activity.id else { return }
                     do {
-                        _ = try await appState.service.archiveActivity(id: activityId, force: true)
+                        _ = try await appState.archiveActivity(id: activityId, force: true)
                         await reload()
                     } catch {
                         appState.showError(error, context: "Could not archive activity")
@@ -64,7 +64,7 @@ struct ActivitiesDetailView: View {
                 Task {
                     guard let activityId = activity.id else { return }
                     do {
-                        try await appState.service.deleteActivity(id: activityId)
+                        try await appState.deleteActivity(id: activityId)
                         onDelete?()
                         await appState.refreshAll()
                     } catch {
@@ -82,7 +82,7 @@ struct ActivitiesDetailView: View {
                 Task {
                     guard let activityId = activity.id else { return }
                     do {
-                        try await appState.service.deleteActivity(id: activityId)
+                        try await appState.deleteActivity(id: activityId)
                         onDelete?()
                         await appState.refreshAll()
                     } catch {
@@ -96,7 +96,7 @@ struct ActivitiesDetailView: View {
         }
         .task {
             await loadDetails()
-            timeboundMinutes = (try? await appState.service.getPreference(key: PreferenceKey.defaultTimeboundMinutes)).flatMap(Int.init) ?? Constants.defaultTimeboundMinutes
+            timeboundMinutes = (try? await appState.getPreference(key: PreferenceKey.defaultTimeboundMinutes)).flatMap(Int.init) ?? Constants.defaultTimeboundMinutes
             if activity.isSystem && selectedSessionType == .rhythm {
                 selectedSessionType = .work
             }
@@ -434,7 +434,7 @@ struct ActivitiesDetailView: View {
     private func reload() async {
         guard let activityId = activity.id else { return }
         do {
-            activity = try await appState.service.getActivity(id: activityId)
+            activity = try await appState.getActivity(id: activityId)
             titleText = activity.title
             notes = activity.notes ?? ""
             await loadTags()
@@ -455,7 +455,7 @@ struct ActivitiesDetailView: View {
     private func loadAssignedTags() async throws -> [Tag] {
         guard let activityId = activity.id else { return [] }
         // Use GRDB association to fetch tags for this activity
-        return try await appState.service.tagsForActivity(activityId: activityId)
+        return try await appState.tagsForActivity(activityId: activityId)
     }
 
     private func saveTitle() async {
@@ -466,7 +466,7 @@ struct ActivitiesDetailView: View {
             return
         }
         do {
-            activity = try await appState.service.updateActivity(
+            activity = try await appState.updateActivity(
                 id: activityId,
                 UpdateActivityInput(title: trimmed)
             )
@@ -482,7 +482,7 @@ struct ActivitiesDetailView: View {
         guard let activityId = activity.id else { return }
         guard notes != (activity.notes ?? "") else { return }
         do {
-            activity = try await appState.service.updateActivity(
+            activity = try await appState.updateActivity(
                 id: activityId,
                 UpdateActivityInput(notes: notes)
             )
@@ -494,7 +494,7 @@ struct ActivitiesDetailView: View {
 
     private func createAndAddTag(_ name: String) async {
         do {
-            let tag = try await appState.service.findOrCreateTag(name: name)
+            let tag = try await appState.findOrCreateTag(name: name)
             await addTag(tag)
             await appState.refreshAll()
         } catch {
@@ -505,7 +505,7 @@ struct ActivitiesDetailView: View {
     private func addTag(_ tag: Tag) async {
         guard let activityId = activity.id, let tagId = tag.id else { return }
         do {
-            try await appState.service.tagActivity(activityId: activityId, tagId: tagId)
+            try await appState.tagActivity(activityId: activityId, tagId: tagId)
             await loadTags()
             await appState.refreshAll()
         } catch {
@@ -516,7 +516,7 @@ struct ActivitiesDetailView: View {
     private func removeTag(_ tag: Tag) async {
         guard let activityId = activity.id, let tagId = tag.id else { return }
         do {
-            try await appState.service.untagActivity(activityId: activityId, tagId: tagId)
+            try await appState.untagActivity(activityId: activityId, tagId: tagId)
             await loadTags()
             await appState.refreshAll()
         } catch {
@@ -527,7 +527,7 @@ struct ActivitiesDetailView: View {
     private func handleArchive() async {
         guard let activityId = activity.id else { return }
         do {
-            let result = try await appState.service.archiveActivity(id: activityId)
+            let result = try await appState.archiveActivity(id: activityId)
             archiveResult = result
             if case .promptDelete = result {
                 showingArchiveConfirm = true
@@ -542,7 +542,7 @@ struct ActivitiesDetailView: View {
     private func handleUnarchive() async {
         guard let activityId = activity.id else { return }
         do {
-            _ = try await appState.service.unarchiveActivity(id: activityId)
+            _ = try await appState.unarchiveActivity(id: activityId)
             await reload()
         } catch {
             appState.showError(error, context: "Could not unarchive activity")

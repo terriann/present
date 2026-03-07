@@ -698,7 +698,7 @@ struct ActivitySessionCard: View {
             return
         }
         do {
-            let portions = try await appState.service.sessionDayPortions(
+            let portions = try await appState.sessionDayPortions(
                 sessionIds: [sessionId], date: Date()
             )
             let todayFromSegments = portions[sessionId] ?? 0
