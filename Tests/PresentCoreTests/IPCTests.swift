@@ -7,7 +7,7 @@ struct IPCTests {
 
     // MARK: - Message Serialization
 
-    @Test func messageRoundTrip() {
+    @Test func messageRoundTrip() throws {
         let messages: [IPCMessage] = [
             .sessionStarted,
             .sessionPaused,
@@ -19,7 +19,7 @@ struct IPCTests {
         ]
 
         for message in messages {
-            let data = message.data
+            let data = try #require(message.data)
             let decoded = IPCMessage.from(data: data)
             #expect(decoded != nil)
             #expect(String(describing: decoded!) == String(describing: message))
@@ -37,21 +37,22 @@ struct IPCTests {
         #expect(decoded == nil)
     }
 
-    @Test func messageDataIsValidJSON() {
+    @Test func messageDataIsValidJSON() throws {
         let message = IPCMessage.sessionStarted
-        let data = message.data
+        let data = try #require(message.data)
         let json = try? JSONSerialization.jsonObject(with: data)
         #expect(json != nil)
     }
 
-    @Test func allMessagesEncodeUniquely() {
+    @Test func allMessagesEncodeUniquely() throws {
         let messages: [IPCMessage] = [
             .sessionStarted, .sessionPaused, .sessionResumed,
             .sessionStopped, .sessionCancelled, .activityUpdated, .dataChanged,
         ]
         var seen = Set<String>()
         for message in messages {
-            let encoded = String(data: message.data, encoding: .utf8)!
+            guard let data = message.data else { continue }
+            let encoded = String(data: data, encoding: .utf8)!
             #expect(!seen.contains(encoded), "Duplicate encoding for \(message)")
             seen.insert(encoded)
         }

@@ -11,8 +11,8 @@ public enum IPCMessage: Codable, Sendable {
     case activityUpdated
     case dataChanged
 
-    public var data: Data {
-        try! JSONEncoder().encode(self)
+    public var data: Data? {
+        try? JSONEncoder().encode(self)
     }
 
     public static func from(data: Data) -> IPCMessage? {
