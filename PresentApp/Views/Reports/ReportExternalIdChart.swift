@@ -117,8 +117,23 @@ struct ReportExternalIdChart: View {
             }
             .allowsHitTesting(false)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("External ID breakdown chart")
+        .accessibilityValue(chartAccessibilityValue(groups: groups, combinedTotal: combinedTotal))
         .frame(height: 250)
         .padding(Constants.spacingCard)
+    }
+
+    // MARK: - Accessibility
+
+    private func chartAccessibilityValue(
+        groups: [(externalId: String, activities: [ActivitySummary], totalSeconds: Int)],
+        combinedTotal: Int
+    ) -> String {
+        groups.map { group in
+            let pct = combinedTotal > 0 ? Double(group.totalSeconds) / Double(combinedTotal) * 100 : 0
+            return "\(group.externalId): \(TimeFormatting.formatDuration(seconds: group.totalSeconds)) (\(String(format: "%.1f%%", pct)))"
+        }.joined(separator: ", ")
     }
 
     // MARK: - Legend

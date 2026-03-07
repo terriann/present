@@ -162,6 +162,24 @@ struct DayTimelineChart: View {
                 HoverableChartLegend(items: legendItems, hoveredLabel: $hoveredActivityTitle)
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Day timeline")
+        .accessibilityValue(timelineAccessibilityValue)
+    }
+
+    // MARK: - Accessibility
+
+    private var timelineAccessibilityValue: String {
+        var grouped: [String: TimeInterval] = [:]
+        for block in blocks {
+            let effectiveStart = max(block.start, startOfDay)
+            let end = block.end ?? Date()
+            let duration = max(0, end.timeIntervalSince(effectiveStart))
+            grouped[block.activity.title, default: 0] += duration
+        }
+        let sorted = grouped.sorted { $0.value > $1.value }
+        return sorted.map { "\($0.key): \(TimeFormatting.formatDuration(seconds: Int($0.value)))" }
+            .joined(separator: ", ")
     }
 
     // MARK: - Helpers

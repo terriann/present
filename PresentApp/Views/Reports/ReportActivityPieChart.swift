@@ -99,8 +99,20 @@ struct ReportActivityPieChart: View {
             }
             .allowsHitTesting(false)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Activity distribution chart")
+        .accessibilityValue(chartAccessibilityValue)
         .frame(height: 250)
         .padding(Constants.spacingCard)
+    }
+
+    // MARK: - Accessibility
+
+    private var chartAccessibilityValue: String {
+        activities.map { summary in
+            let pct = totalSeconds > 0 ? Double(summary.totalSeconds) / Double(totalSeconds) * 100 : 0
+            return "\(summary.activity.title): \(TimeFormatting.formatDuration(seconds: summary.totalSeconds)) (\(String(format: "%.1f%%", pct)))"
+        }.joined(separator: ", ")
     }
 
     // MARK: - Legend
