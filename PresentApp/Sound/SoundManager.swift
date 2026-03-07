@@ -1,5 +1,4 @@
 import AppKit
-import PresentCore
 
 @MainActor
 final class SoundManager {
@@ -19,7 +18,6 @@ final class SoundManager {
         }
     }
 
-    private var service: PresentService?
     private var sounds: [SoundEffect: NSSound] = [:]
     var isEnabled = true
 
@@ -33,14 +31,8 @@ final class SoundManager {
         }
     }
 
-    func configure(service: PresentService) {
-        self.service = service
-        // Load saved preference
-        Task {
-            if let val = try? await service.getPreference(key: PreferenceKey.soundEffectsEnabled) {
-                isEnabled = val != "0"
-            }
-        }
+    func configure(soundEnabled: Bool) {
+        isEnabled = soundEnabled
     }
 
     func play(_ effect: SoundEffect) {

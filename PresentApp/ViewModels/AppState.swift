@@ -96,7 +96,7 @@ final class AppState {
 
     // MARK: - Services
 
-    private(set) var service: PresentService
+    private(set) var service: any PresentAPI
     private let dbManager: DatabaseManager
 
     // MARK: - Computed Properties
@@ -153,7 +153,10 @@ final class AppState {
             await self?.refreshAll()
         }
         NotificationManager.shared.requestPermission()
-        SoundManager.shared.configure(service: service)
+        Task {
+            let val = try? await service.getPreference(key: PreferenceKey.soundEffectsEnabled)
+            SoundManager.shared.configure(soundEnabled: val != "0")
+        }
         dataRefresh.startObservations()
         dataRefresh.startIPCServer()
         loadInitialData()

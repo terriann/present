@@ -47,7 +47,7 @@ final class DataRefreshCoordinator {
 
     // MARK: - Dependencies
 
-    private let service: PresentService
+    private let service: any PresentAPI
     private let changeNotifier: DatabaseChangeNotifier
 
     /// Tables whose modifications trigger a data refresh.
@@ -62,7 +62,7 @@ final class DataRefreshCoordinator {
 
     // MARK: - Initialization
 
-    init(service: PresentService, changeNotifier: DatabaseChangeNotifier) {
+    init(service: any PresentAPI, changeNotifier: DatabaseChangeNotifier) {
         self.service = service
         self.changeNotifier = changeNotifier
     }

@@ -12,7 +12,7 @@ final class ZoomManager {
 
     // MARK: - Dependencies
 
-    private let service: PresentService
+    private let service: any PresentAPI
 
     // MARK: - Computed Properties
 
@@ -26,7 +26,7 @@ final class ZoomManager {
 
     // MARK: - Initialization
 
-    init(service: PresentService) {
+    init(service: any PresentAPI) {
         self.service = service
     }
 
