@@ -83,7 +83,7 @@ struct SessionInlineEditForm: View {
                 // Paused time
                 if session.totalPausedSeconds > 0 {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Paused")
+                        Label("Paused", systemImage: "pause.circle")
                             .font(.fieldLabel)
                             .foregroundStyle(.secondary)
                         Text(TimeFormatting.formatDuration(seconds: session.totalPausedSeconds))
@@ -112,7 +112,7 @@ struct SessionInlineEditForm: View {
             // Note row
             VStack(alignment: .leading, spacing: 2) {
                 HStack {
-                    Text("Note")
+                    Label("Note", systemImage: "doc.text")
                         .font(.fieldLabel)
                         .foregroundStyle(noteLabelColor)
                     Spacer()
