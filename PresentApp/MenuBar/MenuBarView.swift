@@ -215,7 +215,18 @@ struct MenuBarView: View {
 
     // MARK: - Scaled Fonts
 
-    /// Base macOS system font sizes for each text style.
+    /// Returns a font scaled by the menu bar zoom level.
+    ///
+    /// At the default zoom (`1.0`), this returns `.system(style, weight:)` which
+    /// fully respects the user's Dynamic Type / accessibility text size setting.
+    ///
+    /// At non-default zoom levels the method uses hard-coded base sizes instead of
+    /// querying Dynamic Type. This is intentional: the menu bar popover is
+    /// width-constrained (320pt * zoomScale) and the zoom feature serves as the
+    /// popover's own accessibility scaling mechanism. Layering Dynamic Type on top
+    /// of zoom would risk text clipping and layout overflow at large combined sizes.
+    ///
+    /// Trade-off documented in GitHub issue #136.
     private func scaledFont(_ style: Font.TextStyle, weight: Font.Weight = .regular) -> Font {
         guard zoomScale != 1.0 else {
             return .system(style, weight: weight)
