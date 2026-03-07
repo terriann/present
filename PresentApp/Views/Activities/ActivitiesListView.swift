@@ -70,7 +70,8 @@ struct ActivitiesListView: View {
                                     } label: {
                                         ActivityRow(
                                             activity: activity,
-                                            tags: activityTags[activity.id ?? 0] ?? []
+                                            tags: activityTags[activity.id ?? 0] ?? [],
+                                            tagColorMap: tagColorMap
                                         )
                                             .frame(maxWidth: .infinity, alignment: .leading)
                                             .contentShape(Rectangle())
@@ -176,6 +177,17 @@ struct ActivitiesListView: View {
         }
     }
 
+    // MARK: - Tag Colors
+
+    private var tagColorMap: [String: Color] {
+        let palette = ThemeManager.chartColors(for: theme.activePalette)
+        let assignedNames = Set(activityTags.values.flatMap { $0 }.map(\.name))
+        let sortedNames = assignedNames.sorted()
+        return Dictionary(uniqueKeysWithValues: sortedNames.enumerated().map { index, name in
+            (name, palette[index % palette.count])
+        })
+    }
+
     // MARK: - Filtering
 
     private var displayedActivities: [Activity] {
@@ -193,6 +205,7 @@ struct ActivitiesListView: View {
 struct ActivityRow: View {
     let activity: Activity
     let tags: [Tag]
+    let tagColorMap: [String: Color]
     @Environment(ThemeManager.self) private var theme
 
     var body: some View {
@@ -225,25 +238,44 @@ struct ActivityRow: View {
                 }
             }
 
-            // MARK: - Subtitle row (tags + external ID)
-            if !tags.isEmpty || activity.externalId.map({ !$0.isEmpty }) == true {
+            // MARK: - Subtitle row (notes indicator, external ID, tags)
+            if hasSubtitle {
                 HStack(spacing: Constants.spacingTight) {
-                    ForEach(tags) { tag in
-                        Text(tag.name)
+                    if activity.notes.map({ !$0.isEmpty }) == true {
+                        Image(systemName: "doc.text")
                             .font(.caption2)
-                            .padding(.horizontal, Constants.spacingCompact)
-                            .padding(.vertical, Constants.spacingTight)
-                            .background(.secondary.opacity(0.15), in: Capsule())
+                            .foregroundStyle(.secondary)
+                            .accessibilityLabel("Has notes")
                     }
 
                     if let externalId = activity.externalId, !externalId.isEmpty {
                         Text(externalId)
-                            .font(.caption)
+                            .font(.caption2)
                             .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    ForEach(tags) { tag in
+                        let color = tagColorMap[tag.name] ?? .secondary
+                        Text(tag.name)
+                            .font(.caption2)
+                            .foregroundStyle(color)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 1)
+                            .background(color.opacity(0.15), in: Capsule())
                     }
                 }
             }
         }
-        .padding(.vertical, Constants.spacingCompact)
+        .padding(.vertical, Constants.spacingTight)
+    }
+
+    // MARK: - Helpers
+
+    private var hasSubtitle: Bool {
+        !tags.isEmpty
+            || activity.externalId.map({ !$0.isEmpty }) == true
+            || activity.notes.map({ !$0.isEmpty }) == true
     }
 }
