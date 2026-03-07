@@ -139,6 +139,8 @@ struct ActivitySessionCard: View {
                             .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Clear search")
+                    .help("Clear search")
                 }
             }
 
