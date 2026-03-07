@@ -1,8 +1,10 @@
 import SwiftUI
 import PresentCore
+import os
 
 @MainActor @Observable
 final class DataRefreshCoordinator {
+    private static let logger = Logger(subsystem: "com.present.app", category: "ipc")
     // MARK: - Data State
 
     var todayTotalSeconds: Int = 0
@@ -221,6 +223,10 @@ final class DataRefreshCoordinator {
                 self?.scheduleRefresh()
             }
         }
-        try? ipcServer?.start()
+        do {
+            try ipcServer?.start()
+        } catch {
+            Self.logger.error("IPC server failed to start: \(error.localizedDescription, privacy: .public)")
+        }
     }
 }

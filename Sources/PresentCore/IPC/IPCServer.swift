@@ -7,8 +7,8 @@ public final class IPCServer: @unchecked Sendable {
     private let handler: @Sendable (IPCMessage) -> Void
     private var serverFD: Int32 = -1
 
-    public init(handler: @escaping @Sendable (IPCMessage) -> Void) {
-        self.socketPath = IPCServer.defaultSocketPath
+    public init(socketPath: String? = nil, handler: @escaping @Sendable (IPCMessage) -> Void) {
+        self.socketPath = socketPath ?? IPCServer.defaultSocketPath
         self.handler = handler
     }
 
@@ -59,6 +59,9 @@ public final class IPCServer: @unchecked Sendable {
             throw IPCError.bindFailed
         }
 
+        // Restrict socket to owner-only access
+        chmod(socketPath, 0o600)
+
         guard listen(fd, 5) == 0 else {
             close(fd)
             throw IPCError.listenFailed
@@ -103,4 +106,17 @@ public enum IPCError: Error, Sendable {
     case connectionFailed
     case sendFailed
     case pathTooLong
+}
+
+extension IPCError: LocalizedError {
+    public var errorDescription: String? {
+        switch self {
+        case .socketCreationFailed: "IPC socket creation failed"
+        case .bindFailed: "IPC socket bind failed"
+        case .listenFailed: "IPC socket listen failed"
+        case .connectionFailed: "IPC socket connection failed"
+        case .sendFailed: "IPC socket send failed"
+        case .pathTooLong: "IPC socket path exceeds maximum length"
+        }
+    }
 }
