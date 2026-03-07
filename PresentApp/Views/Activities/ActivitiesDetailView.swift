@@ -281,7 +281,7 @@ struct ActivitiesDetailView: View {
                 }
                 Spacer()
                 Text("Markdown")
-                    .font(.subheadline)
+                    .font(.dataLabel)
                     .foregroundStyle(.secondary)
             }
         }
