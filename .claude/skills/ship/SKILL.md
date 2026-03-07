@@ -44,9 +44,9 @@ Collect everything the commit-pr-writer agent needs — do this research yoursel
    ```
 3. **Find addressed issues.** Search the commit messages and diff for GitHub issue references (`#123`, `Closes #123`, `Fixes #123`, `Resolves #123`, `Addressing #123`, `Related to #123`, `Part of #123`). For each referenced issue, fetch its title:
    ```bash
-   gh issue view <number> --json title,state,url --jq '"\(.title) (\(.state)) \(.url)"'
+   gh issue view <number> --json title,state,url,milestone --jq '"\(.title) (\(.state)) \(.url) milestone:\(.milestone.title // "none")"'
    ```
-4. **Check for milestone.** If the branch name contains a version (e.g., `feat/0.2.0`), check if a matching milestone exists and note it for the PR.
+4. **Determine milestone.** Pick the milestone that appears most frequently across the referenced issues. If no issues have a milestone, fall back to checking the branch name for a version (e.g., `feat/0.2.0`) and look for a matching milestone. If neither produces a result, skip milestone assignment.
 
 ### 2b. Delegate to commit-pr-writer
 
@@ -73,7 +73,7 @@ After the commit-pr-writer drafts the PR description:
    ```bash
    gh pr create --base <base-branch> --title "<title>" --body "<body>"
    ```
-3. If a matching milestone was found, assign it:
+3. If a milestone was determined (from issues or branch name), assign it:
    ```bash
    gh pr edit <number> --milestone "<milestone>"
    ```
