@@ -280,9 +280,7 @@ struct ActivitiesDetailView: View {
                     )
                 }
                 Spacer()
-                Text("Markdown")
-                    .font(.dataLabel)
-                    .foregroundStyle(.secondary)
+                MarkdownHelpButton()
             }
         }
     }

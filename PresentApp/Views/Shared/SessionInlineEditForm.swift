@@ -111,9 +111,13 @@ struct SessionInlineEditForm: View {
 
             // Note row
             VStack(alignment: .leading, spacing: 2) {
-                Text("Note")
-                    .font(.fieldLabel)
-                    .foregroundStyle(noteLabelColor)
+                HStack {
+                    Text("Note")
+                        .font(.fieldLabel)
+                        .foregroundStyle(noteLabelColor)
+                    Spacer()
+                    MarkdownHelpButton()
+                }
                 MarkdownEditor(text: $noteText, focusOnAppear: true, onCommit: { saveNote() }, onEscape: {
                     if hasPendingChanges {
                         revertAll()
