@@ -58,14 +58,14 @@ struct ActivityTagListCommand: AsyncParsableCommand {
 
             print("Tags on \"\(activity.title)\":")
             for tag in tags {
-                print("  [\(tag.id!)] \(tag.name)")
+                print("  [\(tag.id ?? 0)] \(tag.name)")
             }
 
         case .csv:
             print("Tag ID,Name")
             for tag in tags {
                 let escapedName = tag.name.contains(",") ? "\"\(tag.name)\"" : tag.name
-                print("\(tag.id!),\(escapedName)")
+                print("\(tag.id ?? 0),\(escapedName)")
             }
         }
     }

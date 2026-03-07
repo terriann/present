@@ -38,7 +38,7 @@ struct TagUpdateCommand: AsyncParsableCommand {
 
         case .text:
             if try outputOptions.printTextField(tag.toTextFields()) { break }
-            print("Updated tag: \(tag.name) [\(tag.id!)]")
+            print("Updated tag: \(tag.name) [\(tag.id ?? 0)]")
 
         case .csv:
             print("CSV output not supported for tag update.")

@@ -94,8 +94,12 @@ struct SessionStartCommand: AsyncParsableCommand {
             }
         }
 
+        guard let activityId = activity.id else {
+            print("Error: Activity ID unavailable.")
+            throw ExitCode.failure
+        }
         let session = try await service.startSession(
-            activityId: activity.id!,
+            activityId: activityId,
             type: sessionType,
             timerMinutes: minutes,
             breakMinutes: resolvedBreakMinutes,

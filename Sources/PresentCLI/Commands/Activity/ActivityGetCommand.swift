@@ -42,7 +42,7 @@ struct ActivityGetCommand: AsyncParsableCommand {
             if try outputOptions.printTextField(activity.toTextFields(tags: tags)) { break }
 
             let archived = activity.isArchived ? " [archived]" : ""
-            print("[\(activity.id!)] \(activity.title)\(archived)")
+            print("[\(activity.id ?? 0)] \(activity.title)\(archived)")
             if let externalId = activity.externalId {
                 print("External ID: \(externalId)")
             }

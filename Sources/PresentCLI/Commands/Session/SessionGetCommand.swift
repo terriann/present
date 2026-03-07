@@ -44,7 +44,7 @@ struct SessionGetCommand: AsyncParsableCommand {
             let dateStr = TimeFormatting.formatDate(session.startedAt)
             let timeStr = TimeFormatting.formatTime(session.startedAt)
             let typeLabel = SessionTypeConfig.config(for: session.sessionType).displayName
-            print("[\(session.id!)] \(dateStr) \(timeStr) — \(activity.title) (\(typeLabel))")
+            print("[\(session.id ?? 0)] \(dateStr) \(timeStr) — \(activity.title) (\(typeLabel))")
             print("State: \(session.state.rawValue)")
             if let duration = session.durationSeconds {
                 print("Duration: \(TimeFormatting.formatDuration(seconds: duration))")

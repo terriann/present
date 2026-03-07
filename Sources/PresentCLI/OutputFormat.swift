@@ -37,7 +37,7 @@ extension OutputOptions {
             return
         }
         let data = try JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys])
-        print(String(data: data, encoding: .utf8)!)
+        print(String(data: data, encoding: .utf8) ?? "")
     }
 
     /// Prints a JSON array. --field is not supported for bare arrays.
@@ -47,7 +47,7 @@ extension OutputOptions {
             throw ExitCode.failure
         }
         let data = try JSONSerialization.data(withJSONObject: array, options: [.prettyPrinted, .sortedKeys])
-        print(String(data: data, encoding: .utf8)!)
+        print(String(data: data, encoding: .utf8) ?? "")
     }
 
     /// For text output with --field: prints the formatted value and returns true.

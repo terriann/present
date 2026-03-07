@@ -137,9 +137,12 @@ public final class PresentService: PresentAPI, Sendable {
 
             try session.insert(db)
             session.id = db.lastInsertedRowID
+            guard let sessionId = session.id else {
+                throw PresentError.invalidInput("Session ID unavailable after insert")
+            }
 
             // Open the first segment
-            let segment = SessionSegment(sessionId: session.id!, startedAt: now)
+            let segment = SessionSegment(sessionId: sessionId, startedAt: now)
             try segment.insert(db)
 
             return session
@@ -228,9 +231,12 @@ public final class PresentService: PresentAPI, Sendable {
 
             try session.insert(db)
             session.id = db.lastInsertedRowID
+            guard let sessionId = session.id else {
+                throw PresentError.invalidInput("Session ID unavailable after insert")
+            }
 
             // Insert single closed segment representing the full active duration
-            let segment = SessionSegment(sessionId: session.id!, startedAt: input.startedAt, endedAt: input.endedAt)
+            let segment = SessionSegment(sessionId: sessionId, startedAt: input.startedAt, endedAt: input.endedAt)
             try segment.insert(db)
 
             return session
@@ -433,6 +439,10 @@ public final class PresentService: PresentAPI, Sendable {
                 throw PresentError.noActiveSession
             }
 
+            guard let sessionId = session.id else {
+                throw PresentError.invalidInput("Session ID unavailable")
+            }
+
             // Target type must differ from current
             guard input.targetType != session.sessionType else {
                 throw PresentError.invalidInput("Session is already \(SessionTypeConfig.config(for: session.sessionType).displayName.lowercased()).")
@@ -450,7 +460,7 @@ public final class PresentService: PresentAPI, Sendable {
 
             // Compute elapsed seconds from segments
             let closedSegments = try SessionSegment
-                .filter(SessionSegment.Columns.sessionId == session.id!)
+                .filter(SessionSegment.Columns.sessionId == sessionId)
                 .filter(SessionSegment.Columns.endedAt != nil)
                 .fetchAll(db)
             var elapsedSeconds = Self.sumSegmentDurations(closedSegments)
@@ -458,7 +468,7 @@ public final class PresentService: PresentAPI, Sendable {
             // Add open segment time if running
             if session.state == .running,
                let openSegment = try SessionSegment
-                .filter(SessionSegment.Columns.sessionId == session.id!)
+                .filter(SessionSegment.Columns.sessionId == sessionId)
                 .filter(SessionSegment.Columns.endedAt == nil)
                 .fetchOne(db) {
                 elapsedSeconds += Int(Date().timeIntervalSince(openSegment.startedAt))
@@ -519,6 +529,10 @@ public final class PresentService: PresentAPI, Sendable {
                 throw PresentError.noActiveSession
             }
 
+            guard let sessionId = session.id else {
+                throw PresentError.invalidInput("Session ID unavailable")
+            }
+
             let now = Date()
             session.state = .paused
             session.lastPausedAt = now
@@ -526,7 +540,7 @@ public final class PresentService: PresentAPI, Sendable {
 
             // Close the open segment
             if var openSegment = try SessionSegment
-                .filter(SessionSegment.Columns.sessionId == session.id!)
+                .filter(SessionSegment.Columns.sessionId == sessionId)
                 .filter(SessionSegment.Columns.endedAt == nil)
                 .fetchOne(db) {
                 openSegment.endedAt = now
@@ -555,7 +569,10 @@ public final class PresentService: PresentAPI, Sendable {
             try session.update(db)
 
             // Open a new segment
-            let segment = SessionSegment(sessionId: session.id!, startedAt: now)
+            guard let sessionId = session.id else {
+                throw PresentError.invalidInput("Session ID unavailable")
+            }
+            let segment = SessionSegment(sessionId: sessionId, startedAt: now)
             try segment.insert(db)
 
             return session
@@ -570,6 +587,10 @@ public final class PresentService: PresentAPI, Sendable {
                 throw PresentError.noActiveSession
             }
 
+            guard let sessionId = session.id else {
+                throw PresentError.invalidInput("Session ID unavailable")
+            }
+
             let now = Date()
 
             // If paused, accumulate remaining pause time
@@ -581,7 +602,7 @@ public final class PresentService: PresentAPI, Sendable {
             // If running, close the open segment
             if session.state == .running,
                var openSegment = try SessionSegment
-                .filter(SessionSegment.Columns.sessionId == session.id!)
+                .filter(SessionSegment.Columns.sessionId == sessionId)
                 .filter(SessionSegment.Columns.endedAt == nil)
                 .fetchOne(db) {
                 openSegment.endedAt = now
@@ -594,7 +615,7 @@ public final class PresentService: PresentAPI, Sendable {
 
             // Compute duration from sum of all closed segments
             let segments = try SessionSegment
-                .filter(SessionSegment.Columns.sessionId == session.id!)
+                .filter(SessionSegment.Columns.sessionId == sessionId)
                 .filter(SessionSegment.Columns.endedAt != nil)
                 .fetchAll(db)
             session.durationSeconds = Self.sumSegmentDurations(segments)
@@ -620,6 +641,10 @@ public final class PresentService: PresentAPI, Sendable {
                 throw PresentError.noActiveSession
             }
 
+            guard let oldSessionId = oldSession.id else {
+                throw PresentError.invalidInput("Session ID unavailable")
+            }
+
             let now = Date()
 
             // If paused, accumulate remaining pause time
@@ -631,7 +656,7 @@ public final class PresentService: PresentAPI, Sendable {
             // If running, close the open segment
             if oldSession.state == .running,
                var openSegment = try SessionSegment
-                .filter(SessionSegment.Columns.sessionId == oldSession.id!)
+                .filter(SessionSegment.Columns.sessionId == oldSessionId)
                 .filter(SessionSegment.Columns.endedAt == nil)
                 .fetchOne(db) {
                 openSegment.endedAt = now
@@ -644,7 +669,7 @@ public final class PresentService: PresentAPI, Sendable {
 
             // Compute duration from sum of all closed segments
             let segments = try SessionSegment
-                .filter(SessionSegment.Columns.sessionId == oldSession.id!)
+                .filter(SessionSegment.Columns.sessionId == oldSessionId)
                 .filter(SessionSegment.Columns.endedAt != nil)
                 .fetchAll(db)
             oldSession.durationSeconds = Self.sumSegmentDurations(segments)
@@ -687,9 +712,12 @@ public final class PresentService: PresentAPI, Sendable {
 
             try newSession.insert(db)
             newSession.id = db.lastInsertedRowID
+            guard let newSessionId = newSession.id else {
+                throw PresentError.invalidInput("Session ID unavailable after insert")
+            }
 
             // Open the first segment
-            let segment = SessionSegment(sessionId: newSession.id!, startedAt: now)
+            let segment = SessionSegment(sessionId: newSessionId, startedAt: now)
             try segment.insert(db)
 
             return (stopped: oldSession, started: newSession)
@@ -921,12 +949,15 @@ public final class PresentService: PresentAPI, Sendable {
             )
             try activity.insert(db)
             activity.id = db.lastInsertedRowID
+            guard let activityId = activity.id else {
+                throw PresentError.invalidInput("Activity ID unavailable after insert")
+            }
 
             for tagId in input.tagIds {
                 guard try Tag.fetchOne(db, key: tagId) != nil else {
                     throw PresentError.tagNotFound(tagId)
                 }
-                try ActivityTag(activityId: activity.id!, tagId: tagId).insert(db)
+                try ActivityTag(activityId: activityId, tagId: tagId).insert(db)
             }
 
             return activity
@@ -1501,7 +1532,9 @@ public final class PresentService: PresentAPI, Sendable {
         try await dbWriter.read { db in
             let calendar = Calendar.current
             let startOfDay = calendar.startOfDay(for: date)
-            let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+            guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else {
+                throw PresentError.invalidInput("Failed to compute end of day")
+            }
 
             let archiveFilter = includeArchived ? "" : " AND a.isArchived = 0"
 
@@ -1616,8 +1649,10 @@ public final class PresentService: PresentAPI, Sendable {
                 var cursor = segStart
                 while cursor < segEnd {
                     let hourComponents = calendar.dateComponents([.year, .month, .day, .hour], from: cursor)
-                    let hourStart = calendar.date(from: hourComponents)!
-                    let nextHour = calendar.date(byAdding: .hour, value: 1, to: hourStart)!
+                    guard let hourStart = calendar.date(from: hourComponents),
+                          let nextHour = calendar.date(byAdding: .hour, value: 1, to: hourStart) else {
+                        continue
+                    }
                     let sliceEnd = min(segEnd, nextHour)
                     let sliceSeconds = Int(sliceEnd.timeIntervalSince(cursor))
                     let hour = calendar.component(.hour, from: cursor)
@@ -1629,7 +1664,7 @@ public final class PresentService: PresentAPI, Sendable {
 
             var hourlyBreakdown: [HourlyBucket] = []
             for hour in hourActivitySeconds.keys.sorted() {
-                let actSecs = hourActivitySeconds[hour]!
+                guard let actSecs = hourActivitySeconds[hour] else { continue }
                 for (actId, secs) in actSecs.sorted(by: { $0.value > $1.value }) {
                     if let activity = activityById[actId] {
                         let finalSecs = roundToMinute ? TimeFormatting.floorToMinute(secs) : secs
@@ -1669,12 +1704,13 @@ public final class PresentService: PresentAPI, Sendable {
             totalSeconds += daily.totalSeconds
             totalSessions += daily.sessionCount
             for actSummary in daily.activities {
-                if var existing = activityMap[actSummary.activity.id!] {
+                guard let actId = actSummary.activity.id else { continue }
+                if var existing = activityMap[actId] {
                     existing.totalSeconds += actSummary.totalSeconds
                     existing.sessionCount += actSummary.sessionCount
-                    activityMap[actSummary.activity.id!] = existing
+                    activityMap[actId] = existing
                 } else {
-                    activityMap[actSummary.activity.id!] = actSummary
+                    activityMap[actId] = actSummary
                 }
             }
         }
@@ -1736,12 +1772,13 @@ public final class PresentService: PresentAPI, Sendable {
             totalSeconds += daily.totalSeconds
             totalSessions += daily.sessionCount
             for actSummary in daily.activities {
-                if var existing = activityMap[actSummary.activity.id!] {
+                guard let actId = actSummary.activity.id else { continue }
+                if var existing = activityMap[actId] {
                     existing.totalSeconds += actSummary.totalSeconds
                     existing.sessionCount += actSummary.sessionCount
-                    activityMap[actSummary.activity.id!] = existing
+                    activityMap[actId] = existing
                 } else {
-                    activityMap[actSummary.activity.id!] = actSummary
+                    activityMap[actId] = actSummary
                 }
             }
         }
@@ -2091,13 +2128,17 @@ public final class PresentService: PresentAPI, Sendable {
         switch range {
         case .today:
             let start = calendar.startOfDay(for: now)
-            let end = calendar.date(byAdding: .day, value: 1, to: start)!
+            let end = calendar.date(byAdding: .day, value: 1, to: start) ?? now
             return (start, end)
         case .thisWeek:
-            let interval = calendar.dateInterval(of: .weekOfYear, for: now)!
+            guard let interval = calendar.dateInterval(of: .weekOfYear, for: now) else {
+                return (Date.distantPast, Date.distantFuture)
+            }
             return (interval.start, interval.end)
         case .thisMonth:
-            let interval = calendar.dateInterval(of: .month, for: now)!
+            guard let interval = calendar.dateInterval(of: .month, for: now) else {
+                return (Date.distantPast, Date.distantFuture)
+            }
             return (interval.start, interval.end)
         case .allTime:
             return (Date.distantPast, Date.distantFuture)

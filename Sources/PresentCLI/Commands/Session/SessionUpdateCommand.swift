@@ -81,7 +81,7 @@ struct SessionUpdateCommand: AsyncParsableCommand {
         case .text:
             let textFields = session.toTextFields(activity: activity)
             if try outputOptions.printTextField(textFields) { break }
-            print("Updated session \(session.id!) for \"\(activity.title)\"")
+            print("Updated session \(session.id ?? 0) for \"\(activity.title)\"")
 
         case .csv:
             print("CSV output not supported for session update.")
