@@ -367,6 +367,7 @@ struct ActivitiesDetailView: View {
                             Label("Unarchive", systemImage: "arrow.uturn.backward")
                         }
                         .buttonStyle(.bordered)
+                        .tint(.secondary)
                         .accessibilityLabel("Unarchive activity")
 
                         Button(role: .destructive) {
@@ -375,6 +376,7 @@ struct ActivitiesDetailView: View {
                             Label("Delete", systemImage: "trash")
                         }
                         .buttonStyle(.bordered)
+                        .tint(theme.alert)
                         .accessibilityLabel("Delete activity")
                     }
                 }
