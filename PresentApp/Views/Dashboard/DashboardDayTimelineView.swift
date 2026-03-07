@@ -43,7 +43,7 @@ struct DashboardDayTimelineView: View {
 
     private func loadSessions() async {
         guard let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: startOfDay) else { return }
-        guard let result = try? await appState.service.listSessions(
+        guard let result = try? await appState.listSessions(
             from: startOfDay, to: endOfDay, type: nil, activityId: nil, includeArchived: false
         ) else { return }
         completedSessions = result
@@ -53,6 +53,6 @@ struct DashboardDayTimelineView: View {
         if let activeId = appState.currentSession?.id, !allIds.contains(activeId) {
             allIds.append(activeId)
         }
-        sessionSegments = (try? await appState.service.segmentsForSessions(sessionIds: allIds)) ?? [:]
+        sessionSegments = (try? await appState.segmentsForSessions(sessionIds: allIds)) ?? [:]
     }
 }

@@ -5,11 +5,11 @@ import PresentCore
 final class SessionManager {
     // MARK: - Dependencies
 
-    private let service: PresentService
+    private let service: any PresentAPI
 
     // MARK: - Initialization
 
-    init(service: PresentService) {
+    init(service: any PresentAPI) {
         self.service = service
     }
 

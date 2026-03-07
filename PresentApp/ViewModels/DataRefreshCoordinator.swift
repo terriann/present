@@ -1,8 +1,10 @@
 import SwiftUI
 import PresentCore
+import os
 
 @MainActor @Observable
 final class DataRefreshCoordinator {
+    private static let logger = Logger(subsystem: "com.present.app", category: "ipc")
     // MARK: - Data State
 
     var todayTotalSeconds: Int = 0
@@ -45,7 +47,7 @@ final class DataRefreshCoordinator {
 
     // MARK: - Dependencies
 
-    private let service: PresentService
+    private let service: any PresentAPI
     private let changeNotifier: DatabaseChangeNotifier
 
     /// Tables whose modifications trigger a data refresh.
@@ -60,7 +62,7 @@ final class DataRefreshCoordinator {
 
     // MARK: - Initialization
 
-    init(service: PresentService, changeNotifier: DatabaseChangeNotifier) {
+    init(service: any PresentAPI, changeNotifier: DatabaseChangeNotifier) {
         self.service = service
         self.changeNotifier = changeNotifier
     }
@@ -221,6 +223,10 @@ final class DataRefreshCoordinator {
                 self?.scheduleRefresh()
             }
         }
-        try? ipcServer?.start()
+        do {
+            try ipcServer?.start()
+        } catch {
+            Self.logger.error("IPC server failed to start: \(error.localizedDescription, privacy: .public)")
+        }
     }
 }

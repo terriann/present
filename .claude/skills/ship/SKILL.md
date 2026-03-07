@@ -44,9 +44,9 @@ Collect everything the commit-pr-writer agent needs — do this research yoursel
    ```
 3. **Find addressed issues.** Search the commit messages and diff for GitHub issue references (`#123`, `Closes #123`, `Fixes #123`, `Resolves #123`, `Addressing #123`, `Related to #123`, `Part of #123`). For each referenced issue, fetch its title:
    ```bash
-   gh issue view <number> --json title,state --jq '"\(.title) (\(.state))"'
+   gh issue view <number> --json title,state,url,milestone --jq '"\(.title) (\(.state)) \(.url) milestone:\(.milestone.title // "none")"'
    ```
-4. **Check for milestone.** If the branch name contains a version (e.g., `feat/0.2.0`), check if a matching milestone exists and note it for the PR.
+4. **Determine milestone.** Pick the milestone that appears most frequently across the referenced issues. If no issues have a milestone, fall back to checking the branch name for a version (e.g., `feat/0.2.0`) and look for a matching milestone. If neither produces a result, skip milestone assignment.
 
 ### 2b. Delegate to commit-pr-writer
 
@@ -56,7 +56,7 @@ Delegate the PR description to the commit-pr-writer agent with the following pro
 >
 > - This is a macOS time tracking app (SwiftUI + CLI) called Present.
 > - Use conventional commit format for the PR title: `type(scope): description` (see CLAUDE.md for types and scopes).
-> - The PR description must include a **Referenced Issues** section that lists every GitHub issue addressed by commits in this branch. For each issue, include the issue number, title, and whether it closes or is related to the issue. Use GitHub closing keywords (`Closes #N`) for issues fully resolved by this PR, and `Related to #N` for partial progress.
+> - The PR description must include a **Referenced Issues** section that lists every GitHub issue addressed by commits in this branch. For each issue, use the full issue URL (e.g., `https://github.com/owner/repo/issues/N`) — do not wrap it in markdown link syntax. GitHub auto-links plain URLs. Prefix with closing keywords (`Closes`) for issues fully resolved by this PR, or `Related to` for partial progress.
 > - If the user provided extra context in $ARGUMENTS, incorporate it into the description.
 > - Keep the PR title under 70 characters.
 > - Structure: Summary (2-3 bullets), Referenced Issues, Test Plan.
@@ -73,7 +73,7 @@ After the commit-pr-writer drafts the PR description:
    ```bash
    gh pr create --base <base-branch> --title "<title>" --body "<body>"
    ```
-3. If a matching milestone was found, assign it:
+3. If a milestone was determined (from issues or branch name), assign it:
    ```bash
    gh pr edit <number> --milestone "<milestone>"
    ```
@@ -91,8 +91,12 @@ After the PR is created:
    ```bash
    gh pr comment <pr-number> --body "<benchmark markdown output>"
    ```
-3. When benchmarks complete, display the results summary.
-4. If any regressions are detected (warning or rotating_light indicators in the output), delegate to the code-reviewer to assess if it's a real concern with this changeset, then flag it to the user for assessment.
+3. **Add the `has:benchmark` label** to the PR:
+   ```bash
+   gh pr edit <pr-number> --add-label "has benchmark"
+   ```
+4. When benchmarks complete, display the results summary.
+5. If any regressions are detected (warning or rotating_light indicators in the output), delegate to the code-reviewer to assess if it's a real concern with this changeset, then flag it to the user for assessment.
 
 ## Rules
 

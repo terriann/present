@@ -100,11 +100,11 @@ struct PresentApp: App {
 
     private func loadThemeSettings() {
         Task {
-            if let value = try? await appState.service.getPreference(key: PreferenceKey.colorPalette),
+            if let value = try? await appState.getPreference(key: PreferenceKey.colorPalette),
                let palette = ColorPalette(rawValue: value) {
                 themeManager.activePalette = palette
             }
-            if let value = try? await appState.service.getPreference(key: PreferenceKey.appearanceMode),
+            if let value = try? await appState.getPreference(key: PreferenceKey.appearanceMode),
                let mode = AppearanceMode(rawValue: value) {
                 themeManager.appearanceMode = mode
             }

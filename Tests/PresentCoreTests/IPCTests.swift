@@ -58,6 +58,21 @@ struct IPCTests {
         }
     }
 
+    // MARK: - Socket Permissions
+
+    @Test func socketHasRestrictedPermissions() throws {
+        let socketPath = "/tmp/p-perms-\(UUID().uuidString).sock"
+        defer { try? FileManager.default.removeItem(atPath: socketPath) }
+
+        let server = IPCServer(socketPath: socketPath) { _ in }
+        try server.start()
+        defer { server.stop() }
+
+        let attrs = try FileManager.default.attributesOfItem(atPath: socketPath)
+        let perms = attrs[.posixPermissions] as? Int
+        #expect(perms == 0o600)
+    }
+
     // MARK: - Client Fails Silently
 
     @Test func clientFailsSilentlyWhenNoServer() {

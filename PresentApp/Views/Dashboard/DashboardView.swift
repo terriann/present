@@ -177,7 +177,7 @@ struct DashboardView: View {
 
     private func loadRepeatSuggestions() async {
         let lookback = Date().addingTimeInterval(-7 * 24 * 60 * 60)
-        guard let sessions = try? await appState.service.listSessions(
+        guard let sessions = try? await appState.listSessions(
             from: lookback, to: Date(), type: nil, activityId: nil, includeArchived: false
         ) else { return }
         var seen = Set<String>()
@@ -199,7 +199,7 @@ struct DashboardView: View {
         let startOfDay = calendar.startOfDay(for: Date())
         guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else { return }
         do {
-            let sessions = try await appState.service.listSessions(
+            let sessions = try await appState.listSessions(
                 from: startOfDay, to: endOfDay,
                 type: nil, activityId: nil, includeArchived: false
             )
@@ -212,7 +212,7 @@ struct DashboardView: View {
                 return id
             }
             if !crossMidnightIds.isEmpty {
-                let portions = try await appState.service.sessionDayPortions(
+                let portions = try await appState.sessionDayPortions(
                     sessionIds: crossMidnightIds, date: Date()
                 )
                 todayPortions = portions

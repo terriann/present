@@ -113,7 +113,7 @@ struct GeneralSettingsTab: View {
                 .onAppear { loadWeekStartDay() }
                 .onChange(of: weekStartDay) {
                     Task {
-                        try? await appState.service.setPreference(
+                        try? await appState.setPreference(
                             key: PreferenceKey.weekStartDay,
                             value: weekStartDay
                         )
@@ -157,7 +157,7 @@ struct GeneralSettingsTab: View {
                 .onChange(of: appearanceMode) {
                     theme.appearanceMode = appearanceMode
                     Task {
-                        try? await appState.service.setPreference(
+                        try? await appState.setPreference(
                             key: PreferenceKey.appearanceMode,
                             value: appearanceMode.rawValue
                         )
@@ -174,7 +174,7 @@ struct GeneralSettingsTab: View {
                     ) {
                         theme.activePalette = palette
                         Task {
-                            try? await appState.service.setPreference(
+                            try? await appState.setPreference(
                                 key: PreferenceKey.colorPalette,
                                 value: palette.rawValue
                             )
@@ -204,7 +204,7 @@ struct GeneralSettingsTab: View {
 
                 Button(role: .destructive) {
                     Task {
-                        pendingDeleteCount = try await appState.service.countSessions(in: bulkDeleteRange)
+                        pendingDeleteCount = try await appState.countSessions(in: bulkDeleteRange)
                         showDeleteRangeAlert = true
                     }
                 } label: {
@@ -246,7 +246,7 @@ struct GeneralSettingsTab: View {
 
     private func performDeleteSessions(in range: BulkDeleteRange) async {
         do {
-            _ = try await appState.service.deleteSessions(in: range)
+            _ = try await appState.deleteSessions(in: range)
             SoundManager.shared.play(.dip)
             await appState.refreshAll()
         } catch {
@@ -258,13 +258,13 @@ struct GeneralSettingsTab: View {
 
     private func loadWeekStartDay() {
         Task {
-            weekStartDay = try await appState.service.getPreference(key: PreferenceKey.weekStartDay) ?? "sunday"
+            weekStartDay = try await appState.getPreference(key: PreferenceKey.weekStartDay) ?? "sunday"
         }
     }
 
     private func loadAppearanceMode() {
         Task {
-            if let value = try? await appState.service.getPreference(key: PreferenceKey.appearanceMode),
+            if let value = try? await appState.getPreference(key: PreferenceKey.appearanceMode),
                let mode = AppearanceMode(rawValue: value) {
                 appearanceMode = mode
             }
@@ -619,7 +619,7 @@ struct SessionSettingsTab: View {
     private func saveDurationOptions() {
         let serialized = PreferenceKey.serializeRhythmOptions(durationOptions)
         Task {
-            try? await appState.service.setPreference(
+            try? await appState.setPreference(
                 key: PreferenceKey.rhythmDurationOptions,
                 value: serialized
             )
@@ -631,26 +631,26 @@ struct SessionSettingsTab: View {
 
     private func loadSettings() {
         Task {
-            if let val = try? await appState.service.getPreference(key: PreferenceKey.defaultTimeboundMinutes) {
+            if let val = try? await appState.getPreference(key: PreferenceKey.defaultTimeboundMinutes) {
                 defaultTimeboundMinutes = Int(val) ?? Constants.defaultTimeboundMinutes
             }
-            if let val = try? await appState.service.getPreference(key: PreferenceKey.rhythmDurationOptions) {
+            if let val = try? await appState.getPreference(key: PreferenceKey.rhythmDurationOptions) {
                 let parsed = PreferenceKey.parseRhythmOptions(val)
                 if !parsed.isEmpty {
                     durationOptions = parsed
                 }
             }
-            if let val = try? await appState.service.getPreference(key: PreferenceKey.defaultRhythmMinutes) {
+            if let val = try? await appState.getPreference(key: PreferenceKey.defaultRhythmMinutes) {
                 defaultMinutes = Int(val) ?? 25
             }
             // Ensure default is in the options list
             if !durationOptions.contains(where: { $0.focusMinutes == defaultMinutes }) {
                 defaultMinutes = durationOptions.first?.focusMinutes ?? Constants.defaultRhythmMinutes
             }
-            if let val = try? await appState.service.getPreference(key: PreferenceKey.longBreakMinutes) {
+            if let val = try? await appState.getPreference(key: PreferenceKey.longBreakMinutes) {
                 longBreak = Int(val) ?? 15
             }
-            if let val = try? await appState.service.getPreference(key: PreferenceKey.rhythmCycleLength) {
+            if let val = try? await appState.getPreference(key: PreferenceKey.rhythmCycleLength) {
                 cycleLength = Int(val) ?? 4
             }
         }
@@ -658,10 +658,10 @@ struct SessionSettingsTab: View {
 
     private func saveSettings() {
         Task {
-            try? await appState.service.setPreference(key: PreferenceKey.defaultTimeboundMinutes, value: "\(defaultTimeboundMinutes)")
-            try? await appState.service.setPreference(key: PreferenceKey.defaultRhythmMinutes, value: "\(defaultMinutes)")
-            try? await appState.service.setPreference(key: PreferenceKey.longBreakMinutes, value: "\(longBreak)")
-            try? await appState.service.setPreference(key: PreferenceKey.rhythmCycleLength, value: "\(cycleLength)")
+            try? await appState.setPreference(key: PreferenceKey.defaultTimeboundMinutes, value: "\(defaultTimeboundMinutes)")
+            try? await appState.setPreference(key: PreferenceKey.defaultRhythmMinutes, value: "\(defaultMinutes)")
+            try? await appState.setPreference(key: PreferenceKey.longBreakMinutes, value: "\(longBreak)")
+            try? await appState.setPreference(key: PreferenceKey.rhythmCycleLength, value: "\(cycleLength)")
         }
     }
 }
@@ -726,7 +726,7 @@ struct NotificationSettingsTab: View {
                     .onChange(of: soundEnabled) {
                         SoundManager.shared.isEnabled = soundEnabled
                         Task {
-                            try? await appState.service.setPreference(
+                            try? await appState.setPreference(
                                 key: PreferenceKey.soundEffectsEnabled,
                                 value: soundEnabled ? "1" : "0"
                             )
@@ -742,7 +742,7 @@ struct NotificationSettingsTab: View {
         .padding()
         .onAppear {
             Task {
-                if let val = try? await appState.service.getPreference(key: PreferenceKey.soundEffectsEnabled) {
+                if let val = try? await appState.getPreference(key: PreferenceKey.soundEffectsEnabled) {
                     soundEnabled = val == "1"
                 }
             }
