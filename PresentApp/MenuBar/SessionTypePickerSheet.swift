@@ -80,7 +80,7 @@ struct SessionTypePickerSheet: View {
         .frame(width: 300)
         .onAppear {
             Task {
-                timeboundMinutes = (try? await appState.getPreference(key: PreferenceKey.defaultTimeboundMinutes)).flatMap(Int.init) ?? Constants.defaultTimeboundMinutes
+                timeboundMinutes = await appState.loadDefaultTimeboundMinutes()
             }
         }
         .syncRhythmSelection($selectedRhythmOption)

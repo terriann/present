@@ -477,6 +477,12 @@ final class AppState {
         try await service.setPreference(key: key, value: value)
     }
 
+    /// Returns the user's preferred timebound duration, falling back to the default.
+    func loadDefaultTimeboundMinutes() async -> Int {
+        (try? await getPreference(key: PreferenceKey.defaultTimeboundMinutes))
+            .flatMap(Int.init) ?? Constants.defaultTimeboundMinutes
+    }
+
     // MARK: - Activities
 
     func getActivity(id: Int64) async throws -> Activity {

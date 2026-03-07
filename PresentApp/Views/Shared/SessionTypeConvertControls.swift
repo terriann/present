@@ -107,7 +107,7 @@ struct SessionTypeConvertControls: View {
         }
         .task {
             targetType = SessionType.allCases.first { $0 != session.sessionType } ?? .work
-            timeboundMinutes = (try? await appState.getPreference(key: PreferenceKey.defaultTimeboundMinutes)).flatMap(Int.init) ?? Constants.defaultTimeboundMinutes
+            timeboundMinutes = await appState.loadDefaultTimeboundMinutes()
             rhythmOption = appState.rhythmDurationOptions.first
         }
     }

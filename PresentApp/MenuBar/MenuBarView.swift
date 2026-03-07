@@ -578,7 +578,7 @@ struct MenuBarView: View {
                 isSearchFocused = true
             }
             Task {
-                timeboundMinutes = (try? await appState.getPreference(key: PreferenceKey.defaultTimeboundMinutes)).flatMap(Int.init) ?? Constants.defaultTimeboundMinutes
+                timeboundMinutes = await appState.loadDefaultTimeboundMinutes()
                 activitySort = (try? await appState.getPreference(key: PreferenceKey.menuBarActivitySort)) ?? "recent"
             }
         }
@@ -598,7 +598,19 @@ struct MenuBarView: View {
         }
     }
 
+    private enum SessionAction { case start, `switch` }
+
     private func startSessionForType(activity: Activity) async {
+        await performSessionAction(.start, activity: activity)
+    }
+
+    private func switchSessionForType(activity: Activity) async {
+        await performSessionAction(.switch, activity: activity)
+    }
+
+    /// Shared session start/switch logic — resolves effective type,
+    /// rhythm option, and timebound minutes, then delegates to appState.
+    private func performSessionAction(_ action: SessionAction, activity: Activity) async {
         guard let activityId = activity.id else { return }
         // System activities cannot use rhythm sessions — fall back to work
         let effectiveType = (activity.isSystem && selectedSessionType == .rhythm) ? .work : selectedSessionType
@@ -606,50 +618,36 @@ struct MenuBarView: View {
         switch effectiveType {
         case .rhythm:
             let option = selectedRhythmOption ?? appState.rhythmDurationOptions.first
-            await appState.startSession(
-                activityId: activityId,
-                type: .rhythm,
-                timerMinutes: option?.focusMinutes,
-                breakMinutes: option?.breakMinutes
-            )
+            switch action {
+            case .start:
+                await appState.startSession(
+                    activityId: activityId, type: .rhythm,
+                    timerMinutes: option?.focusMinutes, breakMinutes: option?.breakMinutes
+                )
+            case .switch:
+                await appState.switchSession(
+                    to: activityId, type: .rhythm,
+                    timerMinutes: option?.focusMinutes, breakMinutes: option?.breakMinutes
+                )
+            }
         case .timebound:
-            await appState.startSession(
-                activityId: activityId,
-                type: .timebound,
-                timerMinutes: timeboundMinutes
-            )
+            switch action {
+            case .start:
+                await appState.startSession(
+                    activityId: activityId, type: .timebound, timerMinutes: timeboundMinutes
+                )
+            case .switch:
+                await appState.switchSession(
+                    to: activityId, type: .timebound, timerMinutes: timeboundMinutes
+                )
+            }
         default:
-            await appState.startSession(
-                activityId: activityId,
-                type: effectiveType
-            )
-        }
-    }
-
-    private func switchSessionForType(activity: Activity) async {
-        guard let activityId = activity.id else { return }
-        let effectiveType = (activity.isSystem && selectedSessionType == .rhythm) ? .work : selectedSessionType
-
-        switch effectiveType {
-        case .rhythm:
-            let option = selectedRhythmOption ?? appState.rhythmDurationOptions.first
-            await appState.switchSession(
-                to: activityId,
-                type: .rhythm,
-                timerMinutes: option?.focusMinutes,
-                breakMinutes: option?.breakMinutes
-            )
-        case .timebound:
-            await appState.switchSession(
-                to: activityId,
-                type: .timebound,
-                timerMinutes: timeboundMinutes
-            )
-        default:
-            await appState.switchSession(
-                to: activityId,
-                type: effectiveType
-            )
+            switch action {
+            case .start:
+                await appState.startSession(activityId: activityId, type: effectiveType)
+            case .switch:
+                await appState.switchSession(to: activityId, type: effectiveType)
+            }
         }
     }
 

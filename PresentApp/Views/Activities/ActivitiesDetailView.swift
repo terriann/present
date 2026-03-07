@@ -96,7 +96,7 @@ struct ActivitiesDetailView: View {
         }
         .task {
             await loadDetails()
-            timeboundMinutes = (try? await appState.getPreference(key: PreferenceKey.defaultTimeboundMinutes)).flatMap(Int.init) ?? Constants.defaultTimeboundMinutes
+            timeboundMinutes = await appState.loadDefaultTimeboundMinutes()
             if activity.isSystem && selectedSessionType == .rhythm {
                 selectedSessionType = .work
             }
