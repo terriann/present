@@ -11,6 +11,7 @@ struct SessionContextMenuModifier: ViewModifier {
 
     let session: Session
     let activityTitle: String
+    var showEditActivity: Bool = true
     var onEdit: ((Int64) -> Void)?
     var onDelete: (() -> Void)?
 
@@ -54,12 +55,14 @@ struct SessionContextMenuModifier: ViewModifier {
                     .disabled(appState.currentSession != nil)
                 }
 
-                Divider()
+                if showEditActivity {
+                    Divider()
 
-                Button {
-                    appState.navigate(to: .showActivity(session.activityId))
-                } label: {
-                    Label("Edit Activity", systemImage: "square.and.pencil")
+                    Button {
+                        appState.navigate(to: .showActivity(session.activityId))
+                    } label: {
+                        Label("Edit Activity", systemImage: "square.and.pencil")
+                    }
                 }
 
                 Divider()
@@ -199,12 +202,14 @@ extension View {
     func sessionContextMenu(
         session: Session,
         activityTitle: String,
+        showEditActivity: Bool = true,
         onEdit: ((Int64) -> Void)? = nil,
         onDelete: (() -> Void)? = nil
     ) -> some View {
         modifier(SessionContextMenuModifier(
             session: session,
             activityTitle: activityTitle,
+            showEditActivity: showEditActivity,
             onEdit: onEdit,
             onDelete: onDelete
         ))
