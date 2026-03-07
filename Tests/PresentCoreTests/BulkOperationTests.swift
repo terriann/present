@@ -323,4 +323,73 @@ struct BulkOperationTests {
         let rhythm = try await service.getPreference(key: PreferenceKey.defaultRhythmMinutes)
         #expect(rhythm == "25")
     }
+
+    // MARK: - Edge Cases
+
+    @Test func deleteSessionsTodayPreservesYesterdaySessions() async throws {
+        let (service, db) = try makeService()
+        let activityA = try await service.createActivity(CreateActivityInput(title: "Yesterday"))
+        let activityB = try await service.createActivity(CreateActivityInput(title: "Today"))
+
+        // Insert a completed session yesterday
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
+        try await insertBackdatedSession(db: db, activityId: activityA.id!, startedAt: yesterday)
+
+        // Create a completed session today
+        _ = try await service.startSession(activityId: activityB.id!, type: .work)
+        _ = try await service.stopSession()
+
+        let result = try await service.deleteSessions(in: .today)
+
+        // Today's session should be deleted
+        #expect(result.sessionsDeleted == 1)
+
+        // Yesterday's session should still exist
+        let twoDaysAgo = Calendar.current.date(byAdding: .day, value: -2, to: Date())!
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
+        let remaining = try await service.listSessions(from: twoDaysAgo, to: tomorrow, type: nil, activityId: nil, includeArchived: true)
+        #expect(remaining.count == 1)
+        #expect(remaining.first?.0.activityId == activityA.id)
+    }
+
+    @Test func deleteAllActivitiesPreservesSystemActivities() async throws {
+        let (service, _) = try makeService()
+        let breakActivity = try await service.getBreakActivity()
+        let custom = try await service.createActivity(CreateActivityInput(title: "Custom"))
+
+        // Create sessions on both
+        _ = try await service.startSession(activityId: custom.id!, type: .work)
+        _ = try await service.stopSession()
+
+        try await service.deleteAllActivities()
+
+        // System activity should survive
+        let activities = try await service.listActivities(includeArchived: true, includeSystem: true)
+        let systemActivities = activities.filter(\.isSystem)
+        #expect(!systemActivities.isEmpty)
+        #expect(systemActivities.contains(where: { $0.id == breakActivity.id }))
+
+        // Custom activity should be gone
+        let customStillExists = activities.contains(where: { $0.id == custom.id })
+        #expect(!customStillExists)
+    }
+
+    @Test func deleteSessionsAllTimeDoesNotAffectActiveSession() async throws {
+        let (service, db) = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Test"))
+
+        // Insert a backdated session from yesterday
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
+        try await insertBackdatedSession(db: db, activityId: activity.id!, startedAt: yesterday)
+
+        // Start an active session today
+        _ = try await service.startSession(activityId: activity.id!, type: .work)
+
+        // Delete all time — active session gets cancelled too
+        let result = try await service.deleteSessions(in: .allTime)
+
+        // allTime includes the active session
+        #expect(result.activeSessionCancelled == true)
+        #expect(result.sessionsDeleted >= 2)
+    }
 }

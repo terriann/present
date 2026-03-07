@@ -220,7 +220,7 @@ struct DashboardView: View {
                 todayPortions = [:]
             }
         } catch {
-            // Fail silently
+            appState.showError(error, context: "Could not load today's sessions")
         }
     }
 

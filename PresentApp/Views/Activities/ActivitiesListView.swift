@@ -159,7 +159,7 @@ struct ActivitiesListView: View {
                 activityTags = try await appState.tagsForActivities(activityIds: ids)
             }
         } catch {
-            // Fail silently — list stays as-is
+            appState.showError(error, context: "Could not load activities")
         }
     }
 
