@@ -14,6 +14,7 @@ struct ActivitiesDetailView: View {
     @State private var selectedRhythmOption: RhythmOption?
     @State private var timeboundMinutes: Int = 25
     @State private var titleText: String
+    @State private var isMetadataExpanded = false
     @FocusState private var isTitleFocused: Bool
     var tagColorMap: [String: Color] = [:]
     var startInEditMode: Bool = false
@@ -343,12 +344,23 @@ struct ActivitiesDetailView: View {
     private var activityFooter: some View {
         HStack(alignment: .bottom) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Created \(TimeFormatting.formatRelativeWithTimestamp(activity.createdAt))")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                Text("Updated \(TimeFormatting.formatRelativeWithTimestamp(activity.updatedAt))")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                if isMetadataExpanded {
+                    Text("Created \(TimeFormatting.formatRelativeWithTimestamp(activity.createdAt))")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Text("Updated \(TimeFormatting.formatRelativeWithTimestamp(activity.updatedAt))")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("Updated \(TimeFormatting.formatShortRelative(activity.updatedAt))")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .onTapGesture {
+                withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
+                    isMetadataExpanded.toggle()
+                }
             }
 
             Spacer()
