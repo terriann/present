@@ -19,8 +19,8 @@ struct ReportCLIPromoCard: View {
         let pair = Self.cliCommands[currentCommandIndex]
 
         GroupBox {
-            VStack(alignment: .leading, spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: Constants.spacingCard) {
+                VStack(alignment: .leading, spacing: Constants.spacingTight) {
                     HStack(spacing: 6) {
                         Image(systemName: "terminal")
                             .foregroundStyle(.secondary)
@@ -37,14 +37,14 @@ struct ReportCLIPromoCard: View {
                         .foregroundStyle(.secondary)
                 }
 
-                HStack(spacing: 16) {
-                    VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: Constants.spacingToolbar) {
+                    VStack(alignment: .leading, spacing: Constants.spacingTight) {
                         Text(pair.command)
                             .font(.codeCaption)
-                            .foregroundStyle(.green)
+                            .foregroundStyle(theme.success)
                         Text(pair.output)
                             .font(.codeCaption)
-                            .foregroundStyle(.green.opacity(0.7))
+                            .foregroundStyle(theme.success.opacity(0.7))
                     }
                     .id(currentCommandIndex)
                     .contentTransition(.opacity)
@@ -53,7 +53,7 @@ struct ReportCLIPromoCard: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(
                         RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.black.opacity(0.85))
+                            .fill(theme.constantBlack.opacity(0.85))
                     )
 
                     Button {

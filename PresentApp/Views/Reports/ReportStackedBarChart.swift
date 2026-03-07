@@ -79,7 +79,7 @@ struct ReportStackedBarChart: View {
         return Chart {
             ForEach(Array(weekends), id: \.self) { label in
                 RectangleMark(x: .value(selectedPeriod.timeLabel, label))
-                    .foregroundStyle(Color.gray.opacity(0.08))
+                    .foregroundStyle(theme.constantWhite.opacity(0.08))
                     .zIndex(-1)
             }
 

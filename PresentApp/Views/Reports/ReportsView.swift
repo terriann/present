@@ -29,7 +29,7 @@ struct ReportsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 20) {
+            VStack(spacing: Constants.spacingPage) {
                 controlsBar
                 periodNavigationBar
                 summaryBar
@@ -55,7 +55,7 @@ struct ReportsView: View {
                         activityColorMap: activityColorMap,
                         weekendDayLabels: weekendDayLabels
                     )
-                    HStack(alignment: .top, spacing: 16) {
+                    HStack(alignment: .top, spacing: Constants.spacingToolbar) {
                         ReportActivityPieChart(
                             activities: displayActivities,
                             totalSeconds: displayTotalSeconds,
@@ -87,9 +87,7 @@ struct ReportsView: View {
                         ContentUnavailableView(
                             "No Data",
                             systemImage: "chart.pie",
-                            description: Text(includesToday
-                                ? "No sessions recorded for this period. Start tracking to see your reports."
-                                : "No sessions recorded for this period.")
+                            description: Text("No sessions recorded for this period.")
                         )
                         .emptyStateStyle()
                     }
@@ -179,6 +177,7 @@ struct ReportsView: View {
 
             Text(periodHeaderText)
                 .font(.periodHeader)
+                .accessibilityAddTraits(.isHeader)
                 .frame(minWidth: 200)
 
             Button {

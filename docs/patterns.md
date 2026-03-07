@@ -248,7 +248,7 @@ This is a custom `GeometryReader` layout, not a Swift Chart.
   - Session blocks: `RoundedRectangle(cornerRadius: 2.5)` positioned
     proportionally via start/end times
   - Tick marks: `Rectangle()` at 3-hour intervals,
-    `Color.white.opacity(0.15)`, 1pt wide
+    `theme.constantWhite.opacity(0.15)`, 1pt wide
 - X-axis labels below: `.font(.caption2)`,
   `.foregroundStyle(.secondary)` at 3-hour intervals
 - Hover: `onContinuousHover` with `ChartTooltip` overlay above bar

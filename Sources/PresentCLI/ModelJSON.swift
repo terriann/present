@@ -1,6 +1,17 @@
 import Foundation
 import PresentCore
 
+// MARK: - Cached Formatters
+
+private enum ModelJSONFormatters {
+    /// ISO8601 with internet datetime (e.g., "2026-02-14T15:30:45Z")
+    nonisolated(unsafe) static let internetDateTime: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime]
+        return f
+    }()
+}
+
 // MARK: - Standard JSON representations for CLI output
 //
 // Each model type defines a canonical toJSONDict() that ensures
@@ -26,8 +37,7 @@ extension Activity {
     /// JSON representation when nested inside another object (e.g., a session).
     /// Uses "activityId" to clarify context.
     func toNestedJSONDict() -> [String: Any] {
-        let isoFormatter = ISO8601DateFormatter()
-        isoFormatter.formatOptions = [.withInternetDateTime]
+        let isoFormatter = ModelJSONFormatters.internetDateTime
 
         var dict: [String: Any] = [
             "activityId": id ?? 0,
@@ -68,8 +78,7 @@ extension Session {
     /// Standard JSON representation for a Session.
     /// The activity is nested as an object under the "activity" key.
     func toJSONDict(activity: Activity? = nil) -> [String: Any] {
-        let isoFormatter = ISO8601DateFormatter()
-        isoFormatter.formatOptions = [.withInternetDateTime]
+        let isoFormatter = ModelJSONFormatters.internetDateTime
 
         var dict: [String: Any] = [
             "sessionId": id ?? 0,
@@ -149,8 +158,7 @@ extension Tag {
 
     /// Standard JSON representation for a top-level Tag response.
     func toJSONDict() -> [String: Any] {
-        let isoFormatter = ISO8601DateFormatter()
-        isoFormatter.formatOptions = [.withInternetDateTime]
+        let isoFormatter = ModelJSONFormatters.internetDateTime
         return [
             "id": id ?? 0,
             "name": name,
@@ -161,8 +169,7 @@ extension Tag {
 
     /// JSON representation when nested inside another object.
     func toNestedJSONDict() -> [String: Any] {
-        let isoFormatter = ISO8601DateFormatter()
-        isoFormatter.formatOptions = [.withInternetDateTime]
+        let isoFormatter = ModelJSONFormatters.internetDateTime
         return [
             "tagId": id ?? 0,
             "name": name,
@@ -199,7 +206,7 @@ extension DailySummary {
 
     func toJSONDict() -> [String: Any] {
         [
-            "date": ISO8601DateFormatter().string(from: date),
+            "date": ModelJSONFormatters.internetDateTime.string(from: date),
             "totalSeconds": totalSeconds,
             "sessionCount": sessionCount,
             "activities": activities.map { $0.toJSONDict() },
@@ -211,7 +218,7 @@ extension WeeklySummary {
 
     func toJSONDict() -> [String: Any] {
         [
-            "weekOf": ISO8601DateFormatter().string(from: weekOf),
+            "weekOf": ModelJSONFormatters.internetDateTime.string(from: weekOf),
             "totalSeconds": totalSeconds,
             "sessionCount": sessionCount,
             "dailyBreakdown": dailyBreakdown.map { $0.toJSONDict() },
@@ -224,7 +231,7 @@ extension MonthlySummary {
 
     func toJSONDict() -> [String: Any] {
         [
-            "monthOf": ISO8601DateFormatter().string(from: monthOf),
+            "monthOf": ModelJSONFormatters.internetDateTime.string(from: monthOf),
             "totalSeconds": totalSeconds,
             "sessionCount": sessionCount,
             "weeklyBreakdown": weeklyBreakdown.map { $0.toJSONDict() },

@@ -10,7 +10,7 @@ struct SessionControls: View {
     }
 
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: Constants.spacingToolbar) {
             if let session = appState.currentSession {
                 switch session.state {
                 case .running:

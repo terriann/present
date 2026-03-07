@@ -82,6 +82,14 @@ public final class ThemeManager {
     /// Destructive/error state (e.g. cancel, danger zone).
     public var alert: Color { Self.alertColor(for: activePalette) }
 
+    // MARK: - Constant Tokens
+
+    /// Constant black — not affected by palette. Use for fixed dark backgrounds (e.g. terminal mock).
+    public var constantBlack: Color { .black }
+
+    /// Constant white — not affected by palette. Use for fixed light overlays (e.g. chart grid lines).
+    public var constantWhite: Color { .white }
+
     // MARK: - Palette Preview
 
     /// Returns the five semantic colors for a given palette (for swatch previews).

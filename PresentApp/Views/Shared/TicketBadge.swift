@@ -2,8 +2,6 @@ import SwiftUI
 import PresentCore
 
 /// Capsule badge showing a ticket ID or link hostname, opening the URL on click.
-///
-/// Used in `SessionRow` (default scale) and `MenuBarView` (zoom-scaled).
 struct TicketBadge: View {
     @Environment(ThemeManager.self) private var theme
     @Environment(\.openURL) private var openURL

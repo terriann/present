@@ -12,12 +12,12 @@ struct FloatingAlertView: View {
     @Environment(ThemeManager.self) private var theme
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: Constants.spacingToolbar) {
             header
             Divider()
             actions
         }
-        .padding(20)
+        .padding(Constants.spacingPage)
         .frame(width: 320)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
     }
@@ -25,7 +25,7 @@ struct FloatingAlertView: View {
     // MARK: - Header
 
     private var header: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: Constants.spacingCompact) {
             if context.completionType.isBreakExpiry {
                 SteamingCupIcon(size: 28)
             } else if context.completionType.isFocusExpiry {

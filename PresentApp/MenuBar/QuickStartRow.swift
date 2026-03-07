@@ -18,14 +18,14 @@ struct QuickStartRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Constants.spacingCompact) {
             Button(action: onTap) {
-                HStack(spacing: 8) {
+                HStack(spacing: Constants.spacingCompact) {
                     Image(systemName: isSelected || isRowHovered ? filledIcon : icon)
                         .foregroundStyle(isSelected || isRowHovered ? theme.accent : .secondary)
 
                     VStack(alignment: .leading, spacing: 2) {
-                        HStack(spacing: 4) {
+                        HStack(spacing: Constants.spacingTight) {
                             Text(activity.title)
                                 .font(.body)
                                 .lineLimit(1)

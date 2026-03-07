@@ -208,7 +208,7 @@ struct ActivitySessionCard: View {
                                 .font(.title3)
                                 .lineLimit(1)
 
-                            HStack(spacing: 4) {
+                            HStack(spacing: Constants.spacingTight) {
                                 Text("\(totalCount) \(totalCount == 1 ? "session" : "sessions")")
                                 if let range = activityTimeRange(sessions, active: activeSession) {
                                     Text("\u{00B7}")
@@ -384,7 +384,7 @@ struct ActivitySessionCard: View {
                 Text(activity.title)
                     .font(.body.bold())
 
-                HStack(spacing: 4) {
+                HStack(spacing: Constants.spacingTight) {
                     Text(sessionTypeLabel(session))
                     Text("\u{00B7}")
                     Text(TimeFormatting.formatTime(session.startedAt, referenceDate: Date()))
@@ -414,7 +414,7 @@ struct ActivitySessionCard: View {
                 Text(activity.title)
                     .font(.body.bold())
 
-                HStack(spacing: 4) {
+                HStack(spacing: Constants.spacingTight) {
                     Text(sessionTypeLabel(session))
                     Text("\u{00B7}")
                     Text(sessionTimeRange(session))

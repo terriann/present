@@ -1,5 +1,34 @@
 import Foundation
 
+// MARK: - Cached Formatters
+
+/// Cached DateFormatter instances for TimeFormatting methods.
+/// Each formatter uses a fixed configuration and should not be mutated after creation.
+private enum CachedFormatters {
+    /// Short time (e.g., "2:30 PM")
+    static let shortTime: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .none
+        f.timeStyle = .short
+        return f
+    }()
+
+    /// Medium date (e.g., "Feb 14, 2026")
+    static let mediumDate: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        f.timeStyle = .none
+        return f
+    }()
+
+    /// Absolute timestamp (e.g., "2026-02-14 15:30:45")
+    static let absoluteTimestamp: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        return f
+    }()
+}
+
 public enum TimeFormatting {
     /// Round seconds down to the nearest whole minute (e.g., 89 → 60, 150 → 120).
     /// Use this when summing session durations for display — round each session first, then sum,
@@ -57,10 +86,7 @@ public enum TimeFormatting {
 
     /// Format a time for display (e.g., "2:30 PM")
     public static func formatTime(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .none
-        formatter.timeStyle = .short
-        return formatter.string(from: date)
+        CachedFormatters.shortTime.string(from: date)
     }
 
     /// Format a time with a day label when it falls on a different calendar day than `referenceDate`.
@@ -116,9 +142,7 @@ public enum TimeFormatting {
         relative.unitsStyle = .full
         let relativeString = relative.localizedString(for: date, relativeTo: Date())
 
-        let absolute = DateFormatter()
-        absolute.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        let absoluteString = absolute.string(from: date)
+        let absoluteString = CachedFormatters.absoluteTimestamp.string(from: date)
 
         return "\(relativeString) (\(absoluteString))"
     }

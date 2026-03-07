@@ -11,7 +11,7 @@ struct SessionTypePickerSheet: View {
     @State private var timeboundMinutes: Int = 25
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: Constants.spacingToolbar) {
             Text("Start Session")
                 .font(.headline)
                 .accessibilityAddTraits(.isHeader)
@@ -80,7 +80,7 @@ struct SessionTypePickerSheet: View {
         .frame(width: 300)
         .onAppear {
             Task {
-                timeboundMinutes = (try? await appState.getPreference(key: PreferenceKey.defaultTimeboundMinutes)).flatMap(Int.init) ?? Constants.defaultTimeboundMinutes
+                timeboundMinutes = await appState.loadDefaultTimeboundMinutes()
             }
         }
         .syncRhythmSelection($selectedRhythmOption)

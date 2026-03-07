@@ -56,7 +56,18 @@ Delegate the PR description to the commit-pr-writer agent with the following pro
 >
 > - This is a macOS time tracking app (SwiftUI + CLI) called Present.
 > - Use conventional commit format for the PR title: `type(scope): description` (see CLAUDE.md for types and scopes).
-> - The PR description must include a **Referenced Issues** section that lists every GitHub issue addressed by commits in this branch. For each issue, use the full issue URL (e.g., `https://github.com/owner/repo/issues/N`) — do not wrap it in markdown link syntax. GitHub auto-links plain URLs. Prefix with closing keywords (`Closes`) for issues fully resolved by this PR, or `Related to` for partial progress.
+> - The PR description must include a **Referenced Issues** section. List each issue on its own line using `#N` shorthand (renders as a rich card with title, state, and labels on GitHub). Group issues under subheadings by relationship:
+>   ```
+>   ## Referenced Issues
+>
+>   ### Closes
+>   - Closes #1
+>   - Closes #2
+>
+>   ### Related
+>   - #3
+>   ```
+>   Omit any subheading that has no issues (e.g., skip "Related" if all issues are closed by this PR).
 > - If the user provided extra context in $ARGUMENTS, incorporate it into the description.
 > - Keep the PR title under 70 characters.
 > - Structure: Summary (2-3 bullets), Referenced Issues, Test Plan.

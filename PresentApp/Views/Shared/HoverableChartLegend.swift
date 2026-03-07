@@ -1,4 +1,5 @@
 import SwiftUI
+import PresentCore
 
 struct HoverableChartLegend: View {
     let items: [(label: String, color: Color)]
@@ -7,9 +8,9 @@ struct HoverableChartLegend: View {
     var onHoverEnd: (() -> Void)?
 
     var body: some View {
-        FlowLayout(spacing: 8) {
+        FlowLayout(spacing: Constants.spacingCompact) {
             ForEach(items, id: \.label) { item in
-                HStack(spacing: 4) {
+                HStack(spacing: Constants.spacingTight) {
                     Circle()
                         .fill(item.color)
                         .frame(width: 8, height: 8)

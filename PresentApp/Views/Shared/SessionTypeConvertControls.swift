@@ -23,7 +23,7 @@ struct SessionTypeConvertControls: View {
         VStack(spacing: Constants.spacingCompact) {
             // Target type picker (only when there are multiple targets)
             if targets.count > 1 {
-                HStack(spacing: 4) {
+                HStack(spacing: Constants.spacingTight) {
                     ForEach(targets, id: \.self) { type in
                         let isSelected = targetType == type
                         Button {
@@ -69,7 +69,7 @@ struct SessionTypeConvertControls: View {
                 }
 
             case .rhythm:
-                HStack(spacing: 4) {
+                HStack(spacing: Constants.spacingTight) {
                     ForEach(Array(appState.rhythmDurationOptions.prefix(4)), id: \.self) { option in
                         let isSelected = rhythmOption == option
                         Button {
@@ -107,7 +107,7 @@ struct SessionTypeConvertControls: View {
         }
         .task {
             targetType = SessionType.allCases.first { $0 != session.sessionType } ?? .work
-            timeboundMinutes = (try? await appState.getPreference(key: PreferenceKey.defaultTimeboundMinutes)).flatMap(Int.init) ?? Constants.defaultTimeboundMinutes
+            timeboundMinutes = await appState.loadDefaultTimeboundMinutes()
             rhythmOption = appState.rhythmDurationOptions.first
         }
     }

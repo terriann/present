@@ -237,8 +237,7 @@ struct GeneralSettingsTab: View {
                 .buttonStyle(.plain)
             }
         } header: {
-            Label("Proceed With Caution", systemImage: "exclamationmark.triangle")
-                .foregroundStyle(theme.alert)
+            Label("Data Management", systemImage: "folder.circle")
         }
     }
 
