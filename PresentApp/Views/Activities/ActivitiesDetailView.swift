@@ -446,14 +446,6 @@ struct ActivitiesDetailView: View {
 
     private func loadTags() async {
         do {
-            let allActivityTags = try await appState.service.listTags()
-            // Filter to only tags assigned to this activity
-            // We need to check the activity_tag table
-            tags = allActivityTags.filter { tag in
-                // For now, load via a service call — we'll refine this
-                true
-            }
-            // Actually fetch assigned tags properly
             tags = try await loadAssignedTags()
         } catch {
             appState.showError(error, context: "Could not load tags")
