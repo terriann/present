@@ -87,9 +87,7 @@ struct ReportsView: View {
                         ContentUnavailableView(
                             "No Data",
                             systemImage: "chart.pie",
-                            description: Text(includesToday
-                                ? "No sessions recorded for this period. Start tracking to see your reports."
-                                : "No sessions recorded for this period.")
+                            description: Text("No sessions recorded for this period.")
                         )
                         .emptyStateStyle()
                     }
