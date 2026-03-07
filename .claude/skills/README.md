@@ -64,6 +64,37 @@ reviewed during relevant phases; instructions shape execution throughout.
 > Every phase pauses for review before committing. The final commit
 > uses a GitHub closing keyword so the issue auto-closes on merge.
 
+### `/ship` — Push, PR, and Benchmark
+
+Pushes the current feature branch, creates a pull request that
+enumerates all addressed issues, runs performance benchmarks against
+the PR's base branch, and posts the results as a PR comment.
+
+**What it does:**
+
+1. Pushes the current branch to origin
+2. Gathers commit history, diff, and referenced issues
+3. Delegates PR description to the commit-pr-writer agent with project context
+4. Creates the PR via `gh pr create`
+5. Runs `Scripts/benchmark.sh --baseline <base-branch>` and posts results as a PR comment
+6. Flags regressions via the code-reviewer agent for assessment
+
+**Usage:**
+
+```text
+/ship
+/ship --base develop
+/ship mention the breaking change in session output
+```
+
+The argument is optional. Use it to override the base branch or
+provide extra context for the PR description. Defaults to `main`.
+
+> [!NOTE]
+> Benchmarks always compare against the PR's base branch.
+> Regression detection delegates to the code-reviewer agent for
+> assessment before flagging to the user.
+
 ---
 
 ## Adding a New Skill
@@ -74,6 +105,8 @@ Each skill is a directory under `.claude/skills/` containing a
 ```text
 .claude/skills/
   issue/
+    SKILL.md
+  ship/
     SKILL.md
   your-skill/
     SKILL.md
