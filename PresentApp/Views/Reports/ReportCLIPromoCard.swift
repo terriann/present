@@ -41,10 +41,10 @@ struct ReportCLIPromoCard: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(pair.command)
                             .font(.codeCaption)
-                            .foregroundStyle(.green)
+                            .foregroundStyle(theme.success)
                         Text(pair.output)
                             .font(.codeCaption)
-                            .foregroundStyle(.green.opacity(0.7))
+                            .foregroundStyle(theme.success.opacity(0.7))
                     }
                     .id(currentCommandIndex)
                     .contentTransition(.opacity)
@@ -53,7 +53,7 @@ struct ReportCLIPromoCard: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(
                         RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.black.opacity(0.85))
+                            .fill(theme.constantBlack.opacity(0.85))
                     )
 
                     Button {

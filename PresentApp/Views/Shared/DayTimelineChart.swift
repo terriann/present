@@ -51,6 +51,7 @@ struct TimelineBlock: Identifiable {
 /// Shared day timeline chart rendering — a horizontal bar showing colored session blocks
 /// on a 24-hour track with hover tooltips and a legend.
 struct DayTimelineChart: View {
+    @Environment(ThemeManager.self) private var theme
     let blocks: [TimelineBlock]
     let activityColorMap: [String: Color]
     let referenceDate: Date
@@ -106,7 +107,7 @@ struct DayTimelineChart: View {
                     // X-axis tick marks
                     ForEach(axisHours, id: \.self) { hour in
                         Rectangle()
-                            .fill(Color.white.opacity(0.15))
+                            .fill(theme.constantWhite.opacity(0.15))
                             .frame(width: 1, height: barHeight)
                             .offset(x: CGFloat(hour) / 24.0 * geo.size.width)
                     }
