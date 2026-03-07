@@ -11,7 +11,7 @@ struct SessionTypePickerSheet: View {
     @State private var timeboundMinutes: Int = 25
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: Constants.spacingToolbar) {
             Text("Start Session")
                 .font(.headline)
                 .accessibilityAddTraits(.isHeader)

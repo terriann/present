@@ -16,7 +16,7 @@ struct EditPillButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 4) {
+            HStack(spacing: Constants.spacingTight) {
                 if isHovered {
                     Text("Edit")
                         .font(.caption.weight(.medium))

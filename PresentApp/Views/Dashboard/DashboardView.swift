@@ -48,7 +48,7 @@ struct DashboardView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 20) {
+            VStack(spacing: Constants.spacingPage) {
                 // Greeting header with timer or quick restarts
                 dashboardHeader
 
@@ -229,7 +229,7 @@ struct DashboardView: View {
     private var dashboardHeader: some View {
         VStack(spacing: Constants.spacingCard) {
             HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: Constants.spacingTight) {
                     Text(greeting)
                         .font(.dashboardGreeting)
                         .tracking(1.5)
@@ -291,9 +291,9 @@ struct DashboardView: View {
 
     private var activeTimerPanel: some View {
         GroupBox {
-            VStack(spacing: 12) {
+            VStack(spacing: Constants.spacingCard) {
                 if let activity = appState.currentActivity, let session = appState.currentSession {
-                    VStack(spacing: 4) {
+                    VStack(spacing: Constants.spacingTight) {
                         Text(activity.title)
                             .font(.headline)
                             .lineLimit(1)

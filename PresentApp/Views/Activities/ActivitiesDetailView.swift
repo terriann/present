@@ -32,7 +32,7 @@ struct ActivitiesDetailView: View {
     var body: some View {
         GeometryReader { geo in
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: Constants.spacingPage) {
                     headerRow
                     if activity.isSystem {
                         systemActivityInfo
@@ -114,7 +114,7 @@ struct ActivitiesDetailView: View {
     private var headerRow: some View {
         HStack(alignment: .top) {
             // Left: title + badge
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: Constants.spacingTight) {
                 HStack {
                     if isEditable {
                         TextField("Activity title", text: $titleText)
@@ -160,7 +160,7 @@ struct ActivitiesDetailView: View {
             // Right: session controls (fixed position, not affected by title editing)
             if !activity.isArchived || activity.isSystem {
                 VStack(alignment: .trailing, spacing: 10) {
-                    HStack(spacing: 4) {
+                    HStack(spacing: Constants.spacingTight) {
                         ForEach(allowedSessionTypes, id: \.self) { type in
                             let isSelected = selectedSessionType == type
                             Button {
@@ -180,7 +180,7 @@ struct ActivitiesDetailView: View {
                     }
 
                     if selectedSessionType == .rhythm {
-                        HStack(spacing: 4) {
+                        HStack(spacing: Constants.spacingTight) {
                             ForEach(appState.rhythmDurationOptions, id: \.self) { option in
                                 let isSelected = selectedRhythmOption == option
                                 Button {
@@ -326,7 +326,7 @@ struct ActivitiesDetailView: View {
                 // Assigned tag pills
                 ForEach(tags) { tag in
                     let color = tagColorMap[tag.name] ?? .secondary
-                    HStack(spacing: 4) {
+                    HStack(spacing: Constants.spacingTight) {
                         Text(tag.name)
                             .font(.callout)
                             .foregroundStyle(color)
@@ -367,7 +367,7 @@ struct ActivitiesDetailView: View {
 
     private var activityFooter: some View {
         HStack(alignment: .bottom) {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: Constants.spacingTight) {
                 if isMetadataExpanded {
                     Text("Created \(TimeFormatting.formatRelativeWithTimestamp(activity.createdAt))")
                         .font(.subheadline)
@@ -390,7 +390,7 @@ struct ActivitiesDetailView: View {
             Spacer()
 
             if !activity.isSystem {
-                HStack(spacing: 8) {
+                HStack(spacing: Constants.spacingCompact) {
                     if !activity.isArchived {
                         Button {
                             Task { await handleArchive() }
@@ -563,7 +563,7 @@ struct InlineTagInput: View {
     @FocusState private var isInputFocused: Bool
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: Constants.spacingTight) {
             TextField("Add tag\u{2026}", text: $searchText)
                 .textFieldStyle(.plain)
                 .font(.callout)

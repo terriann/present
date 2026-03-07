@@ -9,7 +9,7 @@ struct ThemedToggleStyle: ToggleStyle {
     let tintColor: Color
 
     func makeBody(configuration: Configuration) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Constants.spacingCompact) {
             configuration.label
 
             Button {

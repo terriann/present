@@ -27,7 +27,7 @@ struct InlineEditableField: View {
     // MARK: - Display State
 
     private var displayView: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: Constants.spacingTight) {
             if value.isEmpty {
                 Text(placeholder)
                     .foregroundStyle(.tertiary)

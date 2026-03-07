@@ -29,7 +29,7 @@ struct ReportsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 20) {
+            VStack(spacing: Constants.spacingPage) {
                 controlsBar
                 periodNavigationBar
                 summaryBar
@@ -55,7 +55,7 @@ struct ReportsView: View {
                         activityColorMap: activityColorMap,
                         weekendDayLabels: weekendDayLabels
                     )
-                    HStack(alignment: .top, spacing: 16) {
+                    HStack(alignment: .top, spacing: Constants.spacingToolbar) {
                         ReportActivityPieChart(
                             activities: displayActivities,
                             totalSeconds: displayTotalSeconds,

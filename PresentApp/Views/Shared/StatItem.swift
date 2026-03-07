@@ -1,4 +1,5 @@
 import SwiftUI
+import PresentCore
 
 struct StatItem: View {
     let title: String
@@ -12,7 +13,7 @@ struct StatItem: View {
     }
 
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: Constants.spacingTight) {
             if let icon {
                 Image(systemName: icon)
                     .font(.controlIconSmall)

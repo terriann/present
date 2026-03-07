@@ -356,7 +356,7 @@ struct MenuBarView: View {
     private var quickStartSection: some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .trailing, spacing: 0) {
-                HStack(spacing: 4) {
+                HStack(spacing: Constants.spacingTight) {
                     ForEach(menuBarSessionTypes, id: \.self) { type in
                         let isSelected = selectedSessionType == type
                         let isHovered = hoveredSessionType == type
@@ -388,7 +388,7 @@ struct MenuBarView: View {
 
                 // Duration controls for rhythm/timebound
                 if selectedSessionType == .rhythm {
-                    HStack(spacing: 4) {
+                    HStack(spacing: Constants.spacingTight) {
                         ForEach(Array(appState.rhythmDurationOptions.prefix(4)), id: \.self) { option in
                             let isSelected = selectedRhythmOption == option
                             let isHovered = hoveredRhythmOption == option
@@ -741,7 +741,7 @@ struct MenuBarView: View {
                 dismiss()
                 appState.navigate(to: .showSettings(nil))
             } label: {
-                HStack(spacing: 4) {
+                HStack(spacing: Constants.spacingTight) {
                     if isSettingsHovered {
                         Text("Settings")
                             .font(.caption.weight(.medium))
@@ -796,7 +796,7 @@ private struct CreateActivityButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 8) {
+            HStack(spacing: Constants.spacingCompact) {
                 Image(systemName: isSelected || isHovered ? "plus.circle.fill" : "plus.circle")
                     .foregroundStyle(theme.accent)
                     .accessibilityHidden(true)
