@@ -242,6 +242,13 @@ struct ActivitySessionCard: View {
                             }
                         }
                     }
+                    .contextMenu {
+                        Button {
+                            appState.navigate(to: .showActivity(group.activity.id ?? -1))
+                        } label: {
+                            Label("Edit Activity", systemImage: "square.and.pencil")
+                        }
+                    }
 
                     if isExpanded {
                         let activeVisible = activeSession != nil && activeSessionMatchesSearch
@@ -362,7 +369,7 @@ struct ActivitySessionCard: View {
         .padding(.leading, 20)
         .contentShape(Rectangle())
         .sessionContextMenu(session: session, activityTitle: activityTitle,
-            onEdit: { beginEditing($0) })
+            showEditActivity: false, onEdit: { beginEditing($0) })
     }
 
     /// Active session row for ungrouped view — SpinningClockIcon on left where the dot would be.
@@ -449,7 +456,7 @@ struct ActivitySessionCard: View {
         .padding(.leading, 20)
         .contentShape(Rectangle())
         .sessionContextMenu(session: session, activityTitle: activityTitle,
-            onEdit: { beginEditing($0) }) {
+            showEditActivity: false, onEdit: { beginEditing($0) }) {
             onReload?()
         }
     }

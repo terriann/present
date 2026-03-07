@@ -56,6 +56,11 @@ public enum Constants {
     /// Tight inner padding (GroupBox content wrappers)
     public static let spacingTight: CGFloat = 4
 
+    // MARK: - Activity List
+
+    /// Minimum row height for activity list items, matching the two-line variant (title + subtitle).
+    public static let activityRowMinHeight: CGFloat = 44
+
     // MARK: - System Activities
 
     public static let breakActivityTitle = "Break"

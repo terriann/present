@@ -132,6 +132,17 @@ EOF
 - Include specific examples, formats, and command signatures when the user provided them.
 - Capture decisions made during the conversation (e.g., "Users export via shell redirection, not a dedicated export command").
 
+### Phase 3.5: Milestone Assignment
+
+After creating (or updating) the issue, offer to assign it to the current milestone.
+
+1. **Fetch open milestones**: `gh api repos/{owner}/{repo}/milestones --jq '.[].title' | sort -V`
+2. **Determine the current milestone**: Milestones use semver-style naming (`v0.2.0`, `v0.3.0`, `v1.0.0`). Sort with `sort -V` (version sort) and pick the **lowest** version-style milestone — that's the current one being actively worked on. Higher versions are future work. Ignore non-version milestones (e.g., `Future`).
+3. **Ask the user** using `AskUserQuestion`: "Should this issue be added to the current milestone (**<milestone name>**)?" with options: Yes / No / Assign to a different milestone.
+4. If **Yes**, assign: `gh issue edit <number> --milestone "<milestone name>"`
+5. If **different milestone**, present the full list and let the user choose, then assign.
+6. If **No**, skip — the issue remains unassigned to any milestone.
+
 ### Phase 4: Link Related Issues
 
 After creating or updating an issue, link any related issues discovered during the Phase 1 search.

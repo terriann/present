@@ -103,6 +103,13 @@ public enum TimeFormatting {
         return "\(startFormatter.string(from: start)) – \(endFormatter.string(from: end))"
     }
 
+    /// Format a date as short relative time (e.g., "3h ago", "2d ago")
+    public static func formatShortRelative(_ date: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter.localizedString(for: date, relativeTo: Date())
+    }
+
     /// Format a date as relative time + full timestamp (e.g., "2 days ago (2026-02-14 15:30:45)")
     public static func formatRelativeWithTimestamp(_ date: Date) -> String {
         let relative = RelativeDateTimeFormatter()

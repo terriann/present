@@ -63,28 +63,7 @@ struct ActivitiesListView: View {
                             )
                             .emptyStateStyle()
                         } else {
-                            List {
-                                ForEach(displayedActivities) { activity in
-                                    Button {
-                                        selectedActivity = activity
-                                    } label: {
-                                        ActivityRow(
-                                            activity: activity,
-                                            tags: activityTags[activity.id ?? 0] ?? [],
-                                            tagColorMap: tagColorMap
-                                        )
-                                            .frame(maxWidth: .infinity, alignment: .leading)
-                                            .contentShape(Rectangle())
-                                    }
-                                    .buttonStyle(.plain)
-                                    .listRowBackground(
-                                        RoundedRectangle(cornerRadius: 6)
-                                            .fill(selectedActivity == activity ? theme.accent.opacity(0.2) : Color.clear)
-                                            .padding(.horizontal, Constants.spacingTight)
-                                    )
-                                }
-                            }
-                            .listStyle(.inset)
+                            activityList
                         }
                     }
                     .frame(width: geometry.size.width * 0.35)
@@ -95,6 +74,7 @@ struct ActivitiesListView: View {
                     if let activity = selectedActivity {
                         ActivitiesDetailView(
                             activity: activity,
+                            tagColorMap: tagColorMap,
                             startInEditMode: activity.id == newlyCreatedActivityId,
                             onDelete: { selectedActivity = nil }
                         )
@@ -130,6 +110,43 @@ struct ActivitiesListView: View {
         }
     }
 
+    // MARK: - Activity List
+
+    private var activityList: some View {
+        List {
+            ForEach(groupedActivities) { section in
+                Section {
+                    ForEach(section.activities) { activity in
+                        Button {
+                            selectedActivity = activity
+                        } label: {
+                            ActivityRow(
+                                activity: activity,
+                                tags: activityTags[activity.id ?? 0] ?? [],
+                                tagColorMap: tagColorMap
+                            )
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .listRowBackground(
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(selectedActivity?.id == activity.id
+                                    ? theme.accent.opacity(0.2)
+                                    : Color.clear)
+                                .padding(.horizontal, Constants.spacingTight)
+                        )
+                    }
+                } header: {
+                    if !section.title.isEmpty {
+                        Text(section.title)
+                    }
+                }
+            }
+        }
+        .listStyle(.inset)
+    }
+
     // MARK: - Data Loading
 
     private func loadActivities() async {
@@ -153,7 +170,7 @@ struct ActivitiesListView: View {
             )
             newlyCreatedActivityId = activity.id
             await loadActivities()
-            selectedActivity = activity
+            selectedActivity = activities.first(where: { $0.id == activity.id })
             await appState.refreshAll()
         } catch {
             appState.showError(error, context: "Could not create activity")
@@ -200,6 +217,34 @@ struct ActivitiesListView: View {
         }
         return filtered
     }
+
+    // MARK: - Grouping
+
+    private var groupedActivities: [ActivitySection] {
+        let all = displayedActivities
+        let user = all.filter { !$0.isSystem }
+        let system = all.filter { $0.isSystem }
+
+        var sections: [ActivitySection] = []
+
+        if !user.isEmpty {
+            sections.append(ActivitySection(id: "user", title: "", activities: user))
+        }
+
+        if !system.isEmpty {
+            sections.append(ActivitySection(id: "system", title: "System", activities: system))
+        }
+
+        return sections
+    }
+}
+
+// MARK: - ActivitySection
+
+private struct ActivitySection: Identifiable {
+    let id: String
+    let title: String
+    let activities: [Activity]
 }
 
 struct ActivityRow: View {
@@ -220,14 +265,8 @@ struct ActivityRow: View {
 
                 Text(activity.title)
                     .font(.body.bold())
-
-                if activity.isSystem {
-                    Text("System")
-                        .font(.caption2)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(theme.accent.opacity(0.2), in: Capsule())
-                }
+                    .lineLimit(1)
+                    .truncationMode(.tail)
 
                 if activity.isArchived {
                     Text("Archived")
@@ -269,6 +308,7 @@ struct ActivityRow: View {
             }
         }
         .padding(.vertical, Constants.spacingTight)
+        .frame(minHeight: Constants.activityRowMinHeight, alignment: .top)
     }
 
     // MARK: - Helpers
