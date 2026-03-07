@@ -5,6 +5,7 @@ A macOS time tracking app with menu bar timer, windowed app, and CLI. All backed
 See [README.md](../README.md) for features, installation, and CLI usage.
 See [plans/v1-spec.md](../plans/v1-spec.md) for the full V1 specification.
 See [DEVELOPMENT.md](../DEVELOPMENT.md) for build, test, and contributor setup.
+See [docs/patterns.md](../docs/patterns.md) for the UI pattern catalog (canonical examples for cards, charts, rows, editing, controls).
 
 ## Voice & Tone
 
@@ -93,6 +94,7 @@ CLI Commands ──────────────────────�
 - Standard section order: properties, body, MARK subviews, MARK helpers.
 - All tabs and panes align content to the top — use `.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)`. Empty states (`ContentUnavailableView`) must also be top-aligned, never vertically centered.
 - **File naming**: Feature-scoped view files use their directory as a prefix (`Dashboard/DashboardWeeklyChartCard.swift`, `Activities/ActivitiesDetailView.swift`, `Reports/ReportStackedBarChart.swift`). Generic shared components in `Shared/` skip the prefix (`SpinningClockIcon.swift`, `ChartTooltip.swift`).
+- **Pattern catalog**: See [docs/patterns.md](../docs/patterns.md) for the canonical reference of recurring UI patterns (cards, charts, rows, editing, controls). When building new UI, find the matching pattern and follow its canonical example. When a pattern changes or a new one emerges, update the catalog before committing.
 
 ### Typography
 - Semantic font tokens are defined in `PresentApp/Views/Shared/Typography.swift` as `Font` static properties.
