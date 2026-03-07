@@ -16,12 +16,14 @@ struct ActivitiesDetailView: View {
     @State private var titleText: String
     @FocusState private var isTitleFocused: Bool
     var startInEditMode: Bool = false
+    var onDelete: (() -> Void)?
 
-    init(activity: Activity, startInEditMode: Bool = false) {
+    init(activity: Activity, startInEditMode: Bool = false, onDelete: (() -> Void)? = nil) {
         _activity = State(initialValue: activity)
         _notes = State(initialValue: activity.notes ?? "")
         _titleText = State(initialValue: activity.title)
         self.startInEditMode = startInEditMode
+        self.onDelete = onDelete
     }
 
     var body: some View {
@@ -60,6 +62,7 @@ struct ActivitiesDetailView: View {
                     guard let activityId = activity.id else { return }
                     do {
                         try await appState.service.deleteActivity(id: activityId)
+                        onDelete?()
                         await appState.refreshAll()
                     } catch {
                         appState.showError(error, context: "Could not delete activity")
@@ -77,6 +80,7 @@ struct ActivitiesDetailView: View {
                     guard let activityId = activity.id else { return }
                     do {
                         try await appState.service.deleteActivity(id: activityId)
+                        onDelete?()
                         await appState.refreshAll()
                     } catch {
                         appState.showError(error, context: "Could not delete activity")

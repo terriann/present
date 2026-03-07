@@ -89,7 +89,8 @@ struct ActivitiesListView: View {
                     if let activity = selectedActivity {
                         ActivitiesDetailView(
                             activity: activity,
-                            startInEditMode: activity.id == newlyCreatedActivityId
+                            startInEditMode: activity.id == newlyCreatedActivityId,
+                            onDelete: { selectedActivity = nil }
                         )
                             .id(activity.id)
                             .environment(appState)
