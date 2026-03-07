@@ -15,13 +15,15 @@ struct ActivitiesDetailView: View {
     @State private var timeboundMinutes: Int = 25
     @State private var titleText: String
     @FocusState private var isTitleFocused: Bool
+    var tagColorMap: [String: Color] = [:]
     var startInEditMode: Bool = false
     var onDelete: (() -> Void)?
 
-    init(activity: Activity, startInEditMode: Bool = false, onDelete: (() -> Void)? = nil) {
+    init(activity: Activity, tagColorMap: [String: Color] = [:], startInEditMode: Bool = false, onDelete: (() -> Void)? = nil) {
         _activity = State(initialValue: activity)
         _notes = State(initialValue: activity.notes ?? "")
         _titleText = State(initialValue: activity.title)
+        self.tagColorMap = tagColorMap
         self.startInEditMode = startInEditMode
         self.onDelete = onDelete
     }
@@ -298,9 +300,11 @@ struct ActivitiesDetailView: View {
                 } else {
                     FlowLayout(spacing: 6) {
                         ForEach(tags) { tag in
+                            let color = tagColorMap[tag.name] ?? .secondary
                             HStack(spacing: 4) {
                                 Text(tag.name)
                                     .font(.callout)
+                                    .foregroundStyle(color)
 
                                 if !activity.isArchived {
                                     Button {
@@ -308,13 +312,14 @@ struct ActivitiesDetailView: View {
                                     } label: {
                                         Image(systemName: "xmark")
                                             .font(.caption)
+                                            .foregroundStyle(color)
                                     }
                                     .buttonStyle(.plain)
                                 }
                             }
                             .padding(.horizontal, Constants.spacingCompact)
                             .padding(.vertical, Constants.spacingTight)
-                            .background(.secondary.opacity(0.15), in: Capsule())
+                            .background(color.opacity(0.15), in: Capsule())
                         }
                     }
                 }
@@ -464,6 +469,7 @@ struct ActivitiesDetailView: View {
         do {
             try await appState.service.tagActivity(activityId: activityId, tagId: tagId)
             await loadTags()
+            await appState.refreshAll()
         } catch {
             appState.showError(error, context: "Could not add tag")
         }
@@ -474,6 +480,7 @@ struct ActivitiesDetailView: View {
         do {
             try await appState.service.untagActivity(activityId: activityId, tagId: tagId)
             await loadTags()
+            await appState.refreshAll()
         } catch {
             appState.showError(error, context: "Could not remove tag")
         }

@@ -74,6 +74,7 @@ struct ActivitiesListView: View {
                     if let activity = selectedActivity {
                         ActivitiesDetailView(
                             activity: activity,
+                            tagColorMap: tagColorMap,
                             startInEditMode: activity.id == newlyCreatedActivityId,
                             onDelete: { selectedActivity = nil }
                         )
