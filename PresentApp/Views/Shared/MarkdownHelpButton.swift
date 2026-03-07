@@ -47,6 +47,7 @@ private struct MarkdownHelpContent: View {
         VStack(alignment: .leading, spacing: Constants.spacingCompact) {
             Text("Supported Syntax")
                 .font(.headline)
+                .accessibilityAddTraits(.isHeader)
 
             Grid(alignment: .leadingFirstTextBaseline, verticalSpacing: 6) {
                 syntaxRow("# Heading", "Header (levels 1-3)")
@@ -83,6 +84,7 @@ private struct MarkdownHelpContent: View {
         VStack(alignment: .leading, spacing: Constants.spacingTight) {
             Text("External ID")
                 .font(.headline)
+                .accessibilityAddTraits(.isHeader)
 
             Text("The first issue tracker URL found in notes (Linear, Jira, or GitHub Issues) will automatically set the activity's external ID.")
                 .font(.caption)

@@ -14,6 +14,7 @@ struct SessionTypePickerSheet: View {
         VStack(spacing: 16) {
             Text("Start Session")
                 .font(.headline)
+                .accessibilityAddTraits(.isHeader)
 
             Text(activity.title)
                 .font(.subheadline)

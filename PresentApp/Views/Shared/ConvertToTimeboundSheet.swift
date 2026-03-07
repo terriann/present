@@ -27,6 +27,7 @@ struct ConvertSessionSheet: View {
         VStack(alignment: .leading, spacing: Constants.spacingPage) {
             Text("Convert Session")
                 .font(.headline)
+                .accessibilityAddTraits(.isHeader)
 
             Text("Time already tracked is preserved.")
                 .font(.subheadline)

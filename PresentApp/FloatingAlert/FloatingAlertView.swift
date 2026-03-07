@@ -38,6 +38,7 @@ struct FloatingAlertView: View {
 
             Text(headerTitle)
                 .font(.headline)
+                .accessibilityAddTraits(.isHeader)
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
 
