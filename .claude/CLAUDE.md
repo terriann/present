@@ -229,6 +229,7 @@ CLI Commands ──────────────────────�
 
 ## Pull Requests
 - Default PR base branch is `main` unless otherwise specified.
+- **Never commit directly to `main`.** Before making any commit, check the current branch. If on `main`, stop and ask which feature branch to use (or whether to create a new one). This applies even for small fixes.
 
 ## Conventional Commits
 
