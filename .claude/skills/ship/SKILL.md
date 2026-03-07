@@ -39,10 +39,15 @@ Collect everything the commit-pr-writer agent needs — do this research yoursel
    ```
 3. **Get the full diff and commit history** against the remote base branch:
    ```bash
-   git log --oneline origin/<base>..HEAD
+   git log origin/<base>..HEAD
    git diff origin/<base>...HEAD --stat
    ```
-3. **Find addressed issues.** Search the commit messages and diff for GitHub issue references (`#123`, `Closes #123`, `Fixes #123`, `Resolves #123`, `Addressing #123`, `Related to #123`, `Part of #123`). For each referenced issue, fetch its title:
+   **Important:** Use `git log` (not `--oneline`) so the full commit body is visible. Issue references often appear in the body, not the subject line.
+3. **Find addressed issues.** Extract all GitHub issue numbers from the full commit log programmatically — do not scan by eye:
+   ```bash
+   git log origin/<base>..HEAD | grep -oE '#[0-9]+' | sort -t'#' -k2 -n -u
+   ```
+   This catches every reference regardless of keyword (`Closes`, `Fixes`, `Resolves`, `Addressing`, `Related to`, `Part of`, or bare `#N`). For each unique issue number, fetch its details:
    ```bash
    gh issue view <number> --json title,state,url,milestone --jq '"\(.title) (\(.state)) \(.url) milestone:\(.milestone.title // "none")"'
    ```
