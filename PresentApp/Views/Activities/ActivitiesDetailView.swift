@@ -291,45 +291,69 @@ struct ActivitiesDetailView: View {
 
     // MARK: - Tags
 
+    private var availableTags: [Tag] {
+        let assignedIds = Set(tags.map(\.id))
+        return appState.allTags.filter { !assignedIds.contains($0.id) }
+    }
+
     private var tagsSection: some View {
         GroupBox {
-            VStack(alignment: .leading, spacing: 8) {
-                if tags.isEmpty {
-                    Text("No tags assigned")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                } else {
-                    FlowLayout(spacing: 6) {
-                        ForEach(tags) { tag in
-                            let color = tagColorMap[tag.name] ?? .secondary
-                            HStack(spacing: 4) {
-                                Text(tag.name)
-                                    .font(.callout)
-                                    .foregroundStyle(color)
-
-                                if !activity.isArchived {
-                                    Button {
-                                        Task { await removeTag(tag) }
-                                    } label: {
-                                        Image(systemName: "xmark")
-                                            .font(.caption)
-                                            .foregroundStyle(color)
-                                    }
-                                    .buttonStyle(.plain)
+            FlowLayout(spacing: 6) {
+                if !activity.isArchived {
+                    // Browse all available tags
+                    Menu {
+                        if availableTags.isEmpty {
+                            Text("No more tags available")
+                        } else {
+                            ForEach(availableTags) { tag in
+                                Button(tag.name) {
+                                    Task { await addTag(tag) }
                                 }
                             }
-                            .padding(.horizontal, Constants.spacingCompact)
-                            .padding(.vertical, Constants.spacingTight)
-                            .background(color.opacity(0.15), in: Capsule())
                         }
+                    } label: {
+                        Image(systemName: "tag.fill")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
                     }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                    .padding(.vertical, Constants.spacingTight)
+                    .accessibilityLabel("Browse tags")
+                    .help("Browse all tags")
                 }
 
+                // Assigned tag pills
+                ForEach(tags) { tag in
+                    let color = tagColorMap[tag.name] ?? .secondary
+                    HStack(spacing: 4) {
+                        Text(tag.name)
+                            .font(.callout)
+                            .foregroundStyle(color)
+
+                        if !activity.isArchived {
+                            Button {
+                                Task { await removeTag(tag) }
+                            } label: {
+                                Image(systemName: "xmark")
+                                    .font(.caption)
+                                    .foregroundStyle(color)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, Constants.spacingCompact)
+                    .padding(.vertical, Constants.spacingTight)
+                    .background(color.opacity(0.15), in: Capsule())
+                }
+
+                // Free-type autocomplete input
                 if !activity.isArchived {
-                    TagPicker(
+                    InlineTagInput(
                         allTags: appState.allTags,
                         assignedTags: tags,
-                        onAdd: { tag in Task { await addTag(tag) } }
+                        onAdd: { tag in Task { await addTag(tag) } },
+                        onCreate: { name in Task { await createAndAddTag(name) } }
                     )
                 }
             }
@@ -476,6 +500,16 @@ struct ActivitiesDetailView: View {
         }
     }
 
+    private func createAndAddTag(_ name: String) async {
+        do {
+            let tag = try await appState.service.findOrCreateTag(name: name)
+            await addTag(tag)
+            await appState.refreshAll()
+        } catch {
+            appState.showError(error, context: "Could not create tag")
+        }
+    }
+
     private func addTag(_ tag: Tag) async {
         guard let activityId = activity.id, let tagId = tag.id else { return }
         do {
@@ -525,50 +559,61 @@ struct ActivitiesDetailView: View {
 
 }
 
-// MARK: - Tag Picker
+// MARK: - Inline Tag Input
 
-struct TagPicker: View {
+struct InlineTagInput: View {
     let allTags: [Tag]
     let assignedTags: [Tag]
     var onAdd: (Tag) -> Void
+    var onCreate: (String) -> Void
 
-    @State private var newTagName = ""
-    @Environment(AppState.self) private var appState
-
-    private var availableTags: [Tag] {
-        let assignedIds = Set(assignedTags.map(\.id))
-        return allTags.filter { !assignedIds.contains($0.id) }
-    }
+    @State private var searchText = ""
+    @FocusState private var isInputFocused: Bool
 
     var body: some View {
-        HStack {
-            if !availableTags.isEmpty {
-                Menu("Add Tag") {
-                    ForEach(availableTags) { tag in
-                        Button(tag.name) { onAdd(tag) }
-                    }
-                }
-                .menuStyle(.borderlessButton)
-                .fixedSize()
-            }
-
-            TextField("New tag...", text: $newTagName)
+        HStack(spacing: 4) {
+            TextField("Add tag\u{2026}", text: $searchText)
                 .textFieldStyle(.plain)
-                .frame(width: 120)
-                .onSubmit {
-                    guard !newTagName.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-                    Task {
-                        do {
-                            let tag = try await appState.service.findOrCreateTag(name: newTagName)
-                            newTagName = ""
-                            onAdd(tag)
-                            await appState.refreshAll()
-                        } catch {
-                            appState.showError(error, context: "Could not add tag")
-                        }
-                    }
+                .font(.callout)
+                .frame(width: 100)
+                .focused($isInputFocused)
+                .onKeyPress(.escape) {
+                    searchText = ""
+                    return .handled
                 }
+                .onSubmit {
+                    let trimmed = searchText.trimmingCharacters(in: .whitespaces)
+                    guard !trimmed.isEmpty else { return }
+
+                    // Match an existing unassigned tag (case-insensitive)
+                    let assignedIds = Set(assignedTags.map(\.id))
+                    if let match = allTags.first(where: {
+                        !assignedIds.contains($0.id)
+                            && $0.name.caseInsensitiveCompare(trimmed) == .orderedSame
+                    }) {
+                        onAdd(match)
+                    } else {
+                        onCreate(trimmed)
+                    }
+
+                    searchText = ""
+                    isInputFocused = true
+                }
+
+            if !searchText.isEmpty {
+                Button {
+                    searchText = ""
+                    isInputFocused = true
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Clear tag input")
+            }
         }
+        .padding(.vertical, Constants.spacingTight)
     }
 }
 
