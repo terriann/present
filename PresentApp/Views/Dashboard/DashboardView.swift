@@ -253,6 +253,7 @@ struct DashboardView: View {
             GroupBox {
                 Text("Today at a Glance")
                     .font(.cardTitle)
+                    .accessibilityAddTraits(.isHeader)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, Constants.spacingCard)
                     .padding(.top, Constants.spacingCard)
@@ -329,6 +330,7 @@ struct DashboardView: View {
         VStack(alignment: .leading, spacing: 0) {
             Text("Repeat Recent Sessions")
                 .font(.title3.bold())
+                .accessibilityAddTraits(.isHeader)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, Constants.spacingCard)
                 .padding(.bottom, Constants.spacingCompact)

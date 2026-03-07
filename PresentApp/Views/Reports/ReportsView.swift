@@ -177,6 +177,7 @@ struct ReportsView: View {
 
             Text(periodHeaderText)
                 .font(.periodHeader)
+                .accessibilityAddTraits(.isHeader)
                 .frame(minWidth: 200)
 
             Button {
