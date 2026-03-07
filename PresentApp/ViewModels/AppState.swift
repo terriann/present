@@ -138,7 +138,7 @@ final class AppState {
         do {
             dbManager = try DatabaseManager(path: DatabaseManager.defaultDatabasePath)
         } catch {
-            fatalError("Failed to initialize database: \(error)")
+            Self.showDatabaseErrorAndTerminate(error)
         }
         service = PresentService(databasePool: dbManager.writer)
         zoom = ZoomManager(service: service)
@@ -471,6 +471,57 @@ final class AppState {
             NSApplication.shared.setActivationPolicy(.regular)
         } else {
             NSApplication.shared.setActivationPolicy(.accessory)
+        }
+    }
+
+    // MARK: - Database Recovery
+
+    /// Shows a modal alert describing the database error and offers to reset or quit.
+    /// This is called during init when DatabaseManager fails, before any UI is rendered.
+    private static func showDatabaseErrorAndTerminate(_ error: Error) -> Never {
+        let alert = NSAlert()
+        alert.messageText = "Present could not open its data"
+        alert.informativeText = """
+            The database failed to initialize. This may be caused by a corrupt file or a permissions issue.
+
+            You can reset the database to start fresh (all existing data will be lost), or quit and investigate manually.
+
+            Error: \(error.localizedDescription)
+            Location: \(DatabaseManager.defaultDatabasePath)
+            """
+        alert.alertStyle = .critical
+        alert.addButton(withTitle: "Reset and Relaunch")
+        alert.addButton(withTitle: "Reveal in Finder")
+        alert.addButton(withTitle: "Quit Present")
+
+        let response = alert.runModal()
+
+        switch response {
+        case .alertFirstButtonReturn:
+            // Reset: remove database files and relaunch
+            let path = DatabaseManager.defaultDatabasePath
+            let fm = FileManager.default
+            for suffix in ["", "-wal", "-shm"] {
+                try? fm.removeItem(atPath: path + suffix)
+            }
+            // Relaunch the app
+            let url = Bundle.main.bundleURL
+            let task = Process()
+            task.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+            task.arguments = [url.path]
+            try? task.run()
+            exit(0)
+
+        case .alertSecondButtonReturn:
+            // Reveal in Finder, then show the alert again
+            let dbURL = URL(fileURLWithPath: DatabaseManager.defaultDatabasePath).deletingLastPathComponent()
+            NSWorkspace.shared.open(dbURL)
+            // Re-show the alert so they can still choose reset or quit
+            Self.showDatabaseErrorAndTerminate(error)
+
+        default:
+            // Quit
+            exit(1)
         }
     }
 }
