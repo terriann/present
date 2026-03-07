@@ -47,24 +47,25 @@ struct SessionTypePickerSheet: View {
 
                 Button("Start") {
                     Task {
+                        guard let activityId = activity.id else { return }
                         switch selectedType {
                         case .rhythm:
                             let option = selectedRhythmOption ?? appState.rhythmDurationOptions.first
                             await appState.startSession(
-                                activityId: activity.id!,
+                                activityId: activityId,
                                 type: .rhythm,
                                 timerMinutes: option?.focusMinutes,
                                 breakMinutes: option?.breakMinutes
                             )
                         case .timebound:
                             await appState.startSession(
-                                activityId: activity.id!,
+                                activityId: activityId,
                                 type: .timebound,
                                 timerMinutes: timeboundMinutes
                             )
                         default:
                             await appState.startSession(
-                                activityId: activity.id!,
+                                activityId: activityId,
                                 type: selectedType
                             )
                         }
