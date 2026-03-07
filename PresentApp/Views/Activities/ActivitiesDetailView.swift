@@ -229,6 +229,7 @@ struct ActivitiesDetailView: View {
                 .fixedSize(horizontal: true, vertical: false)
             }
         }
+        .padding(.bottom, Constants.spacingCompact)
     }
 
     // MARK: - System Activity Info
