@@ -1017,7 +1017,7 @@ public final class PresentService: PresentAPI, Sendable {
         }
     }
 
-    public func archiveActivity(id: Int64) async throws -> ArchiveResult {
+    public func archiveActivity(id: Int64, force: Bool = false) async throws -> ArchiveResult {
         try await dbWriter.write { db in
             guard var activity = try Activity.fetchOne(db, key: id) else {
                 throw PresentError.activityNotFound(id)
@@ -1041,7 +1041,7 @@ public final class PresentService: PresentAPI, Sendable {
                 arguments: [id, SessionState.completed.rawValue]
             ) ?? 0
 
-            if totalSeconds < 600 { // < 10 minutes
+            if !force && totalSeconds < Constants.archiveDeleteThresholdSeconds {
                 return .promptDelete(totalSeconds: totalSeconds)
             }
 

@@ -22,7 +22,7 @@ public protocol PresentAPI: Sendable {
     // Activities
     func createActivity(_ input: CreateActivityInput) async throws -> Activity
     func updateActivity(id: Int64, _ input: UpdateActivityInput) async throws -> Activity
-    func archiveActivity(id: Int64) async throws -> ArchiveResult
+    func archiveActivity(id: Int64, force: Bool) async throws -> ArchiveResult
     func deleteActivity(id: Int64) async throws
     func unarchiveActivity(id: Int64) async throws -> Activity
     func listActivities(includeArchived: Bool, includeSystem: Bool) async throws -> [Activity]
@@ -90,6 +90,10 @@ public extension PresentAPI {
 
     func listSessions(from: Date, to: Date, type: SessionType? = nil, activityId: Int64? = nil, includeArchived: Bool = true) async throws -> [(Session, Activity)] {
         try await listSessions(from: from, to: to, type: type, activityId: activityId, includeArchived: includeArchived, query: nil)
+    }
+
+    func archiveActivity(id: Int64) async throws -> ArchiveResult {
+        try await archiveActivity(id: id, force: false)
     }
 
     func listActivities(includeArchived: Bool) async throws -> [Activity] {

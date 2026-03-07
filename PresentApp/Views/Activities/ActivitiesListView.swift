@@ -5,6 +5,7 @@ struct ActivitiesListView: View {
     @Environment(AppState.self) private var appState
     @Environment(ThemeManager.self) private var theme
     @State private var activities: [Activity] = []
+    @State private var activityTags: [Int64: [Tag]] = [:]
     @State private var showArchived = false
     @State private var selectedActivity: Activity?
     @State private var searchText = ""
@@ -67,14 +68,19 @@ struct ActivitiesListView: View {
                                     Button {
                                         selectedActivity = activity
                                     } label: {
-                                        ActivityRow(activity: activity)
+                                        ActivityRow(
+                                            activity: activity,
+                                            tags: activityTags[activity.id ?? 0] ?? [],
+                                            tagColorMap: tagColorMap
+                                        )
                                             .frame(maxWidth: .infinity, alignment: .leading)
                                             .contentShape(Rectangle())
                                     }
                                     .buttonStyle(.plain)
                                     .listRowBackground(
                                         RoundedRectangle(cornerRadius: 6)
-                                            .fill(selectedActivity == activity ? theme.accent.opacity(0.15) : Color.clear)
+                                            .fill(selectedActivity == activity ? theme.accent.opacity(0.2) : Color.clear)
+                                            .padding(.horizontal, Constants.spacingTight)
                                     )
                                 }
                             }
@@ -89,7 +95,8 @@ struct ActivitiesListView: View {
                     if let activity = selectedActivity {
                         ActivitiesDetailView(
                             activity: activity,
-                            startInEditMode: activity.id == newlyCreatedActivityId
+                            startInEditMode: activity.id == newlyCreatedActivityId,
+                            onDelete: { selectedActivity = nil }
                         )
                             .id(activity.id)
                             .environment(appState)
@@ -130,6 +137,10 @@ struct ActivitiesListView: View {
             activities = try await appState.service.listActivities(
                 includeArchived: true, includeSystem: true
             )
+            let ids = activities.compactMap(\.id)
+            if !ids.isEmpty {
+                activityTags = try await appState.service.tagsForActivities(activityIds: ids)
+            }
         } catch {
             // Fail silently — list stays as-is
         }
@@ -166,6 +177,17 @@ struct ActivitiesListView: View {
         }
     }
 
+    // MARK: - Tag Colors
+
+    private var tagColorMap: [String: Color] {
+        let palette = ThemeManager.chartColors(for: theme.activePalette)
+        let assignedNames = Set(activityTags.values.flatMap { $0 }.map(\.name))
+        let sortedNames = assignedNames.sorted()
+        return Dictionary(uniqueKeysWithValues: sortedNames.enumerated().map { index, name in
+            (name, palette[index % palette.count])
+        })
+    }
+
     // MARK: - Filtering
 
     private var displayedActivities: [Activity] {
@@ -182,53 +204,78 @@ struct ActivitiesListView: View {
 
 struct ActivityRow: View {
     let activity: Activity
+    let tags: [Tag]
+    let tagColorMap: [String: Color]
     @Environment(ThemeManager.self) private var theme
 
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack {
-                    if activity.isSystem {
-                        Image(systemName: "cup.and.saucer")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    Text(activity.title)
-                        .font(.body.bold())
-
-                    if activity.isSystem {
-                        Text("System")
-                            .font(.caption2)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(theme.accent.opacity(0.2), in: Capsule())
-                    }
-
-                    if activity.isArchived {
-                        Text("Archived")
-                            .font(.caption2)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(.secondary.opacity(0.2), in: Capsule())
-                    }
-                }
-
-                if let externalId = activity.externalId, !externalId.isEmpty {
-                    Text(externalId)
+        VStack(alignment: .leading, spacing: Constants.spacingTight) {
+            // MARK: - Title row
+            HStack {
+                if activity.isSystem {
+                    Image(systemName: "cup.and.saucer")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+
+                Text(activity.title)
+                    .font(.body.bold())
+
+                if activity.isSystem {
+                    Text("System")
+                        .font(.caption2)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(theme.accent.opacity(0.2), in: Capsule())
+                }
+
+                if activity.isArchived {
+                    Text("Archived")
+                        .font(.caption2)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(.secondary.opacity(0.2), in: Capsule())
+                }
             }
 
-            Spacer()
+            // MARK: - Subtitle row (notes indicator, external ID, tags)
+            if hasSubtitle {
+                HStack(spacing: Constants.spacingTight) {
+                    if activity.notes.map({ !$0.isEmpty }) == true {
+                        Image(systemName: "doc.text")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .accessibilityLabel("Has notes")
+                    }
 
-            if !activity.isSystem {
-                Text(TimeFormatting.formatDate(activity.updatedAt))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    if let externalId = activity.externalId, !externalId.isEmpty {
+                        Text(externalId)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    ForEach(tags) { tag in
+                        let color = tagColorMap[tag.name] ?? .secondary
+                        Text(tag.name)
+                            .font(.caption2)
+                            .foregroundStyle(color)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 1)
+                            .background(color.opacity(0.15), in: Capsule())
+                    }
+                }
             }
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, Constants.spacingTight)
+    }
+
+    // MARK: - Helpers
+
+    private var hasSubtitle: Bool {
+        !tags.isEmpty
+            || activity.externalId.map({ !$0.isEmpty }) == true
+            || activity.notes.map({ !$0.isEmpty }) == true
     }
 }

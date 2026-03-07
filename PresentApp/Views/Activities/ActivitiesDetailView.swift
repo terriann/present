@@ -16,12 +16,14 @@ struct ActivitiesDetailView: View {
     @State private var titleText: String
     @FocusState private var isTitleFocused: Bool
     var startInEditMode: Bool = false
+    var onDelete: (() -> Void)?
 
-    init(activity: Activity, startInEditMode: Bool = false) {
+    init(activity: Activity, startInEditMode: Bool = false, onDelete: (() -> Void)? = nil) {
         _activity = State(initialValue: activity)
         _notes = State(initialValue: activity.notes ?? "")
         _titleText = State(initialValue: activity.title)
         self.startInEditMode = startInEditMode
+        self.onDelete = onDelete
     }
 
     var body: some View {
@@ -48,7 +50,7 @@ struct ActivitiesDetailView: View {
                 Task {
                     guard let activityId = activity.id else { return }
                     do {
-                        _ = try await appState.service.archiveActivity(id: activityId)
+                        _ = try await appState.service.archiveActivity(id: activityId, force: true)
                         await reload()
                     } catch {
                         appState.showError(error, context: "Could not archive activity")
@@ -60,6 +62,7 @@ struct ActivitiesDetailView: View {
                     guard let activityId = activity.id else { return }
                     do {
                         try await appState.service.deleteActivity(id: activityId)
+                        onDelete?()
                         await appState.refreshAll()
                     } catch {
                         appState.showError(error, context: "Could not delete activity")
@@ -77,6 +80,7 @@ struct ActivitiesDetailView: View {
                     guard let activityId = activity.id else { return }
                     do {
                         try await appState.service.deleteActivity(id: activityId)
+                        onDelete?()
                         await appState.refreshAll()
                     } catch {
                         appState.showError(error, context: "Could not delete activity")
@@ -363,6 +367,7 @@ struct ActivitiesDetailView: View {
                             Label("Unarchive", systemImage: "arrow.uturn.backward")
                         }
                         .buttonStyle(.bordered)
+                        .tint(.secondary)
                         .accessibilityLabel("Unarchive activity")
 
                         Button(role: .destructive) {
@@ -371,6 +376,7 @@ struct ActivitiesDetailView: View {
                             Label("Delete", systemImage: "trash")
                         }
                         .buttonStyle(.bordered)
+                        .tint(theme.alert)
                         .accessibilityLabel("Delete activity")
                     }
                 }

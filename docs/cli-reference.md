@@ -136,6 +136,9 @@ Archives an activity so it no longer appears in the active list. Archived activi
 
 **Flags**
 
+`[--force]`
+: Archive even if tracked time is below the deletion threshold.
+
 `[--version]`
 : Show the version.
 
@@ -147,6 +150,9 @@ $ present-cli activity archive 3
 
 # Archive and check the result
 $ present-cli activity archive 3 --field result
+
+# Archive regardless of tracked time
+$ present-cli activity archive 3 --force
 ```
 
 **Global Options**
