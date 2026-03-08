@@ -102,7 +102,9 @@ struct ReportDatePickerPopover: View {
         let calendar = Calendar.current
         do {
             if selectedPeriod == .monthly {
-                // Load a broad range for monthly mode — covers most user history
+                // Load a broad range for monthly mode — covers most user history.
+                // Note: this branch only runs on initial appear (monthly mode shows a month
+                // grid, not ReportCalendarGrid, so onMonthChanged never fires for it).
                 let initialYear = calendar.component(.year, from: referenceDate)
                 var startComponents = DateComponents()
                 startComponents.year = initialYear - 5
