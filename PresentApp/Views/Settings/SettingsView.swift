@@ -18,6 +18,7 @@ struct SettingsView: View {
                         VStack(spacing: 4) {
                             Image(systemName: tab.icon)
                                 .font(.title2)
+                                .accessibilityHidden(true)
                             Text(tab.label)
                                 .font(.caption)
                         }
