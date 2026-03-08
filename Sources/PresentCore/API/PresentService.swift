@@ -816,9 +816,15 @@ public final class PresentService: PresentAPI, Sendable {
             let calendar = Calendar.current
             var dates = Set<Date>()
             for row in rows {
-                if let dateString: String = row["sessionDate"],
-                   let date = CachedFormatters.dateOnly.date(from: dateString) {
-                    dates.insert(calendar.startOfDay(for: date))
+                if let dateString: String = row["sessionDate"] {
+                    let parts = dateString.split(separator: "-")
+                    if parts.count == 3,
+                       let year = Int(parts[0]),
+                       let month = Int(parts[1]),
+                       let day = Int(parts[2]),
+                       let date = calendar.date(from: DateComponents(year: year, month: month, day: day)) {
+                        dates.insert(calendar.startOfDay(for: date))
+                    }
                 }
             }
             return dates
