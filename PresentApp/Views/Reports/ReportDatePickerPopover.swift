@@ -113,6 +113,7 @@ struct ReportDatePickerPopover: View {
                 monthButton(month: month)
             }
         }
+        .id(pickerYear) // Force clean rebuild on year change to avoid AttributeGraph cycles
     }
 
     private let monthCellHeight: CGFloat = 32
@@ -146,11 +147,10 @@ struct ReportDatePickerPopover: View {
                     .frame(width: 5, height: 5)
                     .opacity(hasData ? 1 : 0)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .foregroundStyle(enabled ? (isSelected ? AnyShapeStyle(theme.accent) : AnyShapeStyle(.primary)) : AnyShapeStyle(.tertiary))
+        .foregroundColor(enabled ? (isSelected ? theme.accent : .primary) : .secondary.opacity(0.5))
         .disabled(!enabled)
     }
 

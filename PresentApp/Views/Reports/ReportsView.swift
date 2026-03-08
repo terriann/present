@@ -167,14 +167,17 @@ struct ReportsView: View {
     // MARK: - Period Navigation
 
     private var periodNavigationBar: some View {
-        HStack {
+        HStack(spacing: Constants.spacingCompact) {
             Button {
                 navigatePeriod(by: -1)
             } label: {
                 Image(systemName: "chevron.left")
+                    .imageScale(.small)
+                    .foregroundStyle(.secondary)
             }
             .disabled(!canNavigateBack)
             .buttonStyle(.borderless)
+            .accessibilityLabel("Previous \(selectedPeriod.rawValue.lowercased()) period")
 
             Button {
                 showDatePicker.toggle()
@@ -191,7 +194,6 @@ struct ReportsView: View {
             .buttonStyle(.plain)
             .accessibilityLabel("\(periodHeaderText). Open date picker")
             .accessibilityAddTraits(.isHeader)
-            .frame(minWidth: 200)
             .popover(isPresented: $showDatePicker) {
                 ReportDatePickerPopover(
                     selectedDate: $selectedDate,
@@ -207,9 +209,12 @@ struct ReportsView: View {
                 navigatePeriod(by: 1)
             } label: {
                 Image(systemName: "chevron.right")
+                    .imageScale(.small)
+                    .foregroundStyle(.secondary)
             }
             .disabled(!canNavigateForward)
             .buttonStyle(.borderless)
+            .accessibilityLabel("Next \(selectedPeriod.rawValue.lowercased()) period")
 
             Spacer()
         }

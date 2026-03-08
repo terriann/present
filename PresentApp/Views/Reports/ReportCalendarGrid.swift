@@ -132,6 +132,7 @@ struct ReportCalendarGrid: View {
                 weekRow(dates: row, rowStartIndex: rowIndex * 7)
             }
         }
+        .id(displayedMonth) // Force clean rebuild on month change to avoid AttributeGraph cycles
     }
 
     private func weekRow(dates: [Date], rowStartIndex: Int) -> some View {
@@ -191,7 +192,7 @@ struct ReportCalendarGrid: View {
                     .font(.callout)
                     .monospacedDigit()
                     .frame(width: cellSize, height: cellSize)
-                    .foregroundStyle(foregroundStyle(for: state, isWeekSelected: isWeekSelected))
+                    .foregroundColor(foregroundColor(for: state, isWeekSelected: isWeekSelected))
                     .background(dayBackground(state: state))
 
                 // Data indicator dot — sits below the circle, like iOS Calendar.
@@ -273,20 +274,20 @@ struct ReportCalendarGrid: View {
         return .adjacentMonth
     }
 
-    // MARK: - Foreground Styles
+    // MARK: - Foreground Colors
 
-    private func foregroundStyle(for state: CellState, isWeekSelected: Bool) -> some ShapeStyle {
+    private func foregroundColor(for state: CellState, isWeekSelected: Bool) -> Color {
         switch state {
         case .selected:
-            return AnyShapeStyle(theme.constantWhite)
+            return theme.constantWhite
         case .today:
-            return AnyShapeStyle(theme.accent)
+            return theme.accent
         case .currentMonth:
-            return isWeekSelected ? AnyShapeStyle(theme.accent) : AnyShapeStyle(.primary)
+            return isWeekSelected ? theme.accent : .primary
         case .adjacentMonth:
-            return AnyShapeStyle(.tertiary)
+            return .secondary.opacity(0.5)
         case .disabled:
-            return AnyShapeStyle(.quaternary)
+            return .secondary.opacity(0.25)
         }
     }
 
