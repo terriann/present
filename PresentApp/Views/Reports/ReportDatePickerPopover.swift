@@ -58,7 +58,10 @@ struct ReportDatePickerPopover: View {
             weekStartDay: weekStartDay,
             earliestDate: earliestDate,
             datesWithData: datesWithData,
-            onDateSelected: { _ in dismiss() }
+            onDateSelected: { _ in dismiss() },
+            onMonthChanged: { month in
+                Task { await loadDatesWithData(for: month) }
+            }
         )
     }
 
@@ -85,12 +88,14 @@ struct ReportDatePickerPopover: View {
     // MARK: - Data Loading
 
     /// Load dates that have session data. Scoped to the visible range for the current period mode.
-    private func loadDatesWithData() async {
+    /// - Parameter targetDate: The reference date for scoping the query (defaults to `selectedDate`).
+    private func loadDatesWithData(for targetDate: Date? = nil) async {
+        let referenceDate = targetDate ?? selectedDate
         let calendar = Calendar.current
         do {
             if selectedPeriod == .monthly {
                 // Load a broad range for monthly mode — covers most user history
-                let initialYear = calendar.component(.year, from: selectedDate)
+                let initialYear = calendar.component(.year, from: referenceDate)
                 var startComponents = DateComponents()
                 startComponents.year = initialYear - 5
                 startComponents.month = 1
@@ -111,9 +116,9 @@ struct ReportDatePickerPopover: View {
                 })
                 monthsWithData = months
             } else {
-                // Load ~6 weeks around the selected date to cover the visible grid
-                guard let rangeStart = calendar.date(byAdding: .day, value: -7, to: calendar.dateInterval(of: .month, for: selectedDate)?.start ?? selectedDate),
-                      let rangeEnd = calendar.date(byAdding: .day, value: 7, to: calendar.dateInterval(of: .month, for: selectedDate)?.end ?? selectedDate) else { return }
+                // Load ~6 weeks around the reference date to cover the visible grid
+                guard let rangeStart = calendar.date(byAdding: .day, value: -7, to: calendar.dateInterval(of: .month, for: referenceDate)?.start ?? referenceDate),
+                      let rangeEnd = calendar.date(byAdding: .day, value: 7, to: calendar.dateInterval(of: .month, for: referenceDate)?.end ?? referenceDate) else { return }
 
                 let sessions = try await appState.listSessions(from: rangeStart, to: rangeEnd, includeArchived: true)
                 let dates = Set(sessions.map { calendar.startOfDay(for: $0.0.startedAt) })

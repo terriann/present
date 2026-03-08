@@ -26,6 +26,8 @@ struct ReportCalendarGrid: View {
     /// Dates (start-of-day) that have recorded session data.
     let datesWithData: Set<Date>
     let onDateSelected: (Date) -> Void
+    /// Called when the displayed month changes (e.g., via navigation chevrons).
+    var onMonthChanged: ((Date) -> Void)?
 
     @State private var displayedMonth: Date = Date()
 
@@ -40,6 +42,9 @@ struct ReportCalendarGrid: View {
         }
         .onAppear {
             displayedMonth = calendar.dateInterval(of: .month, for: selectedDate)?.start ?? selectedDate
+        }
+        .onChange(of: displayedMonth) { _, newMonth in
+            onMonthChanged?(newMonth)
         }
     }
 
