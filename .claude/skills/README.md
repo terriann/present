@@ -64,6 +64,46 @@ reviewed during relevant phases; instructions shape execution throughout.
 > Every phase pauses for review before committing. The final commit
 > uses a GitHub closing keyword so the issue auto-closes on merge.
 
+### `/sprint` — Batch Issue Workflow
+
+Works through a filtered set of GitHub issues from a milestone, one at
+a time. Pre-researches upcoming issues with background subagents so
+work is queued up. Each issue follows a plan/review/implement/test/commit
+cycle, pausing for user review after every issue.
+
+**What it does:**
+
+1. Detects the current milestone from the branch name (or asks)
+2. Fetches qualifying issues based on filters (priority, labels, count, type)
+3. Delegates to the project-manager agent to order by priority and dependency
+4. Presents the ordered queue for user approval
+5. Pre-researches the next issue in the background while
+   working on the current one
+6. For each issue: plans, implements, tests, pauses for
+   review, commits (delegates to commit-pr-writer)
+7. Tracks progress with a running checklist at every transition
+
+**Usage:**
+
+```text
+/sprint
+/sprint P2
+/sprint v0.2.0 bugs
+/sprint P1 up to 5
+/sprint small tasks
+```
+
+The argument is optional. Filters can include priority level (P0-P3,
+or `P1+` for "P1 and above"), milestone, labels, type shorthands
+(`bugs`, `features`, `small tasks`), and count limits. Defaults to all
+open issues in the current milestone.
+
+> [!NOTE]
+> Maximum 12 issues per sprint. The user controls the pace throughout
+> and can skip, reorder, pause, or stop at any time. Each issue is
+> committed independently. The sprint ends with a summary and a nudge
+> toward `/ship`.
+
 ### `/ship` — Push, PR, and Benchmark
 
 Pushes the current feature branch, creates a pull request that
@@ -76,8 +116,10 @@ the PR's base branch, and posts the results as a PR comment.
 2. Gathers commit history, diff, and referenced issues
 3. Delegates PR description to the commit-pr-writer agent with project context
 4. Creates the PR via `gh pr create`
-5. Runs `Scripts/benchmark.sh --baseline <base-branch>` and posts results as a PR comment
-6. Flags regressions via the code-reviewer agent for assessment
+5. Runs `Scripts/benchmark.sh --baseline <base-branch>` and
+   posts results as a PR comment
+6. Flags regressions via the code-reviewer agent for
+   assessment
 
 **Usage:**
 
@@ -88,7 +130,8 @@ the PR's base branch, and posts the results as a PR comment.
 ```
 
 The argument is optional. Use it to override the base branch or
-provide extra context for the PR description. Defaults to `main`.
+provide extra context for the PR description. Defaults to
+`main`.
 
 > [!NOTE]
 > Benchmarks always compare against the PR's base branch.
@@ -104,9 +147,13 @@ Each skill is a directory under `.claude/skills/` containing a
 
 ```text
 .claude/skills/
+  fix/
+    SKILL.md
   issue/
     SKILL.md
   ship/
+    SKILL.md
+  sprint/
     SKILL.md
   your-skill/
     SKILL.md
@@ -133,7 +180,7 @@ The user's input is available as $ARGUMENTS.
 **Frontmatter fields:**
 
 | Field | Required | Description |
-|---|---|---|
+| --- | --- | --- |
 | `name` | Yes | Slash command name (e.g., `issue`) |
 | `description` | Yes | One-line summary of what the skill does |
 | `argument-hint` | No | Placeholder shown after the command |
