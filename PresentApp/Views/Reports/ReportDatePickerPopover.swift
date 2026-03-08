@@ -15,7 +15,6 @@ struct ReportDatePickerPopover: View {
     let selectedPeriod: ReportPeriod
     let weekStartDay: Int
     let earliestDate: Date?
-    let isShowingToday: Bool
     let dismiss: () -> Void
 
     // Dates with recorded session data (for calendar dot indicators)
@@ -81,7 +80,6 @@ struct ReportDatePickerPopover: View {
         .buttonStyle(.borderedProminent)
         .tint(theme.accent)
         .controlSize(.small)
-        .disabled(isShowingToday)
     }
 
     // MARK: - Data Loading

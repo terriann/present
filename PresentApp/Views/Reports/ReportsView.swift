@@ -200,7 +200,6 @@ struct ReportsView: View {
                     selectedPeriod: selectedPeriod,
                     weekStartDay: weekStartDay,
                     earliestDate: earliestDate,
-                    isShowingToday: isShowingToday,
                     dismiss: { showDatePicker = false }
                 )
             }
