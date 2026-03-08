@@ -775,12 +775,12 @@ public final class PresentService: PresentAPI, Sendable {
                 : Session.activity.filter(Activity.Columns.isArchived == false)
 
             // Overlap: session started before range end AND ended after range start (or still running)
-            let completedStates = [SessionState.completed.rawValue, SessionState.cancelled.rawValue]
+            let closedRaw = SessionState.closedStateRawValues
             var request = Session
                 .including(required: activityAssoc)
                 .filter(Session.Columns.startedAt < endDate)
                 .filter(Session.Columns.endedAt > startDate || Session.Columns.endedAt == nil)
-                .filter(completedStates.contains(Session.Columns.state))
+                .filter(closedRaw.contains(Session.Columns.state))
                 .order(Session.Columns.startedAt.desc)
 
             if let type {
@@ -809,8 +809,8 @@ public final class PresentService: PresentAPI, Sendable {
                   AND (endedAt > ? OR endedAt IS NULL)
                   AND state IN (?, ?)
                 """
-            let completedStates = [SessionState.completed.rawValue, SessionState.cancelled.rawValue]
-            let rows = try Row.fetchAll(db, sql: sql, arguments: [endDate, startDate, completedStates[0], completedStates[1]])
+            let closedRaw = SessionState.closedStateRawValues
+            let rows = try Row.fetchAll(db, sql: sql, arguments: [endDate, startDate, closedRaw[0], closedRaw[1]])
 
             let calendar = Calendar.current
             var dates = Set<Date>()
@@ -839,8 +839,8 @@ public final class PresentService: PresentAPI, Sendable {
                   AND (endedAt > ? OR endedAt IS NULL)
                   AND state IN (?, ?)
                 """
-            let completedStates = [SessionState.completed.rawValue, SessionState.cancelled.rawValue]
-            let rows = try Row.fetchAll(db, sql: sql, arguments: [endDate, startDate, completedStates[0], completedStates[1]])
+            let closedRaw = SessionState.closedStateRawValues
+            let rows = try Row.fetchAll(db, sql: sql, arguments: [endDate, startDate, closedRaw[0], closedRaw[1]])
 
             var months = Set<String>()
             for row in rows {
