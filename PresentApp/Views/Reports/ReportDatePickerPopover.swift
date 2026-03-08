@@ -49,6 +49,10 @@ struct ReportDatePickerPopover: View {
         .task {
             await loadDatesWithData()
         }
+        .onDisappear {
+            loadingTask?.cancel()
+            loadingTask = nil
+        }
     }
 
     // MARK: - Calendar Picker (Daily/Weekly)
