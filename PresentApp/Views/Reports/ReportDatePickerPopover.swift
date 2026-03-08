@@ -22,6 +22,8 @@ struct ReportDatePickerPopover: View {
     @State private var pickerYear: Int = Calendar.current.component(.year, from: Date())
     // Dates with recorded session data (for calendar dot indicators)
     @State private var datesWithData: Set<Date> = []
+    // Months with recorded session data (year-month pairs as "YYYY-MM")
+    @State private var monthsWithData: Set<String> = []
 
     var body: some View {
         VStack(spacing: Constants.spacingCard) {
@@ -113,31 +115,53 @@ struct ReportDatePickerPopover: View {
         }
     }
 
+    private let monthCellHeight: CGFloat = 32
+
     @ViewBuilder
     private func monthButton(month: Int) -> some View {
         let isSelected = isSelectedMonth(month)
         let isCurrent = isCurrentMonth(month)
         let enabled = isMonthEnabled(month)
+        let hasData = monthHasData(month)
 
         Button {
             selectMonth(month)
         } label: {
-            Text(monthAbbreviation(month))
-                .font(.callout)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, Constants.spacingCompact)
-                .background(
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(isSelected ? theme.accent.opacity(0.15) : Color.clear)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6)
-                        .strokeBorder(isCurrent ? theme.accent : Color.clear, lineWidth: 1)
-                )
+            VStack(spacing: 4) {
+                Text(monthAbbreviation(month))
+                    .font(.callout)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: monthCellHeight)
+                    .background(
+                        Capsule()
+                            .fill(isSelected ? theme.accent.opacity(0.12) : Color.clear)
+                    )
+                    .overlay(
+                        Capsule()
+                            .strokeBorder(isCurrent ? theme.accent : Color.clear, lineWidth: 1.5)
+                    )
+
+                Circle()
+                    .fill(monthDotColor(isSelected: isSelected, enabled: enabled))
+                    .frame(width: 5, height: 5)
+                    .opacity(hasData ? 1 : 0)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .foregroundStyle(enabled ? (isSelected ? AnyShapeStyle(theme.accent) : AnyShapeStyle(.primary)) : AnyShapeStyle(.tertiary))
         .disabled(!enabled)
+    }
+
+    private func monthHasData(_ month: Int) -> Bool {
+        let key = String(format: "%04d-%02d", pickerYear, month)
+        return monthsWithData.contains(key)
+    }
+
+    private func monthDotColor(isSelected: Bool, enabled: Bool) -> Color {
+        if isSelected { return theme.accent }
+        return enabled ? theme.accent.opacity(0.5) : theme.accent.opacity(0.15)
     }
 
     private func isSelectedMonth(_ month: Int) -> Bool {
@@ -211,19 +235,40 @@ struct ReportDatePickerPopover: View {
 
     // MARK: - Data Loading
 
-    /// Load dates that have session data. Only fetches the visible month range
-    /// (plus adjacent-month padding) to stay fast regardless of total history.
+    /// Load dates that have session data. Scoped to the visible range for the current period mode.
     private func loadDatesWithData() async {
         let calendar = Calendar.current
-        // Load ~6 weeks around the selected date to cover the visible grid
-        guard let rangeStart = calendar.date(byAdding: .day, value: -7, to: calendar.dateInterval(of: .month, for: selectedDate)?.start ?? selectedDate),
-              let rangeEnd = calendar.date(byAdding: .day, value: 7, to: calendar.dateInterval(of: .month, for: selectedDate)?.end ?? selectedDate) else {
-            return
-        }
         do {
-            let sessions = try await appState.listSessions(from: rangeStart, to: rangeEnd, includeArchived: true)
-            let dates = Set(sessions.map { calendar.startOfDay(for: $0.0.startedAt) })
-            datesWithData = dates
+            if selectedPeriod == .monthly {
+                // Load the full displayed year for monthly mode
+                var startComponents = DateComponents()
+                startComponents.year = pickerYear
+                startComponents.month = 1
+                startComponents.day = 1
+                var endComponents = DateComponents()
+                endComponents.year = pickerYear + 1
+                endComponents.month = 1
+                endComponents.day = 1
+                guard let rangeStart = calendar.date(from: startComponents),
+                      let rangeEnd = calendar.date(from: endComponents) else { return }
+
+                let sessions = try await appState.listSessions(from: rangeStart, to: rangeEnd, includeArchived: true)
+                let months = Set(sessions.map { session in
+                    let date = session.0.startedAt
+                    let year = calendar.component(.year, from: date)
+                    let month = calendar.component(.month, from: date)
+                    return String(format: "%04d-%02d", year, month)
+                })
+                monthsWithData = months
+            } else {
+                // Load ~6 weeks around the selected date to cover the visible grid
+                guard let rangeStart = calendar.date(byAdding: .day, value: -7, to: calendar.dateInterval(of: .month, for: selectedDate)?.start ?? selectedDate),
+                      let rangeEnd = calendar.date(byAdding: .day, value: 7, to: calendar.dateInterval(of: .month, for: selectedDate)?.end ?? selectedDate) else { return }
+
+                let sessions = try await appState.listSessions(from: rangeStart, to: rangeEnd, includeArchived: true)
+                let dates = Set(sessions.map { calendar.startOfDay(for: $0.0.startedAt) })
+                datesWithData = dates
+            }
         } catch {
             // Non-critical — dots just won't show
         }
