@@ -110,6 +110,7 @@ Explore all `Sources/` and `PresentApp/`. Check:
 - TOCTOU patterns in IPC or file operations
 - `TODO`, `FIXME`, `HACK` comments that indicate unfinished work
 - Orphaned or dead code: unused functions, methods, types, constants, commented-out blocks, unused imports
+- Deprecated APIs: usage of SwiftUI, Foundation, or AppKit APIs deprecated in the current Swift/SDK version (e.g., `.foregroundColor` → `.foregroundStyle`, `.cornerRadius` → `.clipShape(.rect(cornerRadius:))`) — flag for migration
 - Performance: expensive objects (e.g., `DateFormatter`) allocated in computed properties or view bodies instead of cached as `static let`
 - Performance: eager `VStack`/`ForEach` where `LazyVStack` would be appropriate for large lists
 - Performance: unconditional polling loops without visibility-based throttling
@@ -143,6 +144,7 @@ Collect results from all 5 agents and produce a deduplicated report. Categorize 
 | **Reliability** | `quality/reliability` | Error handling, data integrity, concurrency issues |
 | **Design Principles & Architecture** | `quality/refactor` | SOLID violations (SRP, OCP, LSP, ISP, DIP), SoC boundary violations, DRY violations, API layer bypasses, orphaned/dead code |
 | **Test Coverage Gaps** | `quality/testing` | Untested code, missing edge cases, framework misuse |
+| **Deprecated APIs** | `quality/deprecation` | Usage of APIs deprecated in current Swift/SDK version that should be migrated |
 | **Performance** | `quality/performance` | Allocation churn, excessive polling, expensive object creation, lazy loading gaps |
 | **Accessibility** | `design/accessibility` | Missing VoiceOver labels, Reduce Motion support, Dynamic Type issues |
 
@@ -248,6 +250,7 @@ Common single-dimension scans:
 | Magic numbers | Grep for numeric literals in logic (excluding constants definitions and tests) |
 | TODO/FIXME | Grep for `TODO`, `FIXME`, `HACK`, `XXX` comments |
 | Raw animations | Grep for `withAnimation(` and `.animation(` (should use adaptive wrappers) |
+| Deprecated APIs | Grep for deprecated modifiers (`.foregroundColor(`, `.cornerRadius(`, `.accentColor(`) and deprecated Foundation patterns; cross-reference with current SDK deprecation notices |
 | Direct DB access | Grep for `DatabaseManager` or `dbQueue` usage outside of `PresentService` |
 | Dead/orphaned code | Grep for function/method definitions, then verify callers exist; look for commented-out blocks, unused imports, vestigial constants |
 | SRP violations | Read types with multiple responsibilities — look for classes/structs doing persistence + logic + formatting |
@@ -277,6 +280,11 @@ This is the consolidated checklist derived from `.claude/CLAUDE.md`. Use it as a
 - [ ] No force unwraps (`!`) — use `guard let`, `if let`, `??`, `compactMap`
 - [ ] No `try!` — use `do/catch` or `try?`
 - [ ] No `.first!`, `.last!` — use safe subscripting
+
+### Deprecated APIs
+- [ ] No deprecated SwiftUI modifiers (e.g., `.foregroundColor` → `.foregroundStyle`, `.cornerRadius` → `.clipShape(.rect(cornerRadius:))`)
+- [ ] No deprecated Foundation or AppKit APIs for the project's deployment target
+- [ ] Flag any compiler deprecation warnings as findings — deprecated APIs still compile but should be updated proactively
 
 ### Dead Code
 - [ ] No orphaned functions, methods, or types that are never called or referenced
