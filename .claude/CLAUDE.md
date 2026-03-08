@@ -324,3 +324,21 @@ This applies when the user:
 - Wants a pre-release quality check
 
 The code-reviewer agent explores the codebase, produces categorized findings, and delegates issue filing to the project manager agent. It does not implement fixes.
+
+### Audit Traceability
+
+**Any overall audit** (code quality, performance, design, accessibility, architecture, or other) must follow this traceability protocol:
+
+1. **File an audit tracking issue first** — before findings are reported, the responsible agent (or project manager agent on its behalf) creates a GitHub issue that captures:
+   - The audit type and scope (e.g., "Performance audit — Reports view")
+   - The goals and questions discussed before the audit began
+   - Which agent performed the audit (e.g., `code-reviewer`, `design-reviewer`, `general-purpose`)
+   - A placeholder section for findings and linked issues
+
+2. **Update the audit issue as findings are filed** — each time a finding is turned into a separate GitHub issue, the audit tracking issue is updated to:
+   - Add a reference to the new issue (e.g., `- #123 — Description of finding`)
+   - Group findings by theme or severity if helpful
+
+3. **Close the audit issue when all findings are triaged** — once all findings have been filed as discrete issues (or explicitly dismissed), the audit issue is closed with a summary comment.
+
+This ensures every issue filed from an audit links back to its origin, the goals that motivated it, and the full set of findings from that session.
