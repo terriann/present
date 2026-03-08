@@ -214,7 +214,6 @@ private struct ReportMonthPicker: View {
             ForEach(1...12, id: \.self) { month in
                 MonthCell(
                     month: month,
-                    pickerYear: pickerYear,
                     isSelected: isSelectedMonth(month),
                     isCurrent: isCurrentMonth(month),
                     enabled: isMonthEnabled(month),
@@ -282,7 +281,6 @@ private struct MonthCell: View {
     @Environment(ThemeManager.self) private var theme
 
     let month: Int
-    let pickerYear: Int
     let isSelected: Bool
     let isCurrent: Bool
     let enabled: Bool
@@ -292,7 +290,7 @@ private struct MonthCell: View {
 
     var body: some View {
         Button { onSelect() } label: {
-            VStack(spacing: 4) {
+            VStack(spacing: Constants.spacingTight) {
                 Text(Calendar.current.shortMonthSymbols[month - 1])
                     .font(.callout)
                     .frame(maxWidth: .infinity)
