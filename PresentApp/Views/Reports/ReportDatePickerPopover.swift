@@ -172,6 +172,8 @@ private struct ReportMonthPicker: View {
             }
             .buttonStyle(.borderless)
             .disabled(!canGoBack)
+            .accessibilityLabel("Previous year")
+            .help("Previous year")
 
             Spacer()
 
@@ -188,6 +190,8 @@ private struct ReportMonthPicker: View {
             }
             .buttonStyle(.borderless)
             .disabled(!canGoForward)
+            .accessibilityLabel("Next year")
+            .help("Next year")
         }
     }
 
