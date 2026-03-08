@@ -114,6 +114,14 @@ Explore all `Sources/` and `PresentApp/`. Check:
 - Performance: eager `VStack`/`ForEach` where `LazyVStack` would be appropriate for large lists
 - Performance: unconditional polling loops without visibility-based throttling
 - Performance: high-frequency timers or animation loops beyond what the UI requires
+- Database scalability: tables with frequent filtering/joining but no secondary indexes — check `CREATE INDEX` coverage for columns used in `WHERE`, `JOIN`, `ORDER BY`, `GROUP BY`
+- Database scalability: N+1 query patterns — methods that loop calling another query per row/day/week instead of batching into a single aggregating query
+- Database scalability: in-memory pagination — fetching all matching rows then slicing in code instead of applying `LIMIT`/`OFFSET` in SQL
+- Database scalability: over-hydration — loading full objects with joins when only aggregates or presence checks are needed (e.g., `SELECT DISTINCT date(...)` vs full row fetch)
+- Database scalability: unbounded queries — list/fetch methods with no default date range or row limit, allowing scans of the entire table history
+- Database scalability: FTS trigger overhead — content-sync triggers firing on every row write when only specific columns (e.g., `note`, `ticketId`) affect the search index
+- Database scalability: stale recomputation — recalculating derived data for completed/immutable periods on every refresh instead of caching and only recomputing the current period
+- Database scalability: no streaming for large exports — loading all matching rows into memory instead of streaming via cursor for unbounded result sets
 
 **Agent 5 — Test Coverage:**
 Explore `Tests/`. Check:
@@ -335,6 +343,16 @@ This is the consolidated checklist derived from `.claude/CLAUDE.md`. Use it as a
 - [ ] `.isHeader` traits on section headers
 - [ ] Reduce Motion respected (adaptive animation wrappers)
 - [ ] Dynamic Type supported
+
+### Database & Query Scalability
+- [ ] Frequently filtered/joined columns have indexes (`WHERE`, `JOIN`, `ORDER BY`, `GROUP BY`)
+- [ ] No N+1 patterns — batch or aggregate in a single query instead of looping
+- [ ] Pagination applied in SQL (`LIMIT`/`OFFSET`), not in memory after fetching all rows
+- [ ] Queries return only the data needed — no full object hydration for aggregates or presence checks
+- [ ] List/fetch methods have sensible default bounds (date range or row limit)
+- [ ] FTS triggers scoped to relevant column changes, not every row write
+- [ ] Derived data for completed periods cached, not recomputed on every refresh
+- [ ] Large exports stream via cursor instead of loading all rows into memory
 
 ---
 
