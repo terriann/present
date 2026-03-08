@@ -214,6 +214,10 @@ public final class DatabaseManager: Sendable {
                 DELETE FROM session_segment
                 WHERE sessionId NOT IN (SELECT id FROM session)
                 """)
+            let orphansDeleted = db.changesCount
+            if orphansDeleted > 0 {
+                print("[v10 migration] Purged \(orphansDeleted) orphaned session_segment row(s)")
+            }
 
             try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_session_state ON session(state)")
             try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_session_startedAt ON session(startedAt)")
