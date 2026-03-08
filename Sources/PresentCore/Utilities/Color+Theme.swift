@@ -228,7 +228,7 @@ public final class ThemeManager {
         case .dusty: Color(light: Color(hex: 0xAE6424), dark: Color(hex: 0xF4A259))
         case .nordic: Color(light: Color(hex: 0x7A6340), dark: Color(hex: 0xC4A265))
         case .rose: Color(light: Color(hex: 0x7E5A2C), dark: Color(hex: 0xD4A056))
-        case .indigo: Color(light: Color(hex: 0x0E7490), dark: Color(hex: 0x22D3EE))
+        case .indigo: Color(light: Color(hex: 0x0E7490), dark: Color(hex: 0x0EA5C0))
         case .terra: Color(light: Color(hex: 0x5B7553), dark: Color(hex: 0x88AC7E))
         }
     }
