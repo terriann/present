@@ -26,9 +26,46 @@ Parse for optional overrides:
    ```
 4. Note the branch name and remote URL for later use.
 
-## Phase 2: Create the Pull Request
+## Phase 2: Local CI Checks
 
-### 2a. Gather Context
+With GitHub Actions disabled, run CI checks locally before creating the PR. Both checks must pass before proceeding.
+
+### 2a. Build the app
+
+```bash
+xcodegen generate && xcodebuild build -project Present.xcodeproj -scheme Present -destination 'platform=macOS'
+```
+
+If the build fails, stop and show the error output. Ask the user to fix the build before continuing.
+
+### 2b. Regenerate CLI docs
+
+```bash
+bash Scripts/generate-cli-docs.sh
+```
+
+After running, check if `docs/cli-reference.md` has changed:
+
+```bash
+git diff --quiet docs/cli-reference.md
+```
+
+- If the file **changed**, stop and tell the user:
+  > CLI reference docs are out of date. The regenerated `docs/cli-reference.md` needs to be committed before the PR can be created. Please review the diff, commit the update, and re-run `/ship`.
+  Show the diff summary (`git diff --stat docs/cli-reference.md`) so the user can see what changed. Do not proceed to Phase 3.
+- If the file **did not change**, continue to Phase 3.
+
+### 2c. Run unit tests
+
+```bash
+swift test --skip PresentBenchmarks
+```
+
+If tests fail, stop and show the failures. Ask the user to fix them before continuing.
+
+## Phase 3: Create the Pull Request
+
+### 3a. Gather Context
 
 Collect everything the commit-pr-writer agent needs — do this research yourself, then pass the results as context.
 
@@ -39,16 +76,21 @@ Collect everything the commit-pr-writer agent needs — do this research yoursel
    ```
 3. **Get the full diff and commit history** against the remote base branch:
    ```bash
-   git log --oneline origin/<base>..HEAD
+   git log origin/<base>..HEAD
    git diff origin/<base>...HEAD --stat
    ```
-3. **Find addressed issues.** Search the commit messages and diff for GitHub issue references (`#123`, `Closes #123`, `Fixes #123`, `Resolves #123`, `Addressing #123`, `Related to #123`, `Part of #123`). For each referenced issue, fetch its title:
+   **Important:** Use `git log` (not `--oneline`) so the full commit body is visible. Issue references often appear in the body, not the subject line.
+3. **Find addressed issues.** Extract all GitHub issue numbers from the full commit log programmatically — do not scan by eye:
+   ```bash
+   git log origin/<base>..HEAD | grep -oE '#[0-9]+' | sort -t'#' -k2 -n -u
+   ```
+   This catches every reference regardless of keyword (`Closes`, `Fixes`, `Resolves`, `Addressing`, `Related to`, `Part of`, or bare `#N`). For each unique issue number, fetch its details:
    ```bash
    gh issue view <number> --json title,state,url,milestone --jq '"\(.title) (\(.state)) \(.url) milestone:\(.milestone.title // "none")"'
    ```
 4. **Determine milestone.** Pick the milestone that appears most frequently across the referenced issues. If no issues have a milestone, fall back to checking the branch name for a version (e.g., `feat/0.2.0`) and look for a matching milestone. If neither produces a result, skip milestone assignment.
 
-### 2b. Delegate to commit-pr-writer
+### 3b. Delegate to commit-pr-writer
 
 Delegate the PR description to the commit-pr-writer agent with the following project-specific context:
 
@@ -73,9 +115,9 @@ Delegate the PR description to the commit-pr-writer agent with the following pro
 > - Structure: Summary (2-3 bullets), Referenced Issues, Test Plan.
 > - Default base branch: `main` unless overridden.
 
-Pass the commit history, diff stat, and issue list you gathered in 2a to the agent.
+Pass the commit history, diff stat, and issue list you gathered in 3a to the agent.
 
-### 2c. Create the PR
+### 3c. Create the PR
 
 After the commit-pr-writer drafts the PR description:
 
@@ -90,7 +132,7 @@ After the commit-pr-writer drafts the PR description:
    ```
 4. Output the PR URL.
 
-## Phase 3: Run Benchmarks
+## Phase 4: Run Benchmarks
 
 After the PR is created:
 
@@ -114,7 +156,8 @@ After the PR is created:
 - **Always push before creating the PR.** The remote branch must exist.
 - **Always delegate PR description writing** to the commit-pr-writer agent with the project context above. Never write the PR description directly.
 - **Always enumerate issues.** The Referenced Issues section is mandatory. If no issues are referenced in commits, ask the user if there are related issues to include.
-- **Always run benchmarks.** Do not skip Phase 3 unless the user explicitly says to.
+- **Always run local CI checks.** Do not skip Phase 2. If the build, tests, or CLI docs check fails, stop and let the user fix it.
+- **Always run benchmarks.** Do not skip Phase 4 unless the user explicitly says to.
 - **Never force push.** Use regular `git push`. If the push is rejected, ask the user how to proceed.
 - **Show the PR draft** before creating it. Let the user adjust title, body, or base branch.
 - **Benchmark failures are not blockers** unless the user says so. Flag regressions but don't refuse to ship.

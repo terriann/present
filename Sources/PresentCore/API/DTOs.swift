@@ -260,6 +260,9 @@ public struct TodaySummary: Sendable, Equatable {
         self.currentSession = currentSession
     }
 
+    /// Intentionally omits `currentSession` — the active session's elapsed time
+    /// changes every tick, which would cause spurious UI refreshes when
+    /// `DataRefreshCoordinator` guards assignments with equality checks.
     public static func == (lhs: TodaySummary, rhs: TodaySummary) -> Bool {
         lhs.totalSeconds == rhs.totalSeconds
         && lhs.sessionCount == rhs.sessionCount

@@ -10,18 +10,19 @@ struct SettingsView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Custom tab bar
-            HStack(spacing: 2) {
-                ForEach(SettingsTab.allCases, id: \.self) { tab in
+            HStack(spacing: Constants.spacingCompact) {
+                ForEach(Array(SettingsTab.allCases.enumerated()), id: \.element) { index, tab in
                     Button {
                         selectedTab = tab
                     } label: {
                         VStack(spacing: 4) {
                             Image(systemName: tab.icon)
-                                .font(.title2)
+                                .font(.title)
+                                .accessibilityHidden(true)
                             Text(tab.label)
                                 .font(.caption)
                         }
-                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, Constants.spacingCard)
                         .padding(.vertical, Constants.spacingCompact)
                         .background(
                             RoundedRectangle(cornerRadius: 8)
@@ -31,11 +32,18 @@ struct SettingsView: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .focusEffectDisabled()
+                    .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: .command)
+                    .accessibilityAddTraits(selectedTab == tab ? [.isSelected] : [])
+                    .accessibilityRemoveTraits(.isButton)
+                    .accessibilityAddTraits(.isTabBar)
                 }
             }
-            .padding(.horizontal, Constants.spacingCard)
+            .frame(maxWidth: .infinity)
             .padding(.top, 10)
             .padding(.bottom, Constants.spacingTight)
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("Settings tabs")
 
             Divider()
 
@@ -57,6 +65,7 @@ struct SettingsView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(minWidth: 500, maxWidth: 500, minHeight: 520)
+        .navigationTitle(selectedTab.label)
         .onChange(of: appState.pendingSettingsTab) { _, tab in
             guard let tab else { return }
             selectedTab = tab

@@ -82,7 +82,6 @@ struct ReportsView: View {
                         activeExternalId: activeExternalId
                     )
                 } else {
-                    let includesToday = periodStartDate(for: selectedDate) <= Date() && Date() < periodEndDate(for: selectedDate)
                     GroupBox {
                         ContentUnavailableView(
                             "No Data",
@@ -623,7 +622,7 @@ struct ReportsView: View {
     ///   before loading to prevent mixing stale values across period/date changes. Pass
     ///   `false` for in-place refreshes (e.g. after a session edit) so existing content
     ///   stays visible and the ScrollView doesn't reset to the top.
-    private func reloadReport(clearData: Bool = true) {
+    private func reloadReport(clearData: Bool = false) {
         loadTask?.cancel()
         if clearData {
             dailySummaryData = nil
@@ -674,14 +673,16 @@ struct ReportsView: View {
                 let sessionIds = sessions.compactMap { $0.0.id }
                 let segments = try await appState.segmentsForSessions(sessionIds: sessionIds)
                 try Task.checkCancellation()
-                weekStartDay = effectiveWeekStartDay
-                dailySummaryData = summary
-                activities = summary.activities
-                totalSeconds = summary.totalSeconds
-                sessionCount = summary.sessionCount
-                tagActivitySummaries = tags
-                sessionEntries = sessions
-                sessionSegments = segments
+                withAdaptiveAnimation(.easeInOut(duration: 0.35)) {
+                    weekStartDay = effectiveWeekStartDay
+                    dailySummaryData = summary
+                    activities = summary.activities
+                    totalSeconds = summary.totalSeconds
+                    sessionCount = summary.sessionCount
+                    tagActivitySummaries = tags
+                    sessionEntries = sessions
+                    sessionSegments = segments
+                }
 
             case .weekly:
                 let summary = try await appState.weeklySummary(weekOf: selectedDate, includeArchived: showArchived, weekStartDay: effectiveWeekStartDay, roundToMinute: true)
@@ -691,13 +692,15 @@ struct ReportsView: View {
                 try Task.checkCancellation()
                 let sessions = try await appState.listSessions(from: wStart, to: weekEnd, type: nil, activityId: nil, includeArchived: showArchived)
                 try Task.checkCancellation()
-                weekStartDay = effectiveWeekStartDay
-                weeklySummaryData = summary
-                activities = summary.activities
-                totalSeconds = summary.totalSeconds
-                sessionCount = summary.sessionCount
-                tagActivitySummaries = tags
-                sessionEntries = sessions
+                withAdaptiveAnimation(.easeInOut(duration: 0.35)) {
+                    weekStartDay = effectiveWeekStartDay
+                    weeklySummaryData = summary
+                    activities = summary.activities
+                    totalSeconds = summary.totalSeconds
+                    sessionCount = summary.sessionCount
+                    tagActivitySummaries = tags
+                    sessionEntries = sessions
+                }
 
             case .monthly:
                 let summary = try await appState.monthlySummary(monthOf: selectedDate, includeArchived: showArchived, weekStartDay: effectiveWeekStartDay, roundToMinute: true)
@@ -706,13 +709,15 @@ struct ReportsView: View {
                 try Task.checkCancellation()
                 let sessions = try await appState.listSessions(from: monthInterval.start, to: monthInterval.end, type: nil, activityId: nil, includeArchived: showArchived)
                 try Task.checkCancellation()
-                weekStartDay = effectiveWeekStartDay
-                monthlySummaryData = summary
-                activities = summary.activities
-                totalSeconds = summary.totalSeconds
-                sessionCount = summary.sessionCount
-                tagActivitySummaries = tags
-                sessionEntries = sessions
+                withAdaptiveAnimation(.easeInOut(duration: 0.35)) {
+                    weekStartDay = effectiveWeekStartDay
+                    monthlySummaryData = summary
+                    activities = summary.activities
+                    totalSeconds = summary.totalSeconds
+                    sessionCount = summary.sessionCount
+                    tagActivitySummaries = tags
+                    sessionEntries = sessions
+                }
             }
         } catch is CancellationError {
             // Task was cancelled because user switched periods/dates — ignore

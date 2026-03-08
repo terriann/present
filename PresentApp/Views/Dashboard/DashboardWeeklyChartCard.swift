@@ -81,7 +81,7 @@ struct DashboardWeeklyChartCard: View {
         return Chart {
             ForEach(Array(weekendDays), id: \.self) { label in
                 RectangleMark(x: .value("Day", label))
-                    .foregroundStyle(Color.gray.opacity(0.08))
+                    .foregroundStyle(Constants.alternatingRowBackground)
                     .zIndex(-1)
             }
 
