@@ -79,12 +79,6 @@ struct DashboardWeeklyChartCard: View {
         )
 
         return Chart {
-            ForEach(Array(weekendDays), id: \.self) { label in
-                RectangleMark(x: .value("Day", label))
-                    .foregroundStyle(Constants.alternatingRowBackground)
-                    .zIndex(-1)
-            }
-
             ForEach(entries, id: \.id) { entry in
                 BarMark(
                     x: .value("Day", entry.label),
@@ -145,6 +139,21 @@ struct DashboardWeeklyChartCard: View {
             }
         }
         .chartLegend(.hidden)
+        .chartBackground { proxy in
+            GeometryReader { geo in
+                if let plotFrame = proxy.plotFrame {
+                    let frame = geo[plotFrame]
+                    ForEach(Array(weekendDays), id: \.self) { label in
+                        if let xPos = proxy.position(forX: label) {
+                            Rectangle()
+                                .fill(Color.primary.opacity(0.04))
+                                .frame(width: frame.width / CGFloat(domain.count), height: geo.size.height)
+                                .position(x: frame.origin.x + xPos, y: geo.size.height / 2)
+                        }
+                    }
+                }
+            }
+        }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Weekly activity chart")
         .accessibilityValue(chartAccessibilityValue(entries: entries))
