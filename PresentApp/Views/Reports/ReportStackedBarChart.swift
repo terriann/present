@@ -153,7 +153,7 @@ struct ReportStackedBarChart: View {
                     ForEach(Array(weekends), id: \.self) { label in
                         if let xPos = proxy.position(forX: label) {
                             Rectangle()
-                                .fill(theme.constantWhite.opacity(0.04))
+                                .fill(Constants.weekendBackground)
                                 .frame(width: frame.width / CGFloat(domain.count), height: geo.size.height)
                                 .position(x: frame.origin.x + xPos, y: geo.size.height / 2)
                         }
