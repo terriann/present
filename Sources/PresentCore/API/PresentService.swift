@@ -803,7 +803,7 @@ public final class PresentService: PresentAPI, Sendable {
     public func datesWithSessions(from startDate: Date, to endDate: Date) async throws -> Set<Date> {
         try await dbWriter.read { db in
             let sql = """
-                SELECT DISTINCT date(startedAt) AS sessionDate
+                SELECT DISTINCT date(startedAt, 'localtime') AS sessionDate
                 FROM session
                 WHERE startedAt < ?
                   AND (endedAt > ? OR endedAt IS NULL)
@@ -828,7 +828,7 @@ public final class PresentService: PresentAPI, Sendable {
     public func monthsWithSessions(from startDate: Date, to endDate: Date) async throws -> Set<String> {
         try await dbWriter.read { db in
             let sql = """
-                SELECT DISTINCT strftime('%Y-%m', startedAt) AS sessionMonth
+                SELECT DISTINCT strftime('%Y-%m', startedAt, 'localtime') AS sessionMonth
                 FROM session
                 WHERE startedAt < ?
                   AND (endedAt > ? OR endedAt IS NULL)
