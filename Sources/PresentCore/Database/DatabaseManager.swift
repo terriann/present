@@ -227,6 +227,9 @@ public final class DatabaseManager: Sendable {
             // session_segment indexes for join and range queries (#256)
             try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_session_segment_sessionId ON session_segment(sessionId)")
             try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_session_segment_startedAt_endedAt ON session_segment(startedAt, endedAt)")
+
+            // Covering index for recentActivities GROUP BY + MAX query (#265)
+            try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_session_activityId_startedAt ON session(activityId, startedAt)")
         }
 
         try migrator.migrate(writer)
