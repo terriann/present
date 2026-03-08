@@ -99,10 +99,11 @@ or `P1+` for "P1 and above"), milestone, labels, type shorthands
 open issues in the current milestone.
 
 > [!NOTE]
-> Maximum 12 issues per sprint. The user controls the pace throughout
-> and can skip, reorder, pause, or stop at any time. Each issue is
-> committed independently. The sprint ends with a summary and a nudge
-> toward `/ship`.
+> Each issue is resolved via the `/fix` skill, so every issue gets
+> approach evaluation, issue comments, and acceptance criteria
+> validation. Maximum 8 issues per sprint. Context is compacted
+> every 2 issues to stay sharp. The sprint ends with a summary and
+> a nudge toward `/ship`.
 
 ### `/ship` — Push, PR, and Benchmark
 

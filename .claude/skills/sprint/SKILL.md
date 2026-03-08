@@ -38,7 +38,7 @@ Reuse the same logic as `/ship`:
 
 ### Guard Rails
 
-- **Minimum 1 issue, maximum 12.** If the query returns more than 12 issues, show the count and ask the user to narrow the filter. Working through more than 12 issues in one sprint gets unwieldy — suggest splitting into multiple sprints or adding priority/label filters.
+- **Minimum 1 issue, maximum 8.** If the query returns more than 8 issues, show the count and ask the user to narrow the filter. Each issue gets the full `/fix` treatment, so more than 8 in one sprint gets unwieldy — suggest splitting into multiple sprints or adding priority/label filters.
 - **Zero results.** If no issues match, show the query you ran and suggest alternative filters.
 
 ---
@@ -96,55 +96,25 @@ Once the user confirms the queue:
 
 ---
 
-## Phase 3: Per-Issue Loop
+## Phase 3: Per-Issue Loop — Delegate to `/fix`
 
-For each issue in the queue, follow this workflow. This mirrors `/fix` but is streamlined for batch work.
+For each issue in the queue, **invoke the `/fix` skill** with the issue number. This ensures every issue gets the full `/fix` treatment: approach evaluation with comments on the issue, phased planning, tests, acceptance criteria validation, and proper commit linking.
 
-### 3a. Understand
+### 3a. Invoke `/fix`
 
-- If pre-researched, review the subagent's summary. Otherwise, fetch the issue and read relevant code.
-- Summarize the issue in 1-2 sentences.
 - **Always include the issue URL** (e.g., `https://github.com/terriann/present/issues/42`) so the user can open it in the browser to read full context.
+- If pre-research is available from the background subagent, pass a summary as supplementary context to `/fix` so it can skip redundant exploration.
+- Example invocation: `/fix #42` with any pre-research context appended.
+- `/fix` handles everything: understanding, approach evaluation (with issue comments), planning, implementation, testing, phase gates, and commits.
 
-### 3b. Plan
+### 3b. After `/fix` Completes
 
-- For **small/XS issues**: Present a brief plan inline (no plan mode needed). 1-3 steps.
-- For **medium+ issues**: Break into phases, enter plan mode, and wait for approval.
-- If the issue has multiple valid approaches with real tradeoffs, use `AskUserQuestion` to resolve before planning.
+Once `/fix` finishes the issue (final commit made):
 
-### 3c. Implement
+1. **Record the commit hash** for the sprint progress tracker.
+2. **Proceed to transition** (see 3c).
 
-- Follow all project conventions from CLAUDE.md.
-- For multi-phase issues, follow the `/fix` phase gate pattern: implement one phase, present the Phase Completion Template, STOP, wait for review.
-- For single-phase issues, implement and present the completion summary.
-- **Delegate tests** to the appropriate test generator agent when tests are needed.
-
-### 3d. Issue Complete — STOP
-
-After implementation (all phases if multi-phase):
-
-```
-## Issue #N Complete: <title>
-
-**What changed:** <1-3 bullet summary>
-
-**Test results:** <pass/fail summary, or "No tests applicable — <reason>">
-
----
-
-Ready for you to test. When you're happy, I'll commit.
-```
-
-**STOP and wait for user confirmation.**
-
-### 3e. Commit
-
-When the user approves:
-- **Delegate the commit to the commit-pr-writer agent.** Pass the issue number and whether this commit closes the issue or is in-progress.
-- The final commit for an issue should use a closing keyword (`Closes #N`) in the body.
-- In-progress commits (for multi-phase issues) use `Addressing #N` or `Part of #N`.
-
-### 3f. Transition to Next Issue
+### 3c. Transition to Next Issue
 
 After committing:
 
@@ -167,6 +137,14 @@ Ready to start #51?
 - Reorder remaining issues
 - Stop the sprint early
 
+### Context Management
+
+**After every 2 completed issues, run `/compact`.** Each `/fix` cycle generates significant context (approach evaluation, planning, implementation, tests). Once an issue is committed, its implementation details are dead weight. Compact the conversation to shed that weight, preserving only:
+- The sprint queue and progress checklist
+- Commit hashes for completed issues
+- Pre-research results for upcoming issues
+- Any user preferences or decisions that affect remaining work
+
 ---
 
 ## Sprint Completion
@@ -187,8 +165,16 @@ Skipped:
 - [ ] #51 — Update CLI help text (user deferred)
 
 All changes are committed on branch `feat/0.2.0`.
+
+Remaining in queue (not included in this sprint):
+- [ ] #55 — Add dark mode toggle (P2, size/M)
+- [ ] #58 — Refactor timer state machine (P2, size/L)
+
+Run `/sprint` again to pick up where you left off.
 Ready to /ship when you are.
 ```
+
+If the original query returned more issues than the cap allowed, list the remaining qualifying issues at the end of the sprint summary so the user knows what's left. Include a nudge to run `/sprint` again.
 
 ---
 
@@ -217,7 +203,7 @@ The agent will use the correct phrasing, but **verify the output** — if the is
 - **Always delegate commits** to the commit-pr-writer agent.
 - **Always delegate tests** to the appropriate test generator agent.
 - **Pre-research is read-only.** Subagents must not write code or make changes.
-- **Respect the 12-issue cap.** Push back on larger batches.
+- **Respect the 8-issue cap.** Push back on larger batches.
 - **Track sprint progress.** Show the checklist at every transition so the user always knows where they are.
 - **The user controls the pace.** They can skip, reorder, pause, or stop at any time.
 - **Never close issues via `gh issue close`.** Issues close automatically via closing keyword commits on merge.
