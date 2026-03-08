@@ -775,12 +775,12 @@ public final class PresentService: PresentAPI, Sendable {
                 : Session.activity.filter(Activity.Columns.isArchived == false)
 
             // Overlap: session started before range end AND ended after range start (or still running)
-            let completedStates = [SessionState.completed.rawValue, SessionState.cancelled.rawValue]
+            let closedRaw = SessionState.closedStateRawValues
             var request = Session
                 .including(required: activityAssoc)
                 .filter(Session.Columns.startedAt < endDate)
                 .filter(Session.Columns.endedAt > startDate || Session.Columns.endedAt == nil)
-                .filter(completedStates.contains(Session.Columns.state))
+                .filter(closedRaw.contains(Session.Columns.state))
                 .order(Session.Columns.startedAt.desc)
 
             if let type {
@@ -797,6 +797,58 @@ public final class PresentService: PresentAPI, Sendable {
 
             let results = try SessionInfo.fetchAll(db, request)
             return results.map { ($0.session, $0.activity) }
+        }
+    }
+
+    public func datesWithSessions(from startDate: Date, to endDate: Date) async throws -> Set<Date> {
+        try await dbWriter.read { db in
+            let sql = """
+                SELECT DISTINCT date(startedAt, 'localtime') AS sessionDate
+                FROM session
+                WHERE startedAt < ?
+                  AND (endedAt > ? OR endedAt IS NULL)
+                  AND state IN (?, ?)
+                """
+            let closedRaw = SessionState.closedStateRawValues
+            let rows = try Row.fetchAll(db, sql: sql, arguments: [endDate, startDate, closedRaw[0], closedRaw[1]])
+
+            let calendar = Calendar.current
+            var dates = Set<Date>()
+            for row in rows {
+                if let dateString: String = row["sessionDate"] {
+                    let parts = dateString.split(separator: "-")
+                    if parts.count == 3,
+                       let year = Int(parts[0]),
+                       let month = Int(parts[1]),
+                       let day = Int(parts[2]),
+                       let date = calendar.date(from: DateComponents(year: year, month: month, day: day)) {
+                        dates.insert(calendar.startOfDay(for: date))
+                    }
+                }
+            }
+            return dates
+        }
+    }
+
+    public func monthsWithSessions(from startDate: Date, to endDate: Date) async throws -> Set<String> {
+        try await dbWriter.read { db in
+            let sql = """
+                SELECT DISTINCT strftime('%Y-%m', startedAt, 'localtime') AS sessionMonth
+                FROM session
+                WHERE startedAt < ?
+                  AND (endedAt > ? OR endedAt IS NULL)
+                  AND state IN (?, ?)
+                """
+            let closedRaw = SessionState.closedStateRawValues
+            let rows = try Row.fetchAll(db, sql: sql, arguments: [endDate, startDate, closedRaw[0], closedRaw[1]])
+
+            var months = Set<String>()
+            for row in rows {
+                if let monthString: String = row["sessionMonth"] {
+                    months.insert(monthString)
+                }
+            }
+            return months
         }
     }
 

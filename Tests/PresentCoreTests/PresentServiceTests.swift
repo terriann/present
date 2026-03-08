@@ -1422,6 +1422,82 @@ struct PresentServiceTests {
         #expect(hour2?.totalSeconds == 1800)
     }
 
+    // MARK: - Date/Month Session Queries
+
+    @Test func datesWithSessionsBasic() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Work"))
+
+        // Two sessions on different days
+        _ = try await service.createBackdatedSession(CreateBackdatedSessionInput(
+            activityId: activity.id!, startedAt: makeDateComponents(day: 10, hour: 9), endedAt: makeDateComponents(day: 10, hour: 17)
+        ))
+        _ = try await service.createBackdatedSession(CreateBackdatedSessionInput(
+            activityId: activity.id!, startedAt: makeDateComponents(day: 12, hour: 10), endedAt: makeDateComponents(day: 12, hour: 14)
+        ))
+
+        let rangeStart = makeDateComponents(day: 1, hour: 0)
+        let rangeEnd = makeDateComponents(day: 30, hour: 0)
+        let dates = try await service.datesWithSessions(from: rangeStart, to: rangeEnd)
+
+        #expect(dates.count == 2)
+        let cal = Calendar.current
+        let days = dates.map { cal.component(.day, from: $0) }.sorted()
+        #expect(days == [10, 12])
+    }
+
+    @Test func datesWithSessionsEmptyRange() async throws {
+        let service = try makeService()
+        let rangeStart = makeDateComponents(day: 1, hour: 0)
+        let rangeEnd = makeDateComponents(day: 30, hour: 0)
+        let dates = try await service.datesWithSessions(from: rangeStart, to: rangeEnd)
+        #expect(dates.isEmpty)
+    }
+
+    @Test func datesWithSessionsExcludesRunningAndPaused() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Active"))
+
+        // Start a session but don't stop it (running state)
+        _ = try await service.startSession(activityId: activity.id!, type: .work)
+
+        let rangeStart = makeDateComponents(year: 2026, month: 3, day: 1, hour: 0)
+        let rangeEnd = makeDateComponents(year: 2026, month: 3, day: 31, hour: 0)
+        let dates = try await service.datesWithSessions(from: rangeStart, to: rangeEnd)
+
+        // Running sessions should not appear in dot indicators
+        #expect(dates.isEmpty)
+    }
+
+    @Test func monthsWithSessionsBasic() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Work"))
+
+        // Sessions in two different months
+        _ = try await service.createBackdatedSession(CreateBackdatedSessionInput(
+            activityId: activity.id!, startedAt: makeDateComponents(month: 5, day: 10, hour: 9), endedAt: makeDateComponents(month: 5, day: 10, hour: 17)
+        ))
+        _ = try await service.createBackdatedSession(CreateBackdatedSessionInput(
+            activityId: activity.id!, startedAt: makeDateComponents(month: 7, day: 5, hour: 10), endedAt: makeDateComponents(month: 7, day: 5, hour: 14)
+        ))
+
+        let rangeStart = makeDateComponents(month: 1, day: 1, hour: 0)
+        let rangeEnd = makeDateComponents(month: 12, day: 31, hour: 0)
+        let months = try await service.monthsWithSessions(from: rangeStart, to: rangeEnd)
+
+        #expect(months.count == 2)
+        #expect(months.contains("2024-05"))
+        #expect(months.contains("2024-07"))
+    }
+
+    @Test func monthsWithSessionsEmptyRange() async throws {
+        let service = try makeService()
+        let rangeStart = makeDateComponents(month: 1, day: 1, hour: 0)
+        let rangeEnd = makeDateComponents(month: 12, day: 31, hour: 0)
+        let months = try await service.monthsWithSessions(from: rangeStart, to: rangeEnd)
+        #expect(months.isEmpty)
+    }
+
     @Test func weeklySummaryCrossMidnightSplitAcrossDays() async throws {
         let service = try makeService()
         let activity = try await service.createActivity(CreateActivityInput(title: "Split Work"))

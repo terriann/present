@@ -11,4 +11,10 @@ public enum SessionState: String, Codable, Sendable {
     case paused
     case completed
     case cancelled
+
+    /// Terminal states shown in reports and date indicators.
+    public static let closedStates: [SessionState] = [.completed, .cancelled]
+
+    /// Raw values of `closedStates` for use in SQL queries.
+    public static let closedStateRawValues: [String] = closedStates.map(\.rawValue)
 }

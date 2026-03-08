@@ -178,11 +178,12 @@ struct ReportsView: View {
             .disabled(!canNavigateBack)
             .buttonStyle(.borderless)
             .accessibilityLabel("Previous \(selectedPeriod.rawValue.lowercased()) period")
+            .help("Previous \(selectedPeriod.rawValue.lowercased()) period")
 
             Button {
                 showDatePicker.toggle()
             } label: {
-                HStack(spacing: 4) {
+                HStack(spacing: Constants.spacingTight) {
                     Text(periodHeaderText)
                         .font(.periodHeader)
                     Image(systemName: "chevron.down")
@@ -214,6 +215,7 @@ struct ReportsView: View {
             .disabled(!canNavigateForward)
             .buttonStyle(.borderless)
             .accessibilityLabel("Next \(selectedPeriod.rawValue.lowercased()) period")
+            .help("Next \(selectedPeriod.rawValue.lowercased()) period")
 
             Spacer()
         }

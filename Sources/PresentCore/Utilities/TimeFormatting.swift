@@ -27,6 +27,7 @@ private enum CachedFormatters {
         f.dateFormat = "yyyy-MM-dd HH:mm:ss"
         return f
     }()
+
 }
 
 public enum TimeFormatting {

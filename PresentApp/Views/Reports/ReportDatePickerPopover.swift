@@ -21,6 +21,8 @@ struct ReportDatePickerPopover: View {
     @State private var datesWithData: Set<Date> = []
     // Months with recorded session data (year-month pairs as "YYYY-MM")
     @State private var monthsWithData: Set<String> = []
+    // Tracks in-flight data loading task for cancellation on rapid navigation
+    @State private var loadingTask: Task<Void, Never>?
 
     var body: some View {
         VStack(spacing: Constants.spacingCard) {
@@ -47,6 +49,10 @@ struct ReportDatePickerPopover: View {
         .task {
             await loadDatesWithData()
         }
+        .onDisappear {
+            loadingTask?.cancel()
+            loadingTask = nil
+        }
     }
 
     // MARK: - Calendar Picker (Daily/Weekly)
@@ -58,7 +64,16 @@ struct ReportDatePickerPopover: View {
             weekStartDay: weekStartDay,
             earliestDate: earliestDate,
             datesWithData: datesWithData,
-            onDateSelected: { _ in dismiss() }
+            onDateSelected: { _ in dismiss() },
+            onMonthChanged: { month in
+                // Cancel in-flight request and debounce rapid navigation
+                loadingTask?.cancel()
+                loadingTask = Task {
+                    try? await Task.sleep(for: .milliseconds(150))
+                    guard !Task.isCancelled else { return }
+                    await loadDatesWithData(for: month)
+                }
+            }
         )
     }
 
@@ -84,13 +99,17 @@ struct ReportDatePickerPopover: View {
 
     // MARK: - Data Loading
 
-    /// Load dates that have session data. Scoped to the visible range for the current period mode.
-    private func loadDatesWithData() async {
+    /// Load dates that have session data using lightweight queries (no joins, no hydration).
+    /// - Parameter targetDate: The reference date for scoping the query (defaults to `selectedDate`).
+    private func loadDatesWithData(for targetDate: Date? = nil) async {
+        let referenceDate = targetDate ?? selectedDate
         let calendar = Calendar.current
         do {
             if selectedPeriod == .monthly {
-                // Load a broad range for monthly mode — covers most user history
-                let initialYear = calendar.component(.year, from: selectedDate)
+                // Load a broad range for monthly mode — covers most user history.
+                // Note: this branch only runs on initial appear (monthly mode shows a month
+                // grid, not ReportCalendarGrid, so onMonthChanged never fires for it).
+                let initialYear = calendar.component(.year, from: referenceDate)
                 var startComponents = DateComponents()
                 startComponents.year = initialYear - 5
                 startComponents.month = 1
@@ -102,22 +121,13 @@ struct ReportDatePickerPopover: View {
                 guard let rangeStart = calendar.date(from: startComponents),
                       let rangeEnd = calendar.date(from: endComponents) else { return }
 
-                let sessions = try await appState.listSessions(from: rangeStart, to: rangeEnd, includeArchived: true)
-                let months = Set(sessions.map { session in
-                    let date = session.0.startedAt
-                    let year = calendar.component(.year, from: date)
-                    let month = calendar.component(.month, from: date)
-                    return String(format: "%04d-%02d", year, month)
-                })
-                monthsWithData = months
+                monthsWithData = try await appState.monthsWithSessions(from: rangeStart, to: rangeEnd)
             } else {
-                // Load ~6 weeks around the selected date to cover the visible grid
-                guard let rangeStart = calendar.date(byAdding: .day, value: -7, to: calendar.dateInterval(of: .month, for: selectedDate)?.start ?? selectedDate),
-                      let rangeEnd = calendar.date(byAdding: .day, value: 7, to: calendar.dateInterval(of: .month, for: selectedDate)?.end ?? selectedDate) else { return }
+                // Load ~6 weeks around the reference date to cover the visible grid
+                guard let rangeStart = calendar.date(byAdding: .day, value: -7, to: calendar.dateInterval(of: .month, for: referenceDate)?.start ?? referenceDate),
+                      let rangeEnd = calendar.date(byAdding: .day, value: 7, to: calendar.dateInterval(of: .month, for: referenceDate)?.end ?? referenceDate) else { return }
 
-                let sessions = try await appState.listSessions(from: rangeStart, to: rangeEnd, includeArchived: true)
-                let dates = Set(sessions.map { calendar.startOfDay(for: $0.0.startedAt) })
-                datesWithData = dates
+                datesWithData = try await appState.datesWithSessions(from: rangeStart, to: rangeEnd)
             }
         } catch {
             // Non-critical — dots just won't show
@@ -310,7 +320,7 @@ private struct MonthCell: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .foregroundColor(enabled ? (isSelected ? theme.accent : .primary) : .secondary.opacity(0.5))
+        .foregroundStyle(enabled ? (isSelected ? theme.accent : .primary) : .secondary.opacity(0.5))
         .disabled(!enabled)
     }
 

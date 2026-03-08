@@ -26,6 +26,8 @@ struct ReportCalendarGrid: View {
     /// Dates (start-of-day) that have recorded session data.
     let datesWithData: Set<Date>
     let onDateSelected: (Date) -> Void
+    /// Called when the displayed month changes (e.g., via navigation chevrons).
+    var onMonthChanged: ((Date) -> Void)?
 
     @State private var displayedMonth: Date = Date()
 
@@ -40,6 +42,9 @@ struct ReportCalendarGrid: View {
         }
         .onAppear {
             displayedMonth = calendar.dateInterval(of: .month, for: selectedDate)?.start ?? selectedDate
+        }
+        .onChange(of: displayedMonth) { _, newMonth in
+            onMonthChanged?(newMonth)
         }
     }
 
@@ -63,6 +68,7 @@ struct ReportCalendarGrid: View {
             .buttonStyle(.borderless)
             .disabled(!canNavigateMonthBack)
             .accessibilityLabel("Previous month")
+            .help("Previous month")
 
             Spacer()
 
@@ -79,6 +85,7 @@ struct ReportCalendarGrid: View {
             .buttonStyle(.borderless)
             .disabled(!canNavigateMonthForward)
             .accessibilityLabel("Next month")
+            .help("Next month")
         }
     }
 
@@ -187,12 +194,12 @@ struct ReportCalendarGrid: View {
         Button {
             selectDate(date)
         } label: {
-            VStack(spacing: 4) {
+            VStack(spacing: Constants.spacingTight) {
                 Text(dayNumber(date))
                     .font(.callout)
                     .monospacedDigit()
                     .frame(width: cellSize, height: cellSize)
-                    .foregroundColor(foregroundColor(for: state, isWeekSelected: isWeekSelected))
+                    .foregroundStyle(foregroundColor(for: state, isWeekSelected: isWeekSelected))
                     .background(dayBackground(state: state))
 
                 // Data indicator dot — sits below the circle, like iOS Calendar.

@@ -206,6 +206,25 @@ public final class DatabaseManager: Sendable {
             }
         }
 
+        migrator.registerMigration("v10-add-session-indexes") { db in
+            // Clean up orphaned session_segments that reference deleted sessions.
+            // GRDB validates foreign key constraints after each migration, so any
+            // pre-existing orphans would cause the migration to fail.
+            try db.execute(sql: """
+                DELETE FROM session_segment
+                WHERE sessionId NOT IN (SELECT id FROM session)
+                """)
+            let orphansDeleted = db.changesCount
+            if orphansDeleted > 0 {
+                print("[v10 migration] Purged \(orphansDeleted) orphaned session_segment row(s)")
+            }
+
+            try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_session_state ON session(state)")
+            try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_session_startedAt ON session(startedAt)")
+            try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_session_endedAt ON session(endedAt)")
+            try db.execute(sql: "CREATE INDEX IF NOT EXISTS idx_session_activityId_state ON session(activityId, state)")
+        }
+
         try migrator.migrate(writer)
     }
 }
