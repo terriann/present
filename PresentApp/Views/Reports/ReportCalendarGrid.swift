@@ -201,6 +201,8 @@ struct ReportCalendarGrid: View {
                     .frame(width: 5, height: 5)
                     .opacity(hasData ? 1 : 0)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(state == .disabled)
