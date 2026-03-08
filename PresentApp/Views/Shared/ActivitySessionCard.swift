@@ -232,7 +232,7 @@ struct ActivitySessionCard: View {
                     }
                     .padding(.vertical, Constants.spacingCompact)
                     .padding(.horizontal, Constants.spacingCard)
-                    .background(index.isMultiple(of: 2) ? Color.clear : Color.gray.opacity(0.08))
+                    .background(index.isMultiple(of: 2) ? Color.clear : Constants.alternatingRowBackground)
                     .hoverHighlight()
                     .contentShape(Rectangle())
                     .onTapGesture {
@@ -331,7 +331,7 @@ struct ActivitySessionCard: View {
                     ungroupedSessionRow(session: entry.0, activity: entry.1)
                         .padding(.vertical, Constants.spacingCompact)
                         .padding(.horizontal, Constants.spacingCard)
-                        .background(adjustedIndex.isMultiple(of: 2) ? Color.clear : Color.gray.opacity(0.08))
+                        .background(adjustedIndex.isMultiple(of: 2) ? Color.clear : Constants.alternatingRowBackground)
                         .hoverHighlight()
                         .contentShape(Rectangle())
                         .sessionContextMenu(session: entry.0, activityTitle: entry.1.title,

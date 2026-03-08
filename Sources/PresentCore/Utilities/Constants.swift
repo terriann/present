@@ -81,4 +81,20 @@ public enum Constants {
     // MARK: - Version
 
     public static let appVersion = "0.2.0-dev"
+
 }
+
+// MARK: - SwiftUI Constants
+
+#if canImport(SwiftUI)
+import SwiftUI
+
+extension Constants {
+    /// Subtle background applied to alternating rows in session lists and
+    /// chart weekend highlights. Defined once to prevent drift across call sites.
+    public static let alternatingRowBackground = Color(
+        light: Color.black.opacity(0.06),
+        dark: Color.white.opacity(0.06)
+    )
+}
+#endif

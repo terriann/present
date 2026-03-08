@@ -154,7 +154,7 @@ weeks, or months.
   `.chartForegroundStyleScale(domain:, range:)` from shared activity
   color map
 - Weekend highlighting: `RectangleMark` with
-  `Color.gray.opacity(0.08)`, `zIndex: -1`
+  `Constants.alternatingRowBackground`, `zIndex: -1`
 - Y-axis labels with unit suffix (`"Xh"` or `"Xm"`)
 - Hover overlay via `.chartOverlay` with `GeometryReader` and
   `ChartTooltip`
@@ -359,7 +359,7 @@ activity.
   color `Circle(8pt)` + title `VStack` + `Spacer` + duration
 - Duration: `.font(.durationValue)` with
   `.contentTransition(.numericText())`
-- Background: alternating `Color.gray.opacity(0.08)` for every other
+- Background: alternating `Constants.alternatingRowBackground` for every other
   group
 - Hover: `.hoverHighlight()` modifier
 - Expand animation:
