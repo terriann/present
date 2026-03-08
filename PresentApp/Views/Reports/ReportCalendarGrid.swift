@@ -199,7 +199,7 @@ struct ReportCalendarGrid: View {
                     .font(.callout)
                     .monospacedDigit()
                     .frame(width: cellSize, height: cellSize)
-                    .foregroundColor(foregroundColor(for: state, isWeekSelected: isWeekSelected))
+                    .foregroundStyle(foregroundColor(for: state, isWeekSelected: isWeekSelected))
                     .background(dayBackground(state: state))
 
                 // Data indicator dot — sits below the circle, like iOS Calendar.

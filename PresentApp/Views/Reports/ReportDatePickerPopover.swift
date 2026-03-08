@@ -315,7 +315,7 @@ private struct MonthCell: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .foregroundColor(enabled ? (isSelected ? theme.accent : .primary) : .secondary.opacity(0.5))
+        .foregroundStyle(enabled ? (isSelected ? theme.accent : .primary) : .secondary.opacity(0.5))
         .disabled(!enabled)
     }
 
