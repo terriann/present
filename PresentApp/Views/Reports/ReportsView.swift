@@ -23,6 +23,7 @@ struct ReportsView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     // Navigation state
+    @State private var showDatePicker = false
     @State private var earliestDate: Date?
     @State private var weekStartDay: Int = 1 // Calendar.firstWeekday: 1=Sunday, 2=Monday
     @State private var loadTask: Task<Void, Never>?
@@ -110,6 +111,7 @@ struct ReportsView: View {
             await loadReport()
         }
         .onChange(of: selectedPeriod) { oldPeriod, newPeriod in
+            showDatePicker = false
             if let target = drillDownDate(from: oldPeriod, to: newPeriod), target != selectedDate {
                 selectedDate = target  // onChange(of: selectedDate) will trigger reload
                 return
@@ -174,10 +176,32 @@ struct ReportsView: View {
             .disabled(!canNavigateBack)
             .buttonStyle(.borderless)
 
-            Text(periodHeaderText)
-                .font(.periodHeader)
-                .accessibilityAddTraits(.isHeader)
-                .frame(minWidth: 200)
+            Button {
+                showDatePicker.toggle()
+            } label: {
+                HStack(spacing: 4) {
+                    Text(periodHeaderText)
+                        .font(.periodHeader)
+                    Image(systemName: "chevron.down")
+                        .imageScale(.small)
+                        .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("\(periodHeaderText). Open date picker")
+            .accessibilityAddTraits(.isHeader)
+            .frame(minWidth: 200)
+            .popover(isPresented: $showDatePicker) {
+                ReportDatePickerPopover(
+                    selectedDate: $selectedDate,
+                    selectedPeriod: selectedPeriod,
+                    weekStartDay: weekStartDay,
+                    earliestDate: earliestDate,
+                    isShowingToday: isShowingToday,
+                    dismiss: { showDatePicker = false }
+                )
+            }
 
             Button {
                 navigatePeriod(by: 1)
@@ -186,15 +210,6 @@ struct ReportsView: View {
             }
             .disabled(!canNavigateForward)
             .buttonStyle(.borderless)
-
-            Button {
-                selectedDate = Date()
-            } label: {
-                Image(systemName: "calendar")
-            }
-            .buttonStyle(.borderless)
-            .disabled(isShowingToday)
-            .foregroundStyle(isShowingToday ? .secondary : theme.accent)
 
             Spacer()
         }
