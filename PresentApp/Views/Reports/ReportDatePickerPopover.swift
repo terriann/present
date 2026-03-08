@@ -18,8 +18,6 @@ struct ReportDatePickerPopover: View {
     let isShowingToday: Bool
     let dismiss: () -> Void
 
-    // Monthly picker state
-    @State private var pickerYear: Int = Calendar.current.component(.year, from: Date())
     // Dates with recorded session data (for calendar dot indicators)
     @State private var datesWithData: Set<Date> = []
     // Months with recorded session data (year-month pairs as "YYYY-MM")
@@ -31,7 +29,15 @@ struct ReportDatePickerPopover: View {
             case .daily, .weekly:
                 calendarPicker
             case .monthly:
-                monthGridPicker
+                ReportMonthPicker(
+                    selectedDate: selectedDate,
+                    earliestDate: earliestDate,
+                    monthsWithData: monthsWithData,
+                    onSelect: { date in
+                        selectedDate = date
+                        dismiss()
+                    }
+                )
             }
 
             quickJumpButton
@@ -39,9 +45,6 @@ struct ReportDatePickerPopover: View {
         .padding(Constants.spacingCard)
         .frame(width: 320)
         .background(.regularMaterial)
-        .onAppear {
-            pickerYear = Calendar.current.component(.year, from: selectedDate)
-        }
         .task {
             await loadDatesWithData()
         }
@@ -58,158 +61,6 @@ struct ReportDatePickerPopover: View {
             datesWithData: datesWithData,
             onDateSelected: { _ in dismiss() }
         )
-    }
-
-    // MARK: - Month Grid Picker (Monthly)
-
-    private var monthGridPicker: some View {
-        VStack(spacing: Constants.spacingCard) {
-            yearNavigation
-            monthGrid
-        }
-    }
-
-    private var yearNavigation: some View {
-        HStack {
-            Button {
-                pickerYear -= 1
-            } label: {
-                Image(systemName: "chevron.left")
-            }
-            .buttonStyle(.borderless)
-            .disabled(!canNavigateYearBack)
-
-            Spacer()
-
-            Text(String(pickerYear))
-                .font(.headline)
-                .monospacedDigit()
-
-            Spacer()
-
-            Button {
-                pickerYear += 1
-            } label: {
-                Image(systemName: "chevron.right")
-            }
-            .buttonStyle(.borderless)
-            .disabled(!canNavigateYearForward)
-        }
-    }
-
-    private var canNavigateYearBack: Bool {
-        guard let earliest = earliestDate else { return true }
-        return pickerYear > Calendar.current.component(.year, from: earliest)
-    }
-
-    private var canNavigateYearForward: Bool {
-        pickerYear < Calendar.current.component(.year, from: Date())
-    }
-
-    private var monthGrid: some View {
-        let columns = Array(repeating: GridItem(.flexible()), count: 3)
-        return LazyVGrid(columns: columns, spacing: Constants.spacingCompact) {
-            ForEach(1...12, id: \.self) { month in
-                monthButton(month: month)
-            }
-        }
-        .id(pickerYear) // Force clean rebuild on year change to avoid AttributeGraph cycles
-    }
-
-    private let monthCellHeight: CGFloat = 32
-
-    @ViewBuilder
-    private func monthButton(month: Int) -> some View {
-        let isSelected = isSelectedMonth(month)
-        let isCurrent = isCurrentMonth(month)
-        let enabled = isMonthEnabled(month)
-        let hasData = monthHasData(month)
-
-        Button {
-            selectMonth(month)
-        } label: {
-            VStack(spacing: 4) {
-                Text(monthAbbreviation(month))
-                    .font(.callout)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: monthCellHeight)
-                    .background(
-                        Capsule()
-                            .fill(isSelected ? theme.accent.opacity(0.12) : Color.clear)
-                    )
-                    .overlay(
-                        Capsule()
-                            .strokeBorder(isCurrent ? theme.accent : Color.clear, lineWidth: 1.5)
-                    )
-
-                Circle()
-                    .fill(monthDotColor(isSelected: isSelected, enabled: enabled))
-                    .frame(width: 5, height: 5)
-                    .opacity(hasData ? 1 : 0)
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .foregroundColor(enabled ? (isSelected ? theme.accent : .primary) : .secondary.opacity(0.5))
-        .disabled(!enabled)
-    }
-
-    private func monthHasData(_ month: Int) -> Bool {
-        let key = String(format: "%04d-%02d", pickerYear, month)
-        return monthsWithData.contains(key)
-    }
-
-    private func monthDotColor(isSelected: Bool, enabled: Bool) -> Color {
-        if isSelected { return theme.accent }
-        return enabled ? theme.accent.opacity(0.5) : theme.accent.opacity(0.15)
-    }
-
-    private func isSelectedMonth(_ month: Int) -> Bool {
-        let calendar = Calendar.current
-        return calendar.component(.year, from: selectedDate) == pickerYear
-            && calendar.component(.month, from: selectedDate) == month
-    }
-
-    private func isCurrentMonth(_ month: Int) -> Bool {
-        let now = Date()
-        let calendar = Calendar.current
-        return calendar.component(.year, from: now) == pickerYear
-            && calendar.component(.month, from: now) == month
-    }
-
-    private func isMonthEnabled(_ month: Int) -> Bool {
-        let calendar = Calendar.current
-        // Disable future months
-        let now = Date()
-        let currentYear = calendar.component(.year, from: now)
-        let currentMonth = calendar.component(.month, from: now)
-        if pickerYear > currentYear || (pickerYear == currentYear && month > currentMonth) {
-            return false
-        }
-        // Disable months before earliest date
-        if let earliest = earliestDate {
-            let earliestYear = calendar.component(.year, from: earliest)
-            let earliestMonth = calendar.component(.month, from: earliest)
-            if pickerYear < earliestYear || (pickerYear == earliestYear && month < earliestMonth) {
-                return false
-            }
-        }
-        return true
-    }
-
-    private func selectMonth(_ month: Int) {
-        var components = DateComponents()
-        components.year = pickerYear
-        components.month = month
-        components.day = 1
-        if let date = Calendar.current.date(from: components) {
-            selectedDate = date
-            dismiss()
-        }
-    }
-
-    private func monthAbbreviation(_ month: Int) -> String {
-        Calendar.current.shortMonthSymbols[month - 1]
     }
 
     // MARK: - Quick Jump
@@ -240,13 +91,14 @@ struct ReportDatePickerPopover: View {
         let calendar = Calendar.current
         do {
             if selectedPeriod == .monthly {
-                // Load the full displayed year for monthly mode
+                // Load a broad range for monthly mode — covers most user history
+                let initialYear = calendar.component(.year, from: selectedDate)
                 var startComponents = DateComponents()
-                startComponents.year = pickerYear
+                startComponents.year = initialYear - 5
                 startComponents.month = 1
                 startComponents.day = 1
                 var endComponents = DateComponents()
-                endComponents.year = pickerYear + 1
+                endComponents.year = initialYear + 1
                 endComponents.month = 1
                 endComponents.day = 1
                 guard let rangeStart = calendar.date(from: startComponents),
@@ -272,5 +124,198 @@ struct ReportDatePickerPopover: View {
         } catch {
             // Non-critical — dots just won't show
         }
+    }
+}
+
+// MARK: - Month Picker
+
+/// Self-contained monthly picker with year navigation and 3×4 month grid.
+///
+/// Owns its own `pickerYear` state so that year navigation button actions
+/// (which write to `pickerYear`) and grid cell modifiers (which read it)
+/// are fully isolated from the parent's dependency graph, preventing
+/// AttributeGraph cycles.
+private struct ReportMonthPicker: View {
+    @Environment(ThemeManager.self) private var theme
+
+    let selectedDate: Date
+    let earliestDate: Date?
+    let monthsWithData: Set<String>
+    let onSelect: (Date) -> Void
+
+    @State private var pickerYear: Int
+
+    init(selectedDate: Date, earliestDate: Date?, monthsWithData: Set<String>, onSelect: @escaping (Date) -> Void) {
+        self.selectedDate = selectedDate
+        self.earliestDate = earliestDate
+        self.monthsWithData = monthsWithData
+        self.onSelect = onSelect
+        _pickerYear = State(initialValue: Calendar.current.component(.year, from: selectedDate))
+    }
+
+    var body: some View {
+        VStack(spacing: Constants.spacingCard) {
+            yearNavigation
+            monthGrid
+        }
+        .id(pickerYear)
+    }
+
+    // MARK: - Year Navigation
+
+    private var yearNavigation: some View {
+        HStack {
+            Button {
+                pickerYear -= 1
+            } label: {
+                Image(systemName: "chevron.left")
+            }
+            .buttonStyle(.borderless)
+            .disabled(!canGoBack)
+
+            Spacer()
+
+            Text(String(pickerYear))
+                .font(.headline)
+                .monospacedDigit()
+
+            Spacer()
+
+            Button {
+                pickerYear += 1
+            } label: {
+                Image(systemName: "chevron.right")
+            }
+            .buttonStyle(.borderless)
+            .disabled(!canGoForward)
+        }
+    }
+
+    private var canGoBack: Bool {
+        guard let earliest = earliestDate else { return true }
+        return pickerYear > Calendar.current.component(.year, from: earliest)
+    }
+
+    private var canGoForward: Bool {
+        pickerYear < Calendar.current.component(.year, from: Date())
+    }
+
+    // MARK: - Month Grid
+
+    private static let columns = Array(repeating: GridItem(.flexible()), count: 3)
+    private static let cellHeight: CGFloat = 32
+
+    private var monthGrid: some View {
+        LazyVGrid(columns: Self.columns, spacing: Constants.spacingCompact) {
+            ForEach(1...12, id: \.self) { month in
+                MonthCell(
+                    month: month,
+                    pickerYear: pickerYear,
+                    isSelected: isSelectedMonth(month),
+                    isCurrent: isCurrentMonth(month),
+                    enabled: isMonthEnabled(month),
+                    hasData: monthsWithData.contains(String(format: "%04d-%02d", pickerYear, month)),
+                    cellHeight: Self.cellHeight,
+                    onSelect: { selectMonth(month) }
+                )
+            }
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func isSelectedMonth(_ month: Int) -> Bool {
+        let calendar = Calendar.current
+        return calendar.component(.year, from: selectedDate) == pickerYear
+            && calendar.component(.month, from: selectedDate) == month
+    }
+
+    private func isCurrentMonth(_ month: Int) -> Bool {
+        let calendar = Calendar.current
+        let now = Date()
+        return calendar.component(.year, from: now) == pickerYear
+            && calendar.component(.month, from: now) == month
+    }
+
+    private func isMonthEnabled(_ month: Int) -> Bool {
+        let calendar = Calendar.current
+        let now = Date()
+        let currentYear = calendar.component(.year, from: now)
+        let currentMonth = calendar.component(.month, from: now)
+        if pickerYear > currentYear || (pickerYear == currentYear && month > currentMonth) {
+            return false
+        }
+        if let earliest = earliestDate {
+            let earliestYear = calendar.component(.year, from: earliest)
+            let earliestMonth = calendar.component(.month, from: earliest)
+            if pickerYear < earliestYear || (pickerYear == earliestYear && month < earliestMonth) {
+                return false
+            }
+        }
+        return true
+    }
+
+    private func selectMonth(_ month: Int) {
+        var components = DateComponents()
+        components.year = pickerYear
+        components.month = month
+        components.day = 1
+        if let date = Calendar.current.date(from: components) {
+            onSelect(date)
+        }
+    }
+
+}
+
+// MARK: - Month Cell
+
+/// Standalone view struct for each month cell in the picker grid.
+///
+/// Extracted from `ReportMonthPicker` so each cell gets its own isolated
+/// dependency subgraph in SwiftUI's AttributeGraph, preventing cycle warnings
+/// when `pickerYear` changes.
+private struct MonthCell: View {
+    @Environment(ThemeManager.self) private var theme
+
+    let month: Int
+    let pickerYear: Int
+    let isSelected: Bool
+    let isCurrent: Bool
+    let enabled: Bool
+    let hasData: Bool
+    let cellHeight: CGFloat
+    let onSelect: () -> Void
+
+    var body: some View {
+        Button { onSelect() } label: {
+            VStack(spacing: 4) {
+                Text(Calendar.current.shortMonthSymbols[month - 1])
+                    .font(.callout)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: cellHeight)
+                    .background(
+                        Capsule()
+                            .fill(isSelected ? theme.accent.opacity(0.12) : Color.clear)
+                    )
+                    .overlay(
+                        Capsule()
+                            .strokeBorder(isCurrent ? theme.accent : Color.clear, lineWidth: 1.5)
+                    )
+
+                Circle()
+                    .fill(dotColor)
+                    .frame(width: 5, height: 5)
+                    .opacity(hasData ? 1 : 0)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .foregroundColor(enabled ? (isSelected ? theme.accent : .primary) : .secondary.opacity(0.5))
+        .disabled(!enabled)
+    }
+
+    private var dotColor: Color {
+        if isSelected { return theme.accent }
+        return enabled ? theme.accent.opacity(0.5) : theme.accent.opacity(0.15)
     }
 }
