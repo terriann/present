@@ -545,6 +545,14 @@ final class AppState {
         try await service.listSessions(from: from, to: to, type: type, activityId: activityId, includeArchived: includeArchived)
     }
 
+    func datesWithSessions(from: Date, to: Date) async throws -> Set<Date> {
+        try await service.datesWithSessions(from: from, to: to)
+    }
+
+    func monthsWithSessions(from: Date, to: Date) async throws -> Set<String> {
+        try await service.monthsWithSessions(from: from, to: to)
+    }
+
     func segmentsForSessions(sessionIds: [Int64]) async throws -> [Int64: [SessionSegment]] {
         try await service.segmentsForSessions(sessionIds: sessionIds)
     }

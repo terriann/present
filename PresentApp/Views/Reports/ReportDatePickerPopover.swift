@@ -21,6 +21,8 @@ struct ReportDatePickerPopover: View {
     @State private var datesWithData: Set<Date> = []
     // Months with recorded session data (year-month pairs as "YYYY-MM")
     @State private var monthsWithData: Set<String> = []
+    // Tracks in-flight data loading task for cancellation on rapid navigation
+    @State private var loadingTask: Task<Void, Never>?
 
     var body: some View {
         VStack(spacing: Constants.spacingCard) {
@@ -60,7 +62,13 @@ struct ReportDatePickerPopover: View {
             datesWithData: datesWithData,
             onDateSelected: { _ in dismiss() },
             onMonthChanged: { month in
-                Task { await loadDatesWithData(for: month) }
+                // Cancel in-flight request and debounce rapid navigation
+                loadingTask?.cancel()
+                loadingTask = Task {
+                    try? await Task.sleep(for: .milliseconds(150))
+                    guard !Task.isCancelled else { return }
+                    await loadDatesWithData(for: month)
+                }
             }
         )
     }
@@ -87,7 +95,7 @@ struct ReportDatePickerPopover: View {
 
     // MARK: - Data Loading
 
-    /// Load dates that have session data. Scoped to the visible range for the current period mode.
+    /// Load dates that have session data using lightweight queries (no joins, no hydration).
     /// - Parameter targetDate: The reference date for scoping the query (defaults to `selectedDate`).
     private func loadDatesWithData(for targetDate: Date? = nil) async {
         let referenceDate = targetDate ?? selectedDate
@@ -107,22 +115,13 @@ struct ReportDatePickerPopover: View {
                 guard let rangeStart = calendar.date(from: startComponents),
                       let rangeEnd = calendar.date(from: endComponents) else { return }
 
-                let sessions = try await appState.listSessions(from: rangeStart, to: rangeEnd, includeArchived: true)
-                let months = Set(sessions.map { session in
-                    let date = session.0.startedAt
-                    let year = calendar.component(.year, from: date)
-                    let month = calendar.component(.month, from: date)
-                    return String(format: "%04d-%02d", year, month)
-                })
-                monthsWithData = months
+                monthsWithData = try await appState.monthsWithSessions(from: rangeStart, to: rangeEnd)
             } else {
                 // Load ~6 weeks around the reference date to cover the visible grid
                 guard let rangeStart = calendar.date(byAdding: .day, value: -7, to: calendar.dateInterval(of: .month, for: referenceDate)?.start ?? referenceDate),
                       let rangeEnd = calendar.date(byAdding: .day, value: 7, to: calendar.dateInterval(of: .month, for: referenceDate)?.end ?? referenceDate) else { return }
 
-                let sessions = try await appState.listSessions(from: rangeStart, to: rangeEnd, includeArchived: true)
-                let dates = Set(sessions.map { calendar.startOfDay(for: $0.0.startedAt) })
-                datesWithData = dates
+                datesWithData = try await appState.datesWithSessions(from: rangeStart, to: rangeEnd)
             }
         } catch {
             // Non-critical — dots just won't show

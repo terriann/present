@@ -800,6 +800,54 @@ public final class PresentService: PresentAPI, Sendable {
         }
     }
 
+    public func datesWithSessions(from startDate: Date, to endDate: Date) async throws -> Set<Date> {
+        try await dbWriter.read { db in
+            let sql = """
+                SELECT DISTINCT date(startedAt) AS sessionDate
+                FROM session
+                WHERE startedAt < ?
+                  AND (endedAt > ? OR endedAt IS NULL)
+                  AND state IN (?, ?)
+                ORDER BY sessionDate
+                """
+            let completedStates = [SessionState.completed.rawValue, SessionState.cancelled.rawValue]
+            let rows = try Row.fetchAll(db, sql: sql, arguments: [endDate, startDate, completedStates[0], completedStates[1]])
+
+            let calendar = Calendar.current
+            var dates = Set<Date>()
+            for row in rows {
+                if let dateString: String = row["sessionDate"],
+                   let date = CachedFormatters.dateOnly.date(from: dateString) {
+                    dates.insert(calendar.startOfDay(for: date))
+                }
+            }
+            return dates
+        }
+    }
+
+    public func monthsWithSessions(from startDate: Date, to endDate: Date) async throws -> Set<String> {
+        try await dbWriter.read { db in
+            let sql = """
+                SELECT DISTINCT strftime('%Y-%m', startedAt) AS sessionMonth
+                FROM session
+                WHERE startedAt < ?
+                  AND (endedAt > ? OR endedAt IS NULL)
+                  AND state IN (?, ?)
+                ORDER BY sessionMonth
+                """
+            let completedStates = [SessionState.completed.rawValue, SessionState.cancelled.rawValue]
+            let rows = try Row.fetchAll(db, sql: sql, arguments: [endDate, startDate, completedStates[0], completedStates[1]])
+
+            var months = Set<String>()
+            for row in rows {
+                if let monthString: String = row["sessionMonth"] {
+                    months.insert(monthString)
+                }
+            }
+            return months
+        }
+    }
+
     public func getSession(id: Int64) async throws -> (Session, Activity) {
         try await dbWriter.read { db in
             let sql = """

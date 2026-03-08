@@ -4,7 +4,7 @@ import Foundation
 
 /// Cached DateFormatter instances for TimeFormatting methods.
 /// Each formatter uses a fixed configuration and should not be mutated after creation.
-private enum CachedFormatters {
+enum CachedFormatters {
     /// Short time (e.g., "2:30 PM")
     static let shortTime: DateFormatter = {
         let f = DateFormatter()
@@ -25,6 +25,14 @@ private enum CachedFormatters {
     static let absoluteTimestamp: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        return f
+    }()
+
+    /// Date only (e.g., "2026-02-14"). Matches SQLite `date()` output.
+    static let dateOnly: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        f.timeZone = .current
         return f
     }()
 }

@@ -13,6 +13,8 @@ public protocol PresentAPI: Sendable {
     func listSessions(from: Date, to: Date, type: SessionType?, activityId: Int64?, includeArchived: Bool, query: String?) async throws -> [(Session, Activity)]
     func lastCompletedSession(since: Date) async throws -> (Session, Activity)?
     func lastCompletedNonSystemSession(since: Date) async throws -> (Session, Activity)?
+    func datesWithSessions(from: Date, to: Date) async throws -> Set<Date>
+    func monthsWithSessions(from: Date, to: Date) async throws -> Set<String>
     func earliestSessionDate() async throws -> Date?
     func updateSession(id: Int64, _ input: UpdateSessionInput) async throws -> Session
     func switchSession(to activityId: Int64, type: SessionType, timerMinutes: Int?, breakMinutes: Int?) async throws -> (stopped: Session, started: Session)
