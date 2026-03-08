@@ -808,7 +808,6 @@ public final class PresentService: PresentAPI, Sendable {
                 WHERE startedAt < ?
                   AND (endedAt > ? OR endedAt IS NULL)
                   AND state IN (?, ?)
-                ORDER BY sessionDate
                 """
             let completedStates = [SessionState.completed.rawValue, SessionState.cancelled.rawValue]
             let rows = try Row.fetchAll(db, sql: sql, arguments: [endDate, startDate, completedStates[0], completedStates[1]])
@@ -839,7 +838,6 @@ public final class PresentService: PresentAPI, Sendable {
                 WHERE startedAt < ?
                   AND (endedAt > ? OR endedAt IS NULL)
                   AND state IN (?, ?)
-                ORDER BY sessionMonth
                 """
             let completedStates = [SessionState.completed.rawValue, SessionState.cancelled.rawValue]
             let rows = try Row.fetchAll(db, sql: sql, arguments: [endDate, startDate, completedStates[0], completedStates[1]])
