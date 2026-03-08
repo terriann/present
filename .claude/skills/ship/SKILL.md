@@ -132,6 +132,30 @@ After the commit-pr-writer drafts the PR description:
    ```
 4. Output the PR URL.
 
+## Phase 3.5: Code Review
+
+After the PR is created, run an automated code review of the changes.
+
+1. **Delegate to the code-reviewer agent** in **diff review mode**. Pass it:
+   - The PR number and base branch
+   - Instruction to run `git diff origin/<base>...HEAD` and review only the changed code
+   - The full review checklist from the code-reviewer agent applies (SOLID, safety, accessibility, database scalability, etc.)
+
+2. **If findings exist**, post them as a PR comment and add a label:
+   ```bash
+   gh pr comment <pr-number> --body "<review findings>"
+   gh pr edit <pr-number> --add-label "has feedback"
+   ```
+   The comment should:
+   - Open with: "**Code Review Agent** reviewed this PR and has some feedback to consider."
+   - Group findings by severity (Critical, High, Medium, Low) with counts
+   - Include file paths and line numbers for each finding
+   - Keep the tone advisory — these are suggestions, not blockers
+
+3. **If no findings**, skip the comment and label. Mention to the user that the review passed clean.
+
+4. **This phase is non-blocking.** Always proceed to Phase 4 regardless of findings.
+
 ## Phase 4: Run Benchmarks
 
 After the PR is created:
