@@ -194,7 +194,7 @@ struct ReportCalendarGrid: View {
         Button {
             selectDate(date)
         } label: {
-            VStack(spacing: 4) {
+            VStack(spacing: Constants.spacingTight) {
                 Text(dayNumber(date))
                     .font(.callout)
                     .monospacedDigit()

@@ -183,7 +183,7 @@ struct ReportsView: View {
             Button {
                 showDatePicker.toggle()
             } label: {
-                HStack(spacing: 4) {
+                HStack(spacing: Constants.spacingTight) {
                     Text(periodHeaderText)
                         .font(.periodHeader)
                     Image(systemName: "chevron.down")
