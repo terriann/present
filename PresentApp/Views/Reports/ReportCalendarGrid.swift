@@ -63,6 +63,7 @@ struct ReportCalendarGrid: View {
             .buttonStyle(.borderless)
             .disabled(!canNavigateMonthBack)
             .accessibilityLabel("Previous month")
+            .help("Previous month")
 
             Spacer()
 
@@ -79,6 +80,7 @@ struct ReportCalendarGrid: View {
             .buttonStyle(.borderless)
             .disabled(!canNavigateMonthForward)
             .accessibilityLabel("Next month")
+            .help("Next month")
         }
     }
 
