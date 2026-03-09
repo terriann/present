@@ -1236,13 +1236,18 @@ public final class PresentService: PresentAPI, Sendable {
 
     public func recentActivities(limit: Int) async throws -> [Activity] {
         try await dbWriter.read { db in
-            // Get activities that have recent sessions, ordered by most recent session
+            // Get activities that have recent sessions, ordered by most recent session.
+            // Uses GROUP BY + MAX subquery instead of DISTINCT to avoid full table scan.
             let sql = """
-                SELECT DISTINCT a.*
+                SELECT a.*
                 FROM activity a
-                INNER JOIN session s ON s.activityId = a.id
-                WHERE a.isArchived = 0 AND a.isSystem = 0
-                ORDER BY s.startedAt DESC
+                INNER JOIN (
+                    SELECT activityId, MAX(startedAt) AS lastStarted
+                    FROM session
+                    WHERE activityId IN (SELECT id FROM activity WHERE isArchived = 0 AND isSystem = 0)
+                    GROUP BY activityId
+                ) s ON s.activityId = a.id
+                ORDER BY s.lastStarted DESC
                 LIMIT ?
                 """
             return try Activity.fetchAll(db, sql: sql, arguments: [limit])
