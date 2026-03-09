@@ -143,6 +143,11 @@ struct ReportDatePickerPopover: View {
 /// (which write to `pickerYear`) and grid cell modifiers (which read it)
 /// are fully isolated from the parent's dependency graph, preventing
 /// AttributeGraph cycles.
+///
+/// **Why `.id(pickerYear)`?** Without it, SwiftUI logs AttributeGraph cycle
+/// warnings when `pickerYear` changes — even with `MonthCell` extracted as a
+/// standalone struct (#253). Removal was evaluated in #275; the warnings
+/// persisted, so the modifier stays until the root cause is resolved.
 private struct ReportMonthPicker: View {
     @Environment(ThemeManager.self) private var theme
 
