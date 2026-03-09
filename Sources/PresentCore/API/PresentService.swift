@@ -1244,9 +1244,9 @@ public final class PresentService: PresentAPI, Sendable {
                 INNER JOIN (
                     SELECT activityId, MAX(startedAt) AS lastStarted
                     FROM session
+                    WHERE activityId IN (SELECT id FROM activity WHERE isArchived = 0 AND isSystem = 0)
                     GROUP BY activityId
                 ) s ON s.activityId = a.id
-                WHERE a.isArchived = 0 AND a.isSystem = 0
                 ORDER BY s.lastStarted DESC
                 LIMIT ?
                 """
