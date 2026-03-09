@@ -1847,6 +1847,51 @@ public final class PresentService: PresentAPI, Sendable {
         return MonthlySummary(monthOf: startOfMonth, totalSeconds: totalSeconds, sessionCount: totalSessions, weeklyBreakdown: weeklyBreakdown, dailyBreakdown: dailyBreakdown, activities: activities)
     }
 
+    public func externalIdSummary(from startDate: Date, to endDate: Date, includeArchived: Bool) async throws -> [ExternalIdSummary] {
+        try await dbWriter.read { db in
+            let archiveFilter = includeArchived ? "" : " AND a.isArchived = 0"
+            let sql = """
+                SELECT COALESCE(s.ticketId, a.externalId) as effectiveId,
+                       COALESCE(SUM(
+                           MAX(0,
+                               CAST(strftime('%s', MIN(ss.endedAt, ?)) AS INTEGER) -
+                               CAST(strftime('%s', MAX(ss.startedAt, ?)) AS INTEGER)
+                           )
+                       ), 0) as totalSecs,
+                       COUNT(DISTINCT s.id) as sessCount,
+                       GROUP_CONCAT(DISTINCT a.title) as activityNames
+                FROM session s
+                INNER JOIN activity a ON a.id = s.activityId
+                INNER JOIN session_segment ss ON ss.sessionId = s.id
+                WHERE s.state = ?
+                  AND s.startedAt < ? AND (s.endedAt > ? OR s.endedAt IS NULL)
+                  AND ss.endedAt IS NOT NULL
+                  AND ss.startedAt < ? AND ss.endedAt > ?
+                  AND COALESCE(s.ticketId, a.externalId) IS NOT NULL
+                  \(archiveFilter)
+                GROUP BY effectiveId
+                ORDER BY totalSecs DESC
+                """
+
+            let rows = try Row.fetchAll(db, sql: sql, arguments: [
+                endDate, startDate,
+                SessionState.completed.rawValue,
+                endDate, startDate,
+                endDate, startDate
+            ])
+
+            return rows.map { row in
+                let names: String = row["activityNames"] ?? ""
+                return ExternalIdSummary(
+                    externalId: row["effectiveId"],
+                    totalSeconds: row["totalSecs"],
+                    sessionCount: row["sessCount"],
+                    activityNames: names.split(separator: ",").map(String.init)
+                )
+            }
+        }
+    }
+
     public func tagSummary(from startDate: Date, to endDate: Date, includeArchived: Bool) async throws -> [TagSummary] {
         try await dbWriter.read { db in
             let archiveFilter = includeArchived ? "" : " AND a.isArchived = 0"

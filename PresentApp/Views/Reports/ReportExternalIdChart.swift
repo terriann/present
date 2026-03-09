@@ -3,8 +3,8 @@ import Charts
 import PresentCore
 
 struct ReportExternalIdChart: View {
-    let activities: [ActivitySummary]
-    /// External ID of the active session's activity, if any. Matching sector pulses.
+    let groups: [ExternalIdSummary]
+    /// External ID of the active session, if any. Matching sector pulses.
     var activeExternalId: String?
 
     @Environment(ThemeManager.self) private var theme
@@ -14,31 +14,21 @@ struct ReportExternalIdChart: View {
     @State private var hoveredExternalSegment: String?
     @State private var pulseState = ActivePulseState()
 
-    private var externalIdGroups: [(externalId: String, activities: [ActivitySummary], totalSeconds: Int)] {
-        var grouped: [String: [ActivitySummary]] = [:]
-        for summary in activities {
-            if let externalId = summary.activity.externalId {
-                grouped[externalId, default: []].append(summary)
-            }
-        }
-        return grouped.map { (externalId: $0.key, activities: $0.value, totalSeconds: $0.value.reduce(0) { $0 + $1.totalSeconds }) }
-            .sorted { $0.totalSeconds > $1.totalSeconds }
-    }
-
     private var hasActiveEntry: Bool {
-        activeExternalId != nil && externalIdGroups.contains { $0.externalId == activeExternalId }
+        activeExternalId != nil && groups.contains { $0.externalId == activeExternalId }
     }
 
     var body: some View {
-        let groups = externalIdGroups
         guard !groups.isEmpty else { return AnyView(EmptyView()) }
         let combinedTotal = groups.reduce(0) { $0 + $1.totalSeconds }
         let palette = ThemeManager.chartColors(for: theme.activePalette)
 
         return AnyView(
-            ChartCard(title: "External ID Breakdown") {
-                externalIdDonutChart(groups: groups, combinedTotal: combinedTotal, palette: palette)
-                externalIdLegend(groups: groups, palette: palette)
+            ChartCard(title: "External ID Breakdown", headerTrailing: {
+                ExternalIdInfoButton()
+            }) {
+                externalIdDonutChart(combinedTotal: combinedTotal, palette: palette)
+                externalIdLegend(palette: palette)
             }
             .onChange(of: hasActiveEntry) {
                 if hasActiveEntry {
@@ -61,7 +51,6 @@ struct ReportExternalIdChart: View {
     // MARK: - Donut Chart
 
     private func externalIdDonutChart(
-        groups: [(externalId: String, activities: [ActivitySummary], totalSeconds: Int)],
         combinedTotal: Int,
         palette: [Color]
     ) -> some View {
@@ -101,8 +90,8 @@ struct ReportExternalIdChart: View {
                             Text(String(format: "%.1f%%", pct))
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
-                            ForEach(group.activities, id: \.activity.id) { summary in
-                                Text(summary.activity.title)
+                            ForEach(group.activityNames, id: \.self) { name in
+                                Text(name)
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
                                     .lineLimit(1)
@@ -119,17 +108,14 @@ struct ReportExternalIdChart: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("External ID breakdown chart")
-        .accessibilityValue(chartAccessibilityValue(groups: groups, combinedTotal: combinedTotal))
+        .accessibilityValue(chartAccessibilityValue(combinedTotal: combinedTotal))
         .frame(height: 250)
         .padding(Constants.spacingCard)
     }
 
     // MARK: - Accessibility
 
-    private func chartAccessibilityValue(
-        groups: [(externalId: String, activities: [ActivitySummary], totalSeconds: Int)],
-        combinedTotal: Int
-    ) -> String {
+    private func chartAccessibilityValue(combinedTotal: Int) -> String {
         groups.map { group in
             let pct = combinedTotal > 0 ? Double(group.totalSeconds) / Double(combinedTotal) * 100 : 0
             return "\(group.externalId): \(TimeFormatting.formatDuration(seconds: group.totalSeconds)) (\(String(format: "%.1f%%", pct)))"
@@ -138,10 +124,7 @@ struct ReportExternalIdChart: View {
 
     // MARK: - Legend
 
-    private func externalIdLegend(
-        groups: [(externalId: String, activities: [ActivitySummary], totalSeconds: Int)],
-        palette: [Color]
-    ) -> some View {
+    private func externalIdLegend(palette: [Color]) -> some View {
         HoverableChartLegend(
             items: groups.enumerated().map { index, group in
                 (label: group.externalId, color: palette[index % palette.count])
@@ -170,12 +153,52 @@ struct ReportExternalIdChart: View {
     private func findExternalSegment(for value: Int?) -> String? {
         guard let value else { return nil }
         var cumulative = 0
-        for group in externalIdGroups {
+        for group in groups {
             cumulative += group.totalSeconds
             if value <= cumulative {
                 return group.externalId
             }
         }
         return nil
+    }
+}
+
+// MARK: - Info Button
+
+struct ExternalIdInfoButton: View {
+    @State private var showInfo = false
+
+    var body: some View {
+        Button {
+            showInfo.toggle()
+        } label: {
+            Image(systemName: "info.circle.fill")
+                .imageScale(.small)
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("External ID grouping info")
+        .popover(isPresented: $showInfo) {
+            ExternalIdInfoContent()
+        }
+    }
+}
+
+// MARK: - Info Popover Content
+
+private struct ExternalIdInfoContent: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: Constants.spacingCompact) {
+            Text("How time is grouped")
+                .font(.headline)
+                .accessibilityAddTraits(.isHeader)
+
+            Text("Time is grouped by external ID. When a session has its own ticket ID (from a linked URL), that takes precedence over the activity's external ID. Each session's time counts toward one external ID only.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding()
+        .frame(width: 280)
     }
 }

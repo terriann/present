@@ -579,6 +579,10 @@ final class AppState {
         try await service.tagActivitySummary(from: from, to: to, includeArchived: includeArchived, roundToMinute: roundToMinute)
     }
 
+    func externalIdSummary(from: Date, to: Date, includeArchived: Bool) async throws -> [ExternalIdSummary] {
+        try await service.externalIdSummary(from: from, to: to, includeArchived: includeArchived)
+    }
+
     func earliestSessionDate() async throws -> Date? {
         try await service.earliestSessionDate()
     }
