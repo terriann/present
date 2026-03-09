@@ -552,7 +552,12 @@ struct ReportsView: View {
             }
         }
 
-        return entries
+        // During async reload transitions, selectedDate (which drives xAxisDomain) may
+        // advance while summary data is stale from the previous period. Filter out entries
+        // whose labels fall outside the current domain to prevent Swift Charts from asserting
+        // on out-of-domain x-values in .chartXScale(domain:). See #275.
+        let validLabels = Set(xAxisDomain)
+        return entries.filter { validLabels.contains($0.label) }
     }
 
     private var weeklyTooltipLabelMap: [String: String] {
