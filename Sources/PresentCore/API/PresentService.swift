@@ -1859,7 +1859,8 @@ public final class PresentService: PresentAPI, Sendable {
                            )
                        ), 0) as totalSecs,
                        COUNT(DISTINCT s.id) as sessCount,
-                       GROUP_CONCAT(DISTINCT a.title) as activityNames
+                       GROUP_CONCAT(DISTINCT a.title) as activityNames,
+                       MAX(CASE WHEN s.ticketId IS NOT NULL THEN s.link ELSE a.link END) as sourceURL
                 FROM session s
                 INNER JOIN activity a ON a.id = s.activityId
                 INNER JOIN session_segment ss ON ss.sessionId = s.id
@@ -1886,7 +1887,8 @@ public final class PresentService: PresentAPI, Sendable {
                     externalId: row["effectiveId"],
                     totalSeconds: row["totalSecs"],
                     sessionCount: row["sessCount"],
-                    activityNames: names.split(separator: ",").map(String.init)
+                    activityNames: names.split(separator: ",").map(String.init),
+                    sourceURL: row["sourceURL"]
                 )
             }
         }

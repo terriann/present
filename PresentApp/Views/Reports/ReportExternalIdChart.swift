@@ -9,6 +9,7 @@ struct ReportExternalIdChart: View {
 
     @Environment(ThemeManager.self) private var theme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.openURL) private var openURL
 
     @State private var externalIdAngleSelection: Int?
     @State private var hoveredExternalSegment: String?
@@ -27,8 +28,10 @@ struct ReportExternalIdChart: View {
             ChartCard(title: "External ID Breakdown", headerTrailing: {
                 ExternalIdInfoButton()
             }) {
-                externalIdDonutChart(combinedTotal: combinedTotal, palette: palette)
-                externalIdLegend(palette: palette)
+                HStack(alignment: .top, spacing: Constants.spacingCard) {
+                    externalIdDonutChart(combinedTotal: combinedTotal, palette: palette)
+                    externalIdLegend(palette: palette, combinedTotal: combinedTotal)
+                }
             }
             .onChange(of: hasActiveEntry) {
                 if hasActiveEntry {
@@ -87,15 +90,9 @@ struct ReportExternalIdChart: View {
                             Text(TimeFormatting.formatDuration(seconds: group.totalSeconds, active: isActive))
                                 .font(.dataValue)
                             let pct = combinedTotal > 0 ? Double(group.totalSeconds) / Double(combinedTotal) * 100 : 0
-                            Text(String(format: "%.1f%%", pct))
+                            Text(String(format: "%.0f%%", pct))
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
-                            ForEach(group.activityNames, id: \.self) { name in
-                                Text(name)
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(1)
-                            }
                         }
                         .position(
                             x: frame.midX,
@@ -124,18 +121,63 @@ struct ReportExternalIdChart: View {
 
     // MARK: - Legend
 
-    private func externalIdLegend(palette: [Color]) -> some View {
-        HoverableChartLegend(
-            items: groups.enumerated().map { index, group in
-                (label: group.externalId, color: palette[index % palette.count])
-            },
-            hoveredLabel: $hoveredExternalSegment,
-            onHoverEnd: {
-                hoveredExternalSegment = findExternalSegment(for: externalIdAngleSelection)
+    private func externalIdLegend(palette: [Color], combinedTotal: Int) -> some View {
+        VStack(alignment: .leading, spacing: Constants.spacingCard) {
+            ForEach(Array(groups.enumerated()), id: \.element.externalId) { index, group in
+                let color = palette[index % palette.count]
+                let isHovered = hoveredExternalSegment == group.externalId
+                HStack(alignment: .center, spacing: Constants.spacingTight) {
+                    Circle()
+                        .fill(color)
+                        .frame(width: 8, height: 8)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(group.externalId)
+                            .font(.dataLabel)
+                            .lineLimit(1)
+                        Text(group.activityNames.sorted().joined(separator: ", "))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+                    Spacer()
+                    HStack(alignment: .center, spacing: Constants.spacingCompact) {
+                        let pct = combinedTotal > 0 ? Double(group.totalSeconds) / Double(combinedTotal) * 100 : 0
+                        Text(String(format: "%.0f%%", pct))
+                            .font(.dataValue)
+                            .foregroundStyle(.secondary)
+                        if let urlString = group.sourceURL, let url = URL(string: urlString) {
+                            Button {
+                                openURL(url)
+                            } label: {
+                                Image(systemName: "arrow.up.right.square")
+                                    .foregroundStyle(.secondary)
+                                    .accessibilityHidden(true)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Open \(group.externalId)")
+                            .help(urlString)
+                        }
+                    }
+                }
+                .padding(.vertical, 4)
+                .padding(.horizontal, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(isHovered ? Color.primary.opacity(0.08) : Color.clear)
+                )
+                .onHover { hovering in
+                    if hovering {
+                        hoveredExternalSegment = group.externalId
+                    } else {
+                        hoveredExternalSegment = nil
+                        hoveredExternalSegment = findExternalSegment(for: externalIdAngleSelection)
+                    }
+                }
             }
-        )
+        }
         .padding(.horizontal, Constants.spacingCard)
         .padding(.bottom, Constants.spacingCard)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // MARK: - Helpers
