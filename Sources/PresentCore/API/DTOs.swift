@@ -247,6 +247,22 @@ public struct MonthlySummary: Sendable, Equatable {
     }
 }
 
+public struct ExternalIdSummary: Sendable, Equatable {
+    public var externalId: String
+    public var totalSeconds: Int
+    public var sessionCount: Int
+    public var activityNames: [String]
+    public var sourceURL: String?
+
+    public init(externalId: String, totalSeconds: Int, sessionCount: Int, activityNames: [String], sourceURL: String? = nil) {
+        self.externalId = externalId
+        self.totalSeconds = totalSeconds
+        self.sessionCount = sessionCount
+        self.activityNames = activityNames
+        self.sourceURL = sourceURL
+    }
+}
+
 public struct TodaySummary: Sendable, Equatable {
     public var totalSeconds: Int
     public var sessionCount: Int

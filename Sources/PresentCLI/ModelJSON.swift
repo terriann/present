@@ -239,3 +239,28 @@ extension MonthlySummary {
         ]
     }
 }
+
+extension TagSummary {
+
+    func toJSONDict() -> [String: Any] {
+        [
+            "tagName": tagName,
+            "totalSeconds": totalSeconds,
+            "sessionCount": sessionCount,
+        ]
+    }
+}
+
+extension ExternalIdSummary {
+
+    func toJSONDict() -> [String: Any] {
+        var dict: [String: Any] = [
+            "externalId": externalId,
+            "totalSeconds": totalSeconds,
+            "sessionCount": sessionCount,
+            "activityNames": activityNames,
+        ]
+        if let sourceURL { dict["sourceURL"] = sourceURL }
+        return dict
+    }
+}

@@ -55,6 +55,7 @@ public protocol PresentAPI: Sendable {
     func dailySummary(date: Date, includeArchived: Bool, roundToMinute: Bool) async throws -> DailySummary
     func weeklySummary(weekOf: Date, includeArchived: Bool, weekStartDay: Int, roundToMinute: Bool) async throws -> WeeklySummary
     func monthlySummary(monthOf: Date, includeArchived: Bool, weekStartDay: Int, roundToMinute: Bool) async throws -> MonthlySummary
+    func externalIdSummary(from: Date, to: Date, includeArchived: Bool) async throws -> [ExternalIdSummary]
     func tagSummary(from: Date, to: Date, includeArchived: Bool) async throws -> [TagSummary]
     func tagActivitySummary(from: Date, to: Date, includeArchived: Bool, roundToMinute: Bool) async throws -> [TagActivitySummary]
     func exportCSV(from: Date, to: Date, includeArchived: Bool) async throws -> Data

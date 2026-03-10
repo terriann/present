@@ -84,7 +84,6 @@ public final class PresentService: PresentAPI, Sendable {
             nil
         }
         if let sanitizedLink { try Validation.validateLink(sanitizedLink) }
-        let ticketId = sanitizedLink.flatMap { TicketExtractor.extractTicketId(from: $0) }
 
         return try await dbWriter.write { db in
             // Check no active session
@@ -106,6 +105,10 @@ public final class PresentService: PresentAPI, Sendable {
                 throw PresentError.rhythmNotAllowedForSystemActivity
             }
 
+            // System activities never get external IDs or links
+            let effectiveLink = activity.isSystem ? nil : sanitizedLink
+            let ticketId = effectiveLink.flatMap { TicketExtractor.extractTicketId(from: $0) }
+
             let now = Date()
             var session = Session(
                 activityId: activityId,
@@ -118,7 +121,7 @@ public final class PresentService: PresentAPI, Sendable {
 
             // Attach note and link
             session.note = sanitizedNote
-            session.link = sanitizedLink
+            session.link = effectiveLink
             session.ticketId = ticketId
 
             // For rhythm sessions, store break duration and determine the session index
@@ -173,7 +176,6 @@ public final class PresentService: PresentAPI, Sendable {
             nil
         }
         if let sanitizedLink { try Validation.validateLink(sanitizedLink) }
-        let ticketId = sanitizedLink.flatMap { TicketExtractor.extractTicketId(from: $0) }
 
         return try await dbWriter.write { db in
             // Validate activity exists and is not archived
@@ -212,6 +214,10 @@ public final class PresentService: PresentAPI, Sendable {
                 throw PresentError.sessionOverlap
             }
 
+            // System activities never get external IDs or links
+            let effectiveLink = activity.isSystem ? nil : sanitizedLink
+            let ticketId = effectiveLink.flatMap { TicketExtractor.extractTicketId(from: $0) }
+
             let durationSeconds = Int(input.endedAt.timeIntervalSince(input.startedAt))
             let now = Date()
             var session = Session(
@@ -224,7 +230,7 @@ public final class PresentService: PresentAPI, Sendable {
                 state: .completed,
                 breakMinutes: input.breakMinutes,
                 note: sanitizedNote,
-                link: sanitizedLink,
+                link: effectiveLink,
                 ticketId: ticketId,
                 createdAt: now
             )
@@ -288,15 +294,19 @@ public final class PresentService: PresentAPI, Sendable {
 
             let isActive = session.state == .running || session.state == .paused
 
+            // Determine if the session belongs to a system activity (before any reassignment)
+            let currentActivity = try Activity.fetchOne(db, key: session.activityId)
+            let isSystemSession = currentActivity?.isSystem ?? false
+
             // Note change
             if noteChange.apply {
                 session.note = noteChange.value
             }
 
-            // Link change
+            // Link change — system activity sessions never get external IDs or links
             if linkChange.apply {
-                session.link = linkChange.link
-                session.ticketId = linkChange.ticketId
+                session.link = isSystemSession ? nil : linkChange.link
+                session.ticketId = isSystemSession ? nil : linkChange.ticketId
             }
 
             // Activity reassignment
@@ -1845,6 +1855,75 @@ public final class PresentService: PresentAPI, Sendable {
             return $0.activity.title < $1.activity.title
         }
         return MonthlySummary(monthOf: startOfMonth, totalSeconds: totalSeconds, sessionCount: totalSessions, weeklyBreakdown: weeklyBreakdown, dailyBreakdown: dailyBreakdown, activities: activities)
+    }
+
+    public func externalIdSummary(from startDate: Date, to endDate: Date, includeArchived: Bool) async throws -> [ExternalIdSummary] {
+        try await dbWriter.read { db in
+            let archiveFilter = includeArchived ? "" : " AND a.isArchived = 0"
+            // Aggregate sessions by their effective external ID, preferring the session-level
+            // ticketId over the parent activity's externalId (via COALESCE). Each group gets:
+            //   - totalSecs: sum of segment durations clamped to the requested date range,
+            //     so cross-midnight sessions only count time within the window.
+            //   - sessCount: distinct sessions contributing to the group.
+            //   - activityNames: pipe-separated list of distinct activity titles (pipe avoids
+            //     splitting on commas that may appear in titles).
+            //   - sourceURL: link from the most recent session in the group, preferring the
+            //     session's own link when a ticketId is set, falling back to the activity link.
+            let sql = """
+                SELECT COALESCE(s.ticketId, a.externalId) as effectiveId,
+                       COALESCE(SUM(
+                           MAX(0,
+                               CAST(strftime('%s', MIN(ss.endedAt, ?)) AS INTEGER) -
+                               CAST(strftime('%s', MAX(ss.startedAt, ?)) AS INTEGER)
+                           )
+                       ), 0) as totalSecs,
+                       COUNT(DISTINCT s.id) as sessCount,
+                       (SELECT GROUP_CONCAT(t.title, '|') FROM (
+                            SELECT DISTINCT a3.title
+                            FROM session s3
+                            INNER JOIN activity a3 ON a3.id = s3.activityId
+                            WHERE COALESCE(s3.ticketId, a3.externalId) = COALESCE(s.ticketId, a.externalId)
+                              AND s3.state = ?
+                        ) t) as activityNames,
+                       (SELECT CASE WHEN s2.ticketId IS NOT NULL THEN s2.link ELSE a2.link END
+                        FROM session s2
+                        INNER JOIN activity a2 ON a2.id = s2.activityId
+                        WHERE COALESCE(s2.ticketId, a2.externalId) = COALESCE(s.ticketId, a.externalId)
+                          AND s2.state = ?
+                        ORDER BY s2.startedAt DESC LIMIT 1) as sourceURL
+                FROM session s
+                INNER JOIN activity a ON a.id = s.activityId
+                INNER JOIN session_segment ss ON ss.sessionId = s.id
+                WHERE s.state = ?
+                  AND s.startedAt < ? AND (s.endedAt > ? OR s.endedAt IS NULL)
+                  AND ss.endedAt IS NOT NULL
+                  AND ss.startedAt < ? AND ss.endedAt > ?
+                  AND COALESCE(s.ticketId, a.externalId) IS NOT NULL
+                  \(archiveFilter)
+                GROUP BY effectiveId
+                ORDER BY totalSecs DESC
+                """
+
+            let rows = try Row.fetchAll(db, sql: sql, arguments: [
+                endDate, startDate,
+                SessionState.completed.rawValue,
+                SessionState.completed.rawValue,
+                SessionState.completed.rawValue,
+                endDate, startDate,
+                endDate, startDate
+            ])
+
+            return rows.map { row in
+                let names: String = row["activityNames"] ?? ""
+                return ExternalIdSummary(
+                    externalId: row["effectiveId"],
+                    totalSeconds: row["totalSecs"],
+                    sessionCount: row["sessCount"],
+                    activityNames: names.split(separator: "|").map(String.init),
+                    sourceURL: row["sourceURL"]
+                )
+            }
+        }
     }
 
     public func tagSummary(from startDate: Date, to endDate: Date, includeArchived: Bool) async throws -> [TagSummary] {

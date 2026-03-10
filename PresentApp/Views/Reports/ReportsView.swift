@@ -14,6 +14,7 @@ struct ReportsView: View {
     @State private var weeklySummaryData: WeeklySummary?
     @State private var monthlySummaryData: MonthlySummary?
     @State private var tagActivitySummaries: [TagActivitySummary] = []
+    @State private var externalIdSummaries: [ExternalIdSummary] = []
     @State private var sessionEntries: [(Session, Activity)] = []
     @State private var sessionSegments: [Int64: [SessionSegment]] = [:]
 
@@ -79,7 +80,7 @@ struct ReportsView: View {
                         }
                     }
                     ReportExternalIdChart(
-                        activities: displayActivities,
+                        groups: displayExternalIdSummaries,
                         activeExternalId: activeExternalId
                     )
                 } else {
@@ -97,7 +98,8 @@ struct ReportsView: View {
                     title: "Session Logs",
                     sessionEntries: sessionEntries,
                     activityColorMap: activityColorMap,
-                    includeActiveSession: isShowingToday,
+                    includeActiveSession: shouldIncludeActive,
+                    timeReferenceDate: selectedPeriod == .daily ? Calendar.current.startOfDay(for: selectedDate) : nil,
                     resetToken: [selectedDate.description, selectedPeriod.rawValue] as [AnyHashable],
                     onReload: { reloadReport(clearData: false) }
                 )
@@ -396,6 +398,29 @@ struct ReportsView: View {
         return result
     }
 
+    /// External ID summaries augmented with the active session's elapsed time.
+    private var displayExternalIdSummaries: [ExternalIdSummary] {
+        guard let activity = activeActivity, !activity.isSystem else { return externalIdSummaries }
+        guard let effectiveId = activeExternalId else { return externalIdSummaries }
+        var result = externalIdSummaries
+        let activityName = activeActivity?.title ?? ""
+        if let index = result.firstIndex(where: { $0.externalId == effectiveId }) {
+            result[index].totalSeconds += activeElapsedSeconds
+            result[index].sessionCount += 1
+            if !result[index].activityNames.contains(activityName) {
+                result[index].activityNames.append(activityName)
+            }
+        } else {
+            result.append(ExternalIdSummary(
+                externalId: effectiveId,
+                totalSeconds: activeElapsedSeconds,
+                sessionCount: 1,
+                activityNames: [activityName]
+            ))
+        }
+        return result
+    }
+
     /// The title of the active activity (for charts to identify which element to pulse).
     private var activeActivityTitle: String? {
         guard let activity = activeActivity, !activity.isSystem else { return nil }
@@ -408,9 +433,10 @@ struct ReportsView: View {
         return Set(activeActivityTags.map(\.name))
     }
 
-    /// The external ID of the active activity (for external ID chart pulsing).
+    /// The effective external ID for the active session (session ticket ID wins over activity external ID).
     private var activeExternalId: String? {
-        activeActivity?.externalId
+        guard activeActivity != nil else { return nil }
+        return appState.currentSession?.ticketId ?? activeActivity?.externalId
     }
 
     private func loadActiveActivityTags() {
@@ -658,6 +684,7 @@ struct ReportsView: View {
             totalSeconds = 0
             sessionCount = 0
             tagActivitySummaries = []
+            externalIdSummaries = []
             sessionEntries = []
             sessionSegments = [:]
         }
@@ -692,6 +719,7 @@ struct ReportsView: View {
                 let startOfDay = calendar.startOfDay(for: selectedDate)
                 let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? selectedDate
                 let tags = try await appState.tagActivitySummary(from: startOfDay, to: endOfDay, includeArchived: showArchived, roundToMinute: true)
+                let extIds = try await appState.externalIdSummary(from: startOfDay, to: endOfDay, includeArchived: showArchived)
                 try Task.checkCancellation()
                 // Batch all state updates together to avoid mid-render inconsistencies
                 let sessions = try await appState.listSessions(from: startOfDay, to: endOfDay, type: nil, activityId: nil, includeArchived: showArchived)
@@ -706,6 +734,7 @@ struct ReportsView: View {
                     totalSeconds = summary.totalSeconds
                     sessionCount = summary.sessionCount
                     tagActivitySummaries = tags
+                    externalIdSummaries = extIds
                     sessionEntries = sessions
                     sessionSegments = segments
                 }
@@ -715,6 +744,7 @@ struct ReportsView: View {
                 let wStart = weekStart(for: selectedDate)
                 let weekEnd = calendar.date(byAdding: .day, value: 7, to: wStart) ?? selectedDate
                 let tags = try await appState.tagActivitySummary(from: wStart, to: weekEnd, includeArchived: showArchived, roundToMinute: true)
+                let extIds = try await appState.externalIdSummary(from: wStart, to: weekEnd, includeArchived: showArchived)
                 try Task.checkCancellation()
                 let sessions = try await appState.listSessions(from: wStart, to: weekEnd, type: nil, activityId: nil, includeArchived: showArchived)
                 try Task.checkCancellation()
@@ -725,6 +755,7 @@ struct ReportsView: View {
                     totalSeconds = summary.totalSeconds
                     sessionCount = summary.sessionCount
                     tagActivitySummaries = tags
+                    externalIdSummaries = extIds
                     sessionEntries = sessions
                 }
 
@@ -732,6 +763,7 @@ struct ReportsView: View {
                 let summary = try await appState.monthlySummary(monthOf: selectedDate, includeArchived: showArchived, weekStartDay: effectiveWeekStartDay, roundToMinute: true)
                 guard let monthInterval = calendar.dateInterval(of: .month, for: selectedDate) else { return }
                 let tags = try await appState.tagActivitySummary(from: monthInterval.start, to: monthInterval.end, includeArchived: showArchived, roundToMinute: true)
+                let extIds = try await appState.externalIdSummary(from: monthInterval.start, to: monthInterval.end, includeArchived: showArchived)
                 try Task.checkCancellation()
                 let sessions = try await appState.listSessions(from: monthInterval.start, to: monthInterval.end, type: nil, activityId: nil, includeArchived: showArchived)
                 try Task.checkCancellation()
@@ -742,6 +774,7 @@ struct ReportsView: View {
                     totalSeconds = summary.totalSeconds
                     sessionCount = summary.sessionCount
                     tagActivitySummaries = tags
+                    externalIdSummaries = extIds
                     sessionEntries = sessions
                 }
             }
