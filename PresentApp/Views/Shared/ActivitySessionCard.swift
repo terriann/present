@@ -71,6 +71,9 @@ struct ActivitySessionCard: View {
         .onChange(of: appState.isSessionActive) { _, isActive in
             sortOrder = isActive ? .mostRecent : .timeSpent
         }
+        .onChange(of: searchText) { clearEditing() }
+        .onChange(of: sortOrder) { clearEditing() }
+        .onChange(of: grouping) { clearEditing() }
         .onChange(of: resetToken) {
             expandedActivities.removeAll()
         }
@@ -241,6 +244,7 @@ struct ActivitySessionCard: View {
                     .hoverHighlight()
                     .contentShape(Rectangle())
                     .onTapGesture {
+                        clearEditing()
                         withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
                             if isExpanded {
                                 expandedActivities.remove(activityId)
@@ -264,6 +268,7 @@ struct ActivitySessionCard: View {
                         if let active = activeSession, activeSessionMatchesSearch {
                             if active.id == editingSessionId {
                                 SessionInlineEditForm(session: active, activity: group.activity,
+                                    timeReferenceDate: timeReferenceDate,
                                     onSave: { clearEditing(); onReload?() },
                                     onCancel: { clearEditing() })
                                     .padding(.horizontal, Constants.spacingCard)
@@ -273,6 +278,12 @@ struct ActivitySessionCard: View {
                                 activeSessionRow(session: active, activityTitle: group.activity.title)
                                     .background(subRowBackground(index: 0))
                                     .hoverHighlight()
+                                    // Dismiss inline edit form when tapping a non-editing row.
+                                    // The guard ensures this is a no-op when no form is open.
+                                    .onTapGesture {
+                                        guard editingSessionId != nil else { return }
+                                        clearEditing()
+                                    }
                             }
                         }
 
@@ -281,6 +292,7 @@ struct ActivitySessionCard: View {
                             let rowIndex = activeVisible ? subIndex + 1 : subIndex
                             if entry.0.id == editingSessionId {
                                 SessionInlineEditForm(session: entry.0, activity: entry.1,
+                                    timeReferenceDate: timeReferenceDate,
                                     onSave: { clearEditing(); onReload?() },
                                     onCancel: { clearEditing() })
                                     .padding(.horizontal, Constants.spacingCard)
@@ -290,6 +302,10 @@ struct ActivitySessionCard: View {
                                 completedSessionRow(session: entry.0, activityTitle: group.activity.title)
                                     .background(subRowBackground(index: rowIndex))
                                     .hoverHighlight()
+                                    .onTapGesture {
+                                        guard editingSessionId != nil else { return }
+                                        clearEditing()
+                                    }
                             }
                         }
                     }
@@ -308,6 +324,7 @@ struct ActivitySessionCard: View {
                let active = appState.currentSession, let activity = appState.currentActivity {
                 if active.id == editingSessionId {
                     SessionInlineEditForm(session: active, activity: activity,
+                        timeReferenceDate: timeReferenceDate,
                         onSave: { clearEditing(); onReload?() },
                         onCancel: { clearEditing() })
                         .padding(.horizontal, Constants.spacingCard)
@@ -321,6 +338,10 @@ struct ActivitySessionCard: View {
                         .contentShape(Rectangle())
                         .sessionContextMenu(session: active, activityTitle: activity.title,
                             onEdit: { beginEditing($0) })
+                        .onTapGesture {
+                            guard editingSessionId != nil else { return }
+                            clearEditing()
+                        }
                 }
             }
 
@@ -328,6 +349,7 @@ struct ActivitySessionCard: View {
                 let adjustedIndex = hasActiveSessionMatchingSearch ? index + 1 : index
                 if entry.0.id == editingSessionId {
                     SessionInlineEditForm(session: entry.0, activity: entry.1,
+                        timeReferenceDate: timeReferenceDate,
                         onSave: { clearEditing(); onReload?() },
                         onCancel: { clearEditing() })
                         .padding(.horizontal, Constants.spacingCard)
@@ -342,6 +364,10 @@ struct ActivitySessionCard: View {
                         .sessionContextMenu(session: entry.0, activityTitle: entry.1.title,
                             onEdit: { beginEditing($0) }) {
                             onReload?()
+                        }
+                        .onTapGesture {
+                            guard editingSessionId != nil else { return }
+                            clearEditing()
                         }
                 }
             }

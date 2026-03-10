@@ -1,3 +1,4 @@
+import os
 import SwiftUI
 import PresentCore
 
@@ -9,6 +10,9 @@ import PresentCore
 struct SessionInlineEditForm: View {
     let session: Session
     let activity: Activity
+    /// Reference date for the current view. `nil` for multi-day views (weekly/monthly),
+    /// a specific date for single-day views (daily/dashboard).
+    var timeReferenceDate: Date?
     var onSave: () -> Void
     var onCancel: () -> Void
 
@@ -21,6 +25,9 @@ struct SessionInlineEditForm: View {
     @State private var noteText: String
     @State private var errorMessage: String?
     @State private var errorFields: Set<ErrorField> = []
+    @State private var showStartDate: Bool
+    @State private var showEndDate: Bool
+    @State private var explicitlyClosed = false
 
     private enum ErrorField: Hashable { case activity, start, end, note }
 
@@ -28,15 +35,30 @@ struct SessionInlineEditForm: View {
         session.state == .running || session.state == .paused
     }
 
-    init(session: Session, activity: Activity, onSave: @escaping () -> Void, onCancel: @escaping () -> Void) {
+    init(session: Session, activity: Activity, timeReferenceDate: Date? = nil,
+         onSave: @escaping () -> Void, onCancel: @escaping () -> Void) {
         self.session = session
         self.activity = activity
+        self.timeReferenceDate = timeReferenceDate
         self.onSave = onSave
         self.onCancel = onCancel
         _selectedActivityId = State(initialValue: session.activityId)
         _startTime = State(initialValue: session.startedAt)
         _endTime = State(initialValue: session.endedAt ?? Date())
         _noteText = State(initialValue: session.note ?? "")
+
+        // Multi-day views (weekly/monthly): date collapsed by default — the calendar
+        // icon and day label are always visible so the user can expand on tap.
+        // Single-day views (daily): show only if the time falls on a different day.
+        let cal = Calendar.current
+        let endedAt = session.endedAt ?? Date()
+        if let ref = timeReferenceDate {
+            _showStartDate = State(initialValue: !cal.isDate(session.startedAt, inSameDayAs: ref))
+            _showEndDate = State(initialValue: !cal.isDate(endedAt, inSameDayAs: ref))
+        } else {
+            _showStartDate = State(initialValue: false)
+            _showEndDate = State(initialValue: false)
+        }
     }
 
     var body: some View {
@@ -62,10 +84,20 @@ struct SessionInlineEditForm: View {
                     Text("Start")
                         .font(.fieldLabel)
                         .foregroundStyle(errorFields.contains(.start) ? theme.alert : .secondary)
-                    DatePicker("Start", selection: $startTime)
-                        .datePickerStyle(.stepperField)
-                        .labelsHidden()
-                        .fixedSize()
+                    HStack(spacing: Constants.spacingTight) {
+                        dateIndicatorButton(date: startTime, expanded: showStartDate) {
+                            withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
+                                showStartDate.toggle()
+                            }
+                        }
+                        .accessibilityLabel(showStartDate ? "Hide date for start time" : "Show date for start time")
+                        .help(showStartDate ? "Hide date for start time" : "Show date for start time")
+                        DatePicker("Start", selection: $startTime,
+                                   displayedComponents: showStartDate ? [.hourAndMinute, .date] : .hourAndMinute)
+                            .datePickerStyle(.stepperField)
+                            .labelsHidden()
+                            .fixedSize()
+                    }
                 }
 
                 // End time
@@ -73,11 +105,21 @@ struct SessionInlineEditForm: View {
                     Text("End")
                         .font(.fieldLabel)
                         .foregroundStyle(errorFields.contains(.end) ? theme.alert : .secondary)
-                    DatePicker("End", selection: $endTime, in: ...Date())
-                        .datePickerStyle(.stepperField)
-                        .labelsHidden()
-                        .fixedSize()
-                        .disabled(isActive)
+                    HStack(spacing: Constants.spacingTight) {
+                        dateIndicatorButton(date: endTime, expanded: showEndDate) {
+                            withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
+                                showEndDate.toggle()
+                            }
+                        }
+                        .accessibilityLabel(showEndDate ? "Hide date for end time" : "Show date for end time")
+                        .help(showEndDate ? "Hide date for end time" : "Show date for end time")
+                        DatePicker("End", selection: $endTime, in: ...Date(),
+                                   displayedComponents: showEndDate ? [.hourAndMinute, .date] : .hourAndMinute)
+                            .datePickerStyle(.stepperField)
+                            .labelsHidden()
+                            .fixedSize()
+                            .disabled(isActive)
+                    }
                 }
 
                 // Paused time
@@ -146,9 +188,42 @@ struct SessionInlineEditForm: View {
                 revertAll()
                 return .handled
             }
+            explicitlyClosed = true
             onCancel()
             return .handled
         }
+        .onDisappear {
+            guard !explicitlyClosed else { return }
+            flushBufferedChanges()
+        }
+    }
+
+    // MARK: - Subviews
+
+    /// Calendar icon with optional day-name label, shown to the left of the time picker.
+    /// The icon is always visible so users can toggle the date component. The day label
+    /// appears only when the time falls on a different day (daily view) or always (multi-day view).
+    private func dateIndicatorButton(date: Date, expanded: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 2) {
+                Image(systemName: "calendar")
+                    .rotationEffect(.degrees(expanded ? 45 : 0))
+                if shouldShowDateLabel(for: date) {
+                    Text(date.formatted(.dateTime.weekday(.abbreviated)))
+                }
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// Whether the day-name label should appear next to the calendar icon.
+    /// Multi-day views (weekly/monthly): always. Single-day views: only when the time
+    /// falls on a different day than the reference date.
+    private func shouldShowDateLabel(for date: Date) -> Bool {
+        guard let ref = timeReferenceDate else { return true }
+        return !Calendar.current.isDate(date, inSameDayAs: ref)
     }
 
     // MARK: - Helpers
@@ -193,13 +268,13 @@ struct SessionInlineEditForm: View {
     /// to prevent the form from jumping between groups, and note saves on blur but may
     /// have unsaved text if the user clicks Done without blurring the editor first.
     private func done() {
-        guard let sessionId = session.id else { onSave(); return }
+        guard let sessionId = session.id else { explicitlyClosed = true; onSave(); return }
 
         let activityChanged = selectedActivityId != session.activityId
         let trimmed = noteText.trimmingCharacters(in: .whitespacesAndNewlines)
         let noteChanged = trimmed != (session.note ?? "")
 
-        guard activityChanged || noteChanged else { onSave(); return }
+        guard activityChanged || noteChanged else { explicitlyClosed = true; onSave(); return }
 
         var input = UpdateSessionInput()
         if activityChanged { input.activityId = selectedActivityId }
@@ -213,7 +288,35 @@ struct SessionInlineEditForm: View {
                 errorFields = errorFieldsFrom(error)
                 return
             }
+            explicitlyClosed = true
             onSave()
+        }
+    }
+
+    private static let logger = Logger(subsystem: "com.present.app", category: "session")
+
+    /// Flush buffered changes (activity, note) when the form disappears without explicit save/cancel.
+    /// Time fields auto-save via onChange so they are not included here.
+    /// Logs on failure for diagnostics — the form is already gone so the user cannot retry.
+    private func flushBufferedChanges() {
+        guard let sessionId = session.id else { return }
+
+        let activityChanged = selectedActivityId != session.activityId
+        let trimmed = noteText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let noteChanged = trimmed != (session.note ?? "")
+
+        guard activityChanged || noteChanged else { return }
+
+        var input = UpdateSessionInput()
+        if activityChanged { input.activityId = selectedActivityId }
+        if noteChanged { input.note = trimmed }
+
+        Task {
+            do {
+                try await appState.updateSession(id: sessionId, input)
+            } catch {
+                Self.logger.warning("Failed to flush buffered changes for session \(sessionId, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            }
         }
     }
 

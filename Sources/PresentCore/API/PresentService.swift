@@ -1744,6 +1744,150 @@ public final class PresentService: PresentAPI, Sendable {
         }
     }
 
+    // MARK: - Batch Daily Summaries
+
+    /// Fetches daily summaries for a date range in a single SQL query, then
+    /// partitions the results by calendar day in Swift. This eliminates the N+1
+    /// query pattern where `weeklySummary` / `monthlySummary` called `dailySummary`
+    /// per day (2 queries × N days).
+    ///
+    /// Must be called inside an existing `dbWriter.read` block.
+    private func batchDailySummaries(
+        db: Database,
+        from startDate: Date,
+        to endDate: Date,
+        includeArchived: Bool,
+        roundToMinute: Bool
+    ) throws -> [DailySummary] {
+        let calendar = Calendar.current
+        let rangeStart = calendar.startOfDay(for: startDate)
+        guard let rangeEnd = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: endDate)) else {
+            throw PresentError.invalidInput("Failed to compute end of date range")
+        }
+
+        let archiveFilter = includeArchived ? "" : " AND a.isArchived = 0"
+
+        // Single query: fetch all segments with their session and activity info.
+        // All day/hour splitting and aggregation happens in Swift to correctly
+        // handle cross-midnight sessions that span multiple calendar days.
+        let segmentSql = """
+            SELECT ss.startedAt AS seg_startedAt, ss.endedAt AS seg_endedAt,
+                   s.id AS sessionId, a.*
+            FROM session_segment ss
+            INNER JOIN session s ON s.id = ss.sessionId
+            INNER JOIN activity a ON a.id = s.activityId
+            WHERE s.state = ?
+              AND s.startedAt < ? AND (s.endedAt > ? OR s.endedAt IS NULL)
+              AND ss.endedAt IS NOT NULL
+              AND ss.startedAt < ? AND ss.endedAt > ?
+              \(archiveFilter)
+            ORDER BY ss.startedAt
+            """
+
+        let segmentRows = try Row.fetchAll(db, sql: segmentSql, arguments: [
+            SessionState.completed.rawValue,
+            rangeEnd, rangeStart,
+            rangeEnd, rangeStart
+        ])
+
+        // Accumulators keyed by start-of-day Date
+        var activityById: [Int64: Activity] = [:]
+        // day -> activityId -> sessionId -> seconds (for per-session rounding)
+        var dayActivitySessionSecs: [Date: [Int64: [Int64: Int]]] = [:]
+        // day -> hour -> activityId -> seconds (for hourly breakdown)
+        var dayHourActivity: [Date: [Int: [Int64: Int]]] = [:]
+
+        for row in segmentRows {
+            let rawSegStart: Date = row["seg_startedAt"]
+            let rawSegEnd: Date = row["seg_endedAt"]
+            let sessionId: Int64 = row["sessionId"]
+            let activity = try Activity(row: row)
+            guard let activityId = activity.id else { continue }
+            activityById[activityId] = activity
+
+            // Clamp to overall range
+            let segStart = max(rawSegStart, rangeStart)
+            let segEnd = min(rawSegEnd, rangeEnd)
+
+            // Walk through the segment, splitting at day and hour boundaries
+            var cursor = segStart
+            while cursor < segEnd {
+                let dayStart = calendar.startOfDay(for: cursor)
+
+                let hourComponents = calendar.dateComponents([.year, .month, .day, .hour], from: cursor)
+                guard let hourStart = calendar.date(from: hourComponents),
+                      let nextHour = calendar.date(byAdding: .hour, value: 1, to: hourStart) else {
+                    break
+                }
+                let sliceEnd = min(segEnd, nextHour)
+                let sliceSeconds = Int(sliceEnd.timeIntervalSince(cursor))
+                let hour = calendar.component(.hour, from: cursor)
+
+                dayActivitySessionSecs[dayStart, default: [:]][activityId, default: [:]][sessionId, default: 0] += sliceSeconds
+                dayHourActivity[dayStart, default: [:]][hour, default: [:]][activityId, default: 0] += sliceSeconds
+                cursor = sliceEnd
+            }
+        }
+
+        // --- Build DailySummary array ---
+        var results: [DailySummary] = []
+        var currentDay = rangeStart
+        while currentDay < rangeEnd {
+            guard let nextDay = calendar.date(byAdding: .day, value: 1, to: currentDay) else { break }
+
+            var activities: [ActivitySummary] = []
+            var totalSeconds = 0
+            var totalSessions = 0
+
+            if let activitySessions = dayActivitySessionSecs[currentDay] {
+                for (activityId, sessionSecs) in activitySessions {
+                    guard let activity = activityById[activityId] else { continue }
+                    var actTotal = 0
+                    let sessCount = sessionSecs.count
+                    if roundToMinute {
+                        // Floor each session's day-portion to the minute, then sum
+                        for (_, secs) in sessionSecs {
+                            actTotal += (secs / 60) * 60
+                        }
+                    } else {
+                        actTotal = sessionSecs.values.reduce(0, +)
+                    }
+                    if actTotal > 0 || sessCount > 0 {
+                        activities.append(ActivitySummary(activity: activity, totalSeconds: actTotal, sessionCount: sessCount))
+                        totalSeconds += actTotal
+                        totalSessions += sessCount
+                    }
+                }
+                // Sort by totalSeconds descending, then title ascending
+                activities.sort {
+                    if $0.totalSeconds != $1.totalSeconds { return $0.totalSeconds > $1.totalSeconds }
+                    return $0.activity.title < $1.activity.title
+                }
+            }
+
+            var hourlyBreakdown: [HourlyBucket] = []
+            if let hourMap = dayHourActivity[currentDay] {
+                for hour in hourMap.keys.sorted() {
+                    guard let actSecs = hourMap[hour] else { continue }
+                    for (actId, secs) in actSecs.sorted(by: { $0.value > $1.value }) {
+                        if let activity = activityById[actId] {
+                            let finalSecs = roundToMinute ? TimeFormatting.floorToMinute(secs) : secs
+                            hourlyBreakdown.append(HourlyBucket(hour: hour, activity: activity, totalSeconds: finalSecs))
+                        }
+                    }
+                }
+            }
+
+            results.append(DailySummary(
+                date: currentDay, totalSeconds: totalSeconds, sessionCount: totalSessions,
+                activities: activities, hourlyBreakdown: hourlyBreakdown
+            ))
+            currentDay = nextDay
+        }
+
+        return results
+    }
+
     public func weeklySummary(weekOf: Date, includeArchived: Bool, weekStartDay: Int = 1, roundToMinute: Bool = false) async throws -> WeeklySummary {
         var calendar = Calendar.current
         calendar.firstWeekday = weekStartDay
@@ -1751,42 +1895,40 @@ public final class PresentService: PresentAPI, Sendable {
             return WeeklySummary(weekOf: weekOf, totalSeconds: 0, sessionCount: 0, dailyBreakdown: [], activities: [])
         }
         let startOfWeek = weekInterval.start
-        let endOfWeek = calendar.date(byAdding: .day, value: 7, to: startOfWeek) ?? weekInterval.end
+        let endDate = calendar.date(byAdding: .day, value: 6, to: startOfWeek) ?? weekInterval.end
 
-        var dailyBreakdown: [DailySummary] = []
-        var current = startOfWeek
-        while current < endOfWeek {
-            let daily = try await dailySummary(date: current, includeArchived: includeArchived, roundToMinute: roundToMinute)
-            dailyBreakdown.append(daily)
-            guard let nextDay = calendar.date(byAdding: .day, value: 1, to: current) else { break }
-            current = nextDay
-        }
+        return try await dbWriter.read { [self] db in
+            let dailyBreakdown = try batchDailySummaries(
+                db: db, from: startOfWeek, to: endDate,
+                includeArchived: includeArchived, roundToMinute: roundToMinute
+            )
 
-        // Aggregate activity summaries across the week
-        var activityMap: [Int64: ActivitySummary] = [:]
-        var totalSeconds = 0
-        var totalSessions = 0
+            // Aggregate activity summaries across the week
+            var activityMap: [Int64: ActivitySummary] = [:]
+            var totalSeconds = 0
+            var totalSessions = 0
 
-        for daily in dailyBreakdown {
-            totalSeconds += daily.totalSeconds
-            totalSessions += daily.sessionCount
-            for actSummary in daily.activities {
-                guard let actId = actSummary.activity.id else { continue }
-                if var existing = activityMap[actId] {
-                    existing.totalSeconds += actSummary.totalSeconds
-                    existing.sessionCount += actSummary.sessionCount
-                    activityMap[actId] = existing
-                } else {
-                    activityMap[actId] = actSummary
+            for daily in dailyBreakdown {
+                totalSeconds += daily.totalSeconds
+                totalSessions += daily.sessionCount
+                for actSummary in daily.activities {
+                    guard let actId = actSummary.activity.id else { continue }
+                    if var existing = activityMap[actId] {
+                        existing.totalSeconds += actSummary.totalSeconds
+                        existing.sessionCount += actSummary.sessionCount
+                        activityMap[actId] = existing
+                    } else {
+                        activityMap[actId] = actSummary
+                    }
                 }
             }
-        }
 
-        let activities = activityMap.values.sorted {
-            if $0.totalSeconds != $1.totalSeconds { return $0.totalSeconds > $1.totalSeconds }
-            return $0.activity.title < $1.activity.title
+            let activities = activityMap.values.sorted {
+                if $0.totalSeconds != $1.totalSeconds { return $0.totalSeconds > $1.totalSeconds }
+                return $0.activity.title < $1.activity.title
+            }
+            return WeeklySummary(weekOf: startOfWeek, totalSeconds: totalSeconds, sessionCount: totalSessions, dailyBreakdown: dailyBreakdown, activities: activities)
         }
-        return WeeklySummary(weekOf: startOfWeek, totalSeconds: totalSeconds, sessionCount: totalSessions, dailyBreakdown: dailyBreakdown, activities: activities)
     }
 
     public func monthlySummary(monthOf: Date, includeArchived: Bool, weekStartDay: Int = 1, roundToMinute: Bool = false) async throws -> MonthlySummary {
@@ -1798,63 +1940,127 @@ public final class PresentService: PresentAPI, Sendable {
         let startOfMonth = monthInterval.start
         let endOfMonth = monthInterval.end
 
-        // Get weekly summaries for all weeks that overlap this month
-        var weeklyBreakdown: [WeeklySummary] = []
+        // Calculate the full extended date range needed: from start of first
+        // overlapping week to end of last overlapping week. This covers the
+        // weeklyBreakdown which can spill across month boundaries.
+        var weekStarts: [Date] = []
         var current = startOfMonth
         var seenWeeks: Set<Date> = []
-
         while current < endOfMonth {
             guard let weekInterval = calendar.dateInterval(of: .weekOfYear, for: current) else { break }
             let weekStart = weekInterval.start
             if !seenWeeks.contains(weekStart) {
                 seenWeeks.insert(weekStart)
-                let weekly = try await weeklySummary(weekOf: current, includeArchived: includeArchived, weekStartDay: weekStartDay, roundToMinute: roundToMinute)
-                weeklyBreakdown.append(weekly)
+                weekStarts.append(weekStart)
             }
             guard let nextWeek = calendar.date(byAdding: .day, value: 7, to: weekStart) else { break }
             current = nextWeek
         }
 
-        // Flatten daily breakdowns from weekly summaries, filtered to this calendar month.
-        // This must happen first so totals and activities are derived from month-only data.
-        var seenDates: Set<Date> = []
-        var dailyBreakdown: [DailySummary] = []
-        for weekly in weeklyBreakdown {
-            for daily in weekly.dailyBreakdown {
-                if daily.date >= startOfMonth && daily.date < endOfMonth && !seenDates.contains(daily.date) {
-                    seenDates.insert(daily.date)
-                    dailyBreakdown.append(daily)
+        guard let firstWeekStart = weekStarts.first,
+              let lastWeekStart = weekStarts.last,
+              let lastWeekEnd = calendar.date(byAdding: .day, value: 6, to: lastWeekStart) else {
+            return MonthlySummary(monthOf: startOfMonth, totalSeconds: 0, sessionCount: 0, weeklyBreakdown: [], dailyBreakdown: [], activities: [])
+        }
+
+        // Capture as let bindings for Swift 6 Sendable closure
+        let capturedWeekStarts = weekStarts
+        let capturedCalendar = calendar
+
+        return try await dbWriter.read { [self] db in
+            let calendar = capturedCalendar
+            let weekStarts = capturedWeekStarts
+            // Single batch query for the full extended range (2 SQL queries total)
+            let allDailies = try batchDailySummaries(
+                db: db, from: firstWeekStart, to: lastWeekEnd,
+                includeArchived: includeArchived, roundToMinute: roundToMinute
+            )
+
+            // Index dailies by date for quick lookup
+            var dailyByDate: [Date: DailySummary] = [:]
+            for daily in allDailies {
+                dailyByDate[daily.date] = daily
+            }
+
+            // Build weekly summaries from the batched dailies
+            var weeklyBreakdown: [WeeklySummary] = []
+            for weekStart in weekStarts {
+                var weekDailies: [DailySummary] = []
+                var weekActivityMap: [Int64: ActivitySummary] = [:]
+                var weekTotalSeconds = 0
+                var weekTotalSessions = 0
+
+                for dayOffset in 0..<7 {
+                    guard let day = calendar.date(byAdding: .day, value: dayOffset, to: weekStart) else { continue }
+                    let dayStart = calendar.startOfDay(for: day)
+                    if let daily = dailyByDate[dayStart] {
+                        weekDailies.append(daily)
+                        weekTotalSeconds += daily.totalSeconds
+                        weekTotalSessions += daily.sessionCount
+                        for actSummary in daily.activities {
+                            guard let actId = actSummary.activity.id else { continue }
+                            if var existing = weekActivityMap[actId] {
+                                existing.totalSeconds += actSummary.totalSeconds
+                                existing.sessionCount += actSummary.sessionCount
+                                weekActivityMap[actId] = existing
+                            } else {
+                                weekActivityMap[actId] = actSummary
+                            }
+                        }
+                    } else {
+                        // Day outside the batch range — add empty summary
+                        weekDailies.append(DailySummary(
+                            date: dayStart, totalSeconds: 0, sessionCount: 0,
+                            activities: [], hourlyBreakdown: []
+                        ))
+                    }
+                }
+
+                let weekActivities = weekActivityMap.values.sorted {
+                    if $0.totalSeconds != $1.totalSeconds { return $0.totalSeconds > $1.totalSeconds }
+                    return $0.activity.title < $1.activity.title
+                }
+                weeklyBreakdown.append(WeeklySummary(
+                    weekOf: weekStart, totalSeconds: weekTotalSeconds,
+                    sessionCount: weekTotalSessions, dailyBreakdown: weekDailies,
+                    activities: weekActivities
+                ))
+            }
+
+            // Filter daily breakdowns to this calendar month only
+            let dailyBreakdown = allDailies
+                .filter { $0.date >= startOfMonth && $0.date < endOfMonth }
+                .sorted { $0.date < $1.date }
+
+            // Aggregate totals and activities from month-only dailies
+            var activityMap: [Int64: ActivitySummary] = [:]
+            var totalSeconds = 0
+            var totalSessions = 0
+
+            for daily in dailyBreakdown {
+                totalSeconds += daily.totalSeconds
+                totalSessions += daily.sessionCount
+                for actSummary in daily.activities {
+                    guard let actId = actSummary.activity.id else { continue }
+                    if var existing = activityMap[actId] {
+                        existing.totalSeconds += actSummary.totalSeconds
+                        existing.sessionCount += actSummary.sessionCount
+                        activityMap[actId] = existing
+                    } else {
+                        activityMap[actId] = actSummary
+                    }
                 }
             }
-        }
-        dailyBreakdown.sort { $0.date < $1.date }
 
-        // Aggregate totals and activities from filtered daily breakdowns only —
-        // weekly summaries can spill across month boundaries and inflate the numbers.
-        var activityMap: [Int64: ActivitySummary] = [:]
-        var totalSeconds = 0
-        var totalSessions = 0
-
-        for daily in dailyBreakdown {
-            totalSeconds += daily.totalSeconds
-            totalSessions += daily.sessionCount
-            for actSummary in daily.activities {
-                guard let actId = actSummary.activity.id else { continue }
-                if var existing = activityMap[actId] {
-                    existing.totalSeconds += actSummary.totalSeconds
-                    existing.sessionCount += actSummary.sessionCount
-                    activityMap[actId] = existing
-                } else {
-                    activityMap[actId] = actSummary
-                }
+            let activities = activityMap.values.sorted {
+                if $0.totalSeconds != $1.totalSeconds { return $0.totalSeconds > $1.totalSeconds }
+                return $0.activity.title < $1.activity.title
             }
+            return MonthlySummary(
+                monthOf: startOfMonth, totalSeconds: totalSeconds, sessionCount: totalSessions,
+                weeklyBreakdown: weeklyBreakdown, dailyBreakdown: dailyBreakdown, activities: activities
+            )
         }
-
-        let activities = activityMap.values.sorted {
-            if $0.totalSeconds != $1.totalSeconds { return $0.totalSeconds > $1.totalSeconds }
-            return $0.activity.title < $1.activity.title
-        }
-        return MonthlySummary(monthOf: startOfMonth, totalSeconds: totalSeconds, sessionCount: totalSessions, weeklyBreakdown: weeklyBreakdown, dailyBreakdown: dailyBreakdown, activities: activities)
     }
 
     public func externalIdSummary(from startDate: Date, to endDate: Date, includeArchived: Bool) async throws -> [ExternalIdSummary] {

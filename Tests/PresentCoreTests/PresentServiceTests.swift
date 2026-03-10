@@ -1498,6 +1498,102 @@ struct PresentServiceTests {
         #expect(months.isEmpty)
     }
 
+    @Test func weeklySummaryHourlyBreakdownThroughBatchPath() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Deep Work"))
+
+        // Session: June 12 (Wed) 2:15 PM → 4:45 PM (spans hours 14, 15, 16)
+        let start = makeDateComponents(day: 12, hour: 14, minute: 15)
+        let end = makeDateComponents(day: 12, hour: 16, minute: 45)
+        _ = try await service.createBackdatedSession(CreateBackdatedSessionInput(
+            activityId: activity.id!, startedAt: start, endedAt: end
+        ))
+
+        let weekly = try await service.weeklySummary(weekOf: makeDateComponents(day: 12, hour: 12), includeArchived: false, weekStartDay: 2)
+
+        let cal = Calendar.current
+        let june12 = weekly.dailyBreakdown.first { cal.component(.day, from: $0.date) == 12 }
+        let buckets = june12?.hourlyBreakdown.sorted { $0.hour < $1.hour } ?? []
+
+        #expect(buckets.count == 3)
+        #expect(buckets[0].hour == 14)
+        #expect(buckets[0].totalSeconds == 2700) // 45m (2:15–3:00)
+        #expect(buckets[1].hour == 15)
+        #expect(buckets[1].totalSeconds == 3600) // 60m (3:00–4:00)
+        #expect(buckets[2].hour == 16)
+        #expect(buckets[2].totalSeconds == 2700) // 45m (4:00–4:45)
+    }
+
+    @Test func weeklySummaryCrossMidnightWithRounding() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Night Work"))
+
+        // Session: June 15 (Sat) 11:50:30 PM → June 16 (Sun) 0:20:45 AM
+        // June 15 portion: 9m 30s → floors to 9m (540s)
+        // June 16 portion: 20m 45s → floors to 20m (1200s)
+        let start = makeDateComponents(day: 15, hour: 23, minute: 50)
+        let startExact = Calendar.current.date(byAdding: .second, value: 30, to: start)!
+        let end = makeDateComponents(day: 16, hour: 0, minute: 20)
+        let endExact = Calendar.current.date(byAdding: .second, value: 45, to: end)!
+        _ = try await service.createBackdatedSession(CreateBackdatedSessionInput(
+            activityId: activity.id!, startedAt: startExact, endedAt: endExact
+        ))
+
+        let rounded = try await service.weeklySummary(
+            weekOf: makeDateComponents(day: 12, hour: 12),
+            includeArchived: false, weekStartDay: 2, roundToMinute: true
+        )
+
+        let cal = Calendar.current
+        let june15 = rounded.dailyBreakdown.first { cal.component(.day, from: $0.date) == 15 }
+        let june16 = rounded.dailyBreakdown.first { cal.component(.day, from: $0.date) == 16 }
+
+        #expect(june15?.totalSeconds == 540)  // 9m
+        #expect(june16?.totalSeconds == 1200)  // 20m
+        #expect(rounded.totalSeconds == 540 + 1200)
+    }
+
+    @Test func weeklySummaryMultipleActivitiesThroughBatchPath() async throws {
+        let service = try makeService()
+        let coding = try await service.createActivity(CreateActivityInput(title: "Coding"))
+        let meetings = try await service.createActivity(CreateActivityInput(title: "Meetings"))
+
+        // Coding: June 12, 9 AM → 12 PM (3h)
+        _ = try await service.createBackdatedSession(CreateBackdatedSessionInput(
+            activityId: coding.id!,
+            startedAt: makeDateComponents(day: 12, hour: 9),
+            endedAt: makeDateComponents(day: 12, hour: 12)
+        ))
+        // Meetings: June 12, 2 PM → 3 PM (1h)
+        _ = try await service.createBackdatedSession(CreateBackdatedSessionInput(
+            activityId: meetings.id!,
+            startedAt: makeDateComponents(day: 12, hour: 14),
+            endedAt: makeDateComponents(day: 12, hour: 15)
+        ))
+        // Coding: June 14, 10 AM → 11 AM (1h)
+        _ = try await service.createBackdatedSession(CreateBackdatedSessionInput(
+            activityId: coding.id!,
+            startedAt: makeDateComponents(day: 14, hour: 10),
+            endedAt: makeDateComponents(day: 14, hour: 11)
+        ))
+
+        let weekly = try await service.weeklySummary(
+            weekOf: makeDateComponents(day: 12, hour: 12),
+            includeArchived: false, weekStartDay: 2
+        )
+
+        #expect(weekly.totalSeconds == 18000) // 5h
+        #expect(weekly.sessionCount == 3)
+        #expect(weekly.activities.count == 2)
+
+        let codingSummary = weekly.activities.first { $0.activity.title == "Coding" }
+        let meetingsSummary = weekly.activities.first { $0.activity.title == "Meetings" }
+        #expect(codingSummary?.totalSeconds == 14400) // 4h
+        #expect(codingSummary?.sessionCount == 2)
+        #expect(meetingsSummary?.totalSeconds == 3600) // 1h
+        #expect(meetingsSummary?.sessionCount == 1)
+    }
+
     @Test func weeklySummaryCrossMidnightSplitAcrossDays() async throws {
         let service = try makeService()
         let activity = try await service.createActivity(CreateActivityInput(title: "Split Work"))
