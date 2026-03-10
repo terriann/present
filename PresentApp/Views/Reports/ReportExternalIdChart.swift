@@ -124,55 +124,16 @@ struct ReportExternalIdChart: View {
     private func externalIdLegend(palette: [Color], combinedTotal: Int) -> some View {
         VStack(alignment: .leading, spacing: Constants.spacingCard) {
             ForEach(Array(groups.enumerated()), id: \.element.externalId) { index, group in
-                let color = palette[index % palette.count]
-                let isHovered = hoveredExternalSegment == group.externalId
-                HStack(alignment: .center, spacing: Constants.spacingTight) {
-                    Circle()
-                        .fill(color)
-                        .frame(width: 8, height: 8)
-                    VStack(alignment: .leading, spacing: Constants.spacingTight) {
-                        Text(group.externalId)
-                            .font(.dataLabel)
-                            .lineLimit(1)
-                        Text(group.activityNames.sorted().joined(separator: ", "))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
-                    }
-                    Spacer()
-                    HStack(alignment: .center, spacing: Constants.spacingCompact) {
-                        let pct = combinedTotal > 0 ? Double(group.totalSeconds) / Double(combinedTotal) * 100 : 0
-                        Text(String(format: "%.0f%%", pct))
-                            .font(.dataValue)
-                            .foregroundStyle(.secondary)
-                        if let urlString = group.sourceURL, let url = URL(string: urlString) {
-                            Button {
-                                openURL(url)
-                            } label: {
-                                Image(systemName: "arrow.up.right.square")
-                                    .foregroundStyle(.secondary)
-                                    .accessibilityHidden(true)
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("Open \(group.externalId)")
-                            .help(urlString)
-                        }
-                    }
-                }
-                .padding(.vertical, Constants.spacingTight)
-                .padding(.horizontal, Constants.spacingCompact)
-                .background(
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(isHovered ? Color.primary.opacity(0.08) : Color.clear)
-                )
-                .onHover { hovering in
-                    if hovering {
-                        hoveredExternalSegment = group.externalId
-                    } else {
-                        hoveredExternalSegment = nil
+                ExternalIdLegendRow(
+                    group: group,
+                    color: palette[index % palette.count],
+                    combinedTotal: combinedTotal,
+                    isHighlighted: hoveredExternalSegment == group.externalId,
+                    onHighlight: { hoveredExternalSegment = group.externalId },
+                    onUnhighlight: {
                         hoveredExternalSegment = findExternalSegment(for: externalIdAngleSelection)
                     }
-                }
+                )
             }
         }
         .padding(.horizontal, Constants.spacingCard)
@@ -223,6 +184,82 @@ struct ExternalIdInfoButton: View {
         .accessibilityLabel("External ID grouping info")
         .popover(isPresented: $showInfo) {
             ExternalIdInfoContent()
+        }
+    }
+}
+
+// MARK: - Legend Row
+
+/// A single legend row that supports hover, keyboard focus, and VoiceOver.
+private struct ExternalIdLegendRow: View {
+    let group: ExternalIdSummary
+    let color: Color
+    let combinedTotal: Int
+    let isHighlighted: Bool
+    let onHighlight: () -> Void
+    let onUnhighlight: () -> Void
+
+    @Environment(\.openURL) private var openURL
+    @AccessibilityFocusState private var isAccessibilityFocused: Bool
+    @FocusState private var isKeyboardFocused: Bool
+
+    private var pct: Double {
+        combinedTotal > 0 ? Double(group.totalSeconds) / Double(combinedTotal) * 100 : 0
+    }
+
+    var body: some View {
+        HStack(alignment: .center, spacing: Constants.spacingTight) {
+            Circle()
+                .fill(color)
+                .frame(width: 8, height: 8)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: Constants.spacingTight) {
+                Text(group.externalId)
+                    .font(.dataLabel)
+                    .lineLimit(1)
+                Text(group.activityNames.sorted().joined(separator: ", "))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+            Spacer()
+            HStack(alignment: .center, spacing: Constants.spacingCompact) {
+                Text(String(format: "%.0f%%", pct))
+                    .font(.dataValue)
+                    .foregroundStyle(.secondary)
+                if let urlString = group.sourceURL, let url = URL(string: urlString) {
+                    Button {
+                        openURL(url)
+                    } label: {
+                        Image(systemName: "arrow.up.right.square")
+                            .foregroundStyle(.secondary)
+                            .accessibilityHidden(true)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Open \(group.externalId)")
+                    .help(urlString)
+                }
+            }
+        }
+        .padding(.vertical, Constants.spacingTight)
+        .padding(.horizontal, Constants.spacingCompact)
+        .background(
+            RoundedRectangle(cornerRadius: 4)
+                .fill(isHighlighted ? Color.primary.opacity(0.08) : Color.clear)
+        )
+        .focusable()
+        .focused($isKeyboardFocused)
+        .accessibilityFocused($isAccessibilityFocused)
+        .accessibilityLabel("\(group.externalId), \(TimeFormatting.formatDuration(seconds: group.totalSeconds)), \(String(format: "%.0f%%", pct))")
+        .accessibilityValue(group.activityNames.sorted().joined(separator: ", "))
+        .onHover { hovering in
+            if hovering { onHighlight() } else { onUnhighlight() }
+        }
+        .onChange(of: isKeyboardFocused) {
+            if isKeyboardFocused { onHighlight() } else { onUnhighlight() }
+        }
+        .onChange(of: isAccessibilityFocused) {
+            if isAccessibilityFocused { onHighlight() } else { onUnhighlight() }
         }
     }
 }
