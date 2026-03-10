@@ -71,6 +71,9 @@ struct ActivitySessionCard: View {
         .onChange(of: appState.isSessionActive) { _, isActive in
             sortOrder = isActive ? .mostRecent : .timeSpent
         }
+        .onChange(of: searchText) { clearEditing() }
+        .onChange(of: sortOrder) { clearEditing() }
+        .onChange(of: grouping) { clearEditing() }
         .onChange(of: resetToken) {
             expandedActivities.removeAll()
         }
@@ -241,6 +244,7 @@ struct ActivitySessionCard: View {
                     .hoverHighlight()
                     .contentShape(Rectangle())
                     .onTapGesture {
+                        clearEditing()
                         withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
                             if isExpanded {
                                 expandedActivities.remove(activityId)
@@ -274,6 +278,10 @@ struct ActivitySessionCard: View {
                                 activeSessionRow(session: active, activityTitle: group.activity.title)
                                     .background(subRowBackground(index: 0))
                                     .hoverHighlight()
+                                    .onTapGesture {
+                                        guard editingSessionId != nil else { return }
+                                        clearEditing()
+                                    }
                             }
                         }
 
@@ -292,6 +300,10 @@ struct ActivitySessionCard: View {
                                 completedSessionRow(session: entry.0, activityTitle: group.activity.title)
                                     .background(subRowBackground(index: rowIndex))
                                     .hoverHighlight()
+                                    .onTapGesture {
+                                        guard editingSessionId != nil else { return }
+                                        clearEditing()
+                                    }
                             }
                         }
                     }
@@ -324,6 +336,10 @@ struct ActivitySessionCard: View {
                         .contentShape(Rectangle())
                         .sessionContextMenu(session: active, activityTitle: activity.title,
                             onEdit: { beginEditing($0) })
+                        .onTapGesture {
+                            guard editingSessionId != nil else { return }
+                            clearEditing()
+                        }
                 }
             }
 
@@ -346,6 +362,10 @@ struct ActivitySessionCard: View {
                         .sessionContextMenu(session: entry.0, activityTitle: entry.1.title,
                             onEdit: { beginEditing($0) }) {
                             onReload?()
+                        }
+                        .onTapGesture {
+                            guard editingSessionId != nil else { return }
+                            clearEditing()
                         }
                 }
             }

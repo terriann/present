@@ -26,6 +26,7 @@ struct SessionInlineEditForm: View {
     @State private var errorFields: Set<ErrorField> = []
     @State private var showStartDate: Bool
     @State private var showEndDate: Bool
+    @State private var explicitlyClosed = false
 
     private enum ErrorField: Hashable { case activity, start, end, note }
 
@@ -45,7 +46,8 @@ struct SessionInlineEditForm: View {
         _endTime = State(initialValue: session.endedAt ?? Date())
         _noteText = State(initialValue: session.note ?? "")
 
-        // Multi-day views (weekly/monthly): always show date.
+        // Multi-day views (weekly/monthly): date collapsed by default — the calendar
+        // icon and day label are always visible so the user can expand on tap.
         // Single-day views (daily): show only if the time falls on a different day.
         let cal = Calendar.current
         let endedAt = session.endedAt ?? Date()
@@ -53,8 +55,8 @@ struct SessionInlineEditForm: View {
             _showStartDate = State(initialValue: !cal.isDate(session.startedAt, inSameDayAs: ref))
             _showEndDate = State(initialValue: !cal.isDate(endedAt, inSameDayAs: ref))
         } else {
-            _showStartDate = State(initialValue: true)
-            _showEndDate = State(initialValue: true)
+            _showStartDate = State(initialValue: false)
+            _showEndDate = State(initialValue: false)
         }
     }
 
@@ -185,8 +187,13 @@ struct SessionInlineEditForm: View {
                 revertAll()
                 return .handled
             }
+            explicitlyClosed = true
             onCancel()
             return .handled
+        }
+        .onDisappear {
+            guard !explicitlyClosed else { return }
+            flushBufferedChanges()
         }
     }
 
@@ -259,13 +266,13 @@ struct SessionInlineEditForm: View {
     /// to prevent the form from jumping between groups, and note saves on blur but may
     /// have unsaved text if the user clicks Done without blurring the editor first.
     private func done() {
-        guard let sessionId = session.id else { onSave(); return }
+        guard let sessionId = session.id else { explicitlyClosed = true; onSave(); return }
 
         let activityChanged = selectedActivityId != session.activityId
         let trimmed = noteText.trimmingCharacters(in: .whitespacesAndNewlines)
         let noteChanged = trimmed != (session.note ?? "")
 
-        guard activityChanged || noteChanged else { onSave(); return }
+        guard activityChanged || noteChanged else { explicitlyClosed = true; onSave(); return }
 
         var input = UpdateSessionInput()
         if activityChanged { input.activityId = selectedActivityId }
@@ -279,8 +286,28 @@ struct SessionInlineEditForm: View {
                 errorFields = errorFieldsFrom(error)
                 return
             }
+            explicitlyClosed = true
             onSave()
         }
+    }
+
+    /// Flush buffered changes (activity, note) when the form disappears without explicit save/cancel.
+    /// Time fields auto-save via onChange so they are not included here.
+    /// Silently discards on failure — the form is already gone.
+    private func flushBufferedChanges() {
+        guard let sessionId = session.id else { return }
+
+        let activityChanged = selectedActivityId != session.activityId
+        let trimmed = noteText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let noteChanged = trimmed != (session.note ?? "")
+
+        guard activityChanged || noteChanged else { return }
+
+        var input = UpdateSessionInput()
+        if activityChanged { input.activityId = selectedActivityId }
+        if noteChanged { input.note = trimmed }
+
+        Task { try? await appState.updateSession(id: sessionId, input) }
     }
 
     /// Save a single field change. Shows errors inline but does not dismiss the form.
