@@ -341,6 +341,115 @@ struct MonthlySummaryTests {
 
     // MARK: - Archived Filtering
 
+    // MARK: - Hourly Breakdown Through Batch Path
+
+    /// Verifies that hourly breakdown buckets are correctly populated when
+    /// fetched through monthlySummary's batch path (not the per-day dailySummary).
+    @Test func hourlyBreakdownPopulatedThroughBatchPath() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Focus"))
+
+        // Session: May 10, 9:30 AM → 11:15 AM (spans hours 9, 10, 11)
+        try await addSession(service: service, activityId: activity.id!,
+            start: makeDate(year: 2025, month: 5, day: 10, hour: 9, minute: 30),
+            end: makeDate(year: 2025, month: 5, day: 10, hour: 11, minute: 15))
+
+        let summary = try await service.monthlySummary(
+            monthOf: makeDate(year: 2025, month: 5, day: 1),
+            includeArchived: false, weekStartDay: 2
+        )
+
+        let cal = Calendar.current
+        let may10 = summary.dailyBreakdown.first { cal.component(.day, from: $0.date) == 10 }
+        let buckets = may10?.hourlyBreakdown.sorted { $0.hour < $1.hour } ?? []
+
+        #expect(buckets.count == 3)
+        #expect(buckets[0].hour == 9)
+        #expect(buckets[0].totalSeconds == 1800) // 30m (9:30–10:00)
+        #expect(buckets[1].hour == 10)
+        #expect(buckets[1].totalSeconds == 3600) // 60m (10:00–11:00)
+        #expect(buckets[2].hour == 11)
+        #expect(buckets[2].totalSeconds == 900) // 15m (11:00–11:15)
+    }
+
+    /// Verifies hourly breakdown correctly splits a cross-midnight session
+    /// across days when fetched through the monthly batch path.
+    @Test func hourlyBreakdownCrossMidnightThroughBatchPath() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Late Night"))
+
+        // Session: May 15 11:30 PM → May 16 1:30 AM
+        try await addSession(service: service, activityId: activity.id!,
+            start: makeDate(year: 2025, month: 5, day: 15, hour: 23, minute: 30),
+            end: makeDate(year: 2025, month: 5, day: 16, hour: 1, minute: 30))
+
+        let summary = try await service.monthlySummary(
+            monthOf: makeDate(year: 2025, month: 5, day: 1),
+            includeArchived: false, weekStartDay: 2
+        )
+
+        let cal = Calendar.current
+        let may15 = summary.dailyBreakdown.first { cal.component(.day, from: $0.date) == 15 }
+        let may16 = summary.dailyBreakdown.first { cal.component(.day, from: $0.date) == 16 }
+
+        let buckets15 = may15?.hourlyBreakdown ?? []
+        #expect(buckets15.count == 1)
+        #expect(buckets15[0].hour == 23)
+        #expect(buckets15[0].totalSeconds == 1800) // 30m (11:30 PM–midnight)
+
+        let buckets16 = (may16?.hourlyBreakdown ?? []).sorted { $0.hour < $1.hour }
+        #expect(buckets16.count == 2)
+        #expect(buckets16[0].hour == 0)
+        #expect(buckets16[0].totalSeconds == 3600) // 60m (midnight–1 AM)
+        #expect(buckets16[1].hour == 1)
+        #expect(buckets16[1].totalSeconds == 1800) // 30m (1 AM–1:30 AM)
+    }
+
+    // MARK: - Cross-Midnight + Rounding Through Batch Path
+
+    /// Verifies that per-session rounding works correctly when a cross-midnight
+    /// session is split across days through the batch path. Each day's portion
+    /// should be floored independently.
+    @Test func crossMidnightWithRoundingThroughBatchPath() async throws {
+        let service = try makeService()
+        let activity = try await service.createActivity(CreateActivityInput(title: "Night Owl"))
+
+        // Session: May 20 11:45:30 PM → May 21 1:15:45 AM
+        // May 20 portion: 14m 30s → floors to 14m (840s)
+        // May 21 portion: 1h 15m 45s → floors to 1h 15m (4500s)
+        try await addSession(service: service, activityId: activity.id!,
+            start: makeDate(year: 2025, month: 5, day: 20, hour: 23, minute: 45, second: 30),
+            end: makeDate(year: 2025, month: 5, day: 21, hour: 1, minute: 15, second: 45))
+
+        let rounded = try await service.monthlySummary(
+            monthOf: makeDate(year: 2025, month: 5, day: 1),
+            includeArchived: false, weekStartDay: 2, roundToMinute: true
+        )
+        let unrounded = try await service.monthlySummary(
+            monthOf: makeDate(year: 2025, month: 5, day: 1),
+            includeArchived: false, weekStartDay: 2, roundToMinute: false
+        )
+
+        let cal = Calendar.current
+        let roundedMay20 = rounded.dailyBreakdown.first { cal.component(.day, from: $0.date) == 20 }
+        let roundedMay21 = rounded.dailyBreakdown.first { cal.component(.day, from: $0.date) == 21 }
+
+        // Rounded: each day's portion floored independently
+        #expect(roundedMay20?.totalSeconds == 840)  // 14m
+        #expect(roundedMay21?.totalSeconds == 4500)  // 1h 15m
+
+        // Total should equal sum of floored day portions
+        #expect(rounded.totalSeconds == 840 + 4500)
+
+        // Unrounded: exact seconds
+        let unroundedMay20 = unrounded.dailyBreakdown.first { cal.component(.day, from: $0.date) == 20 }
+        let unroundedMay21 = unrounded.dailyBreakdown.first { cal.component(.day, from: $0.date) == 21 }
+        #expect(unroundedMay20?.totalSeconds == 870)  // 14m 30s
+        #expect(unroundedMay21?.totalSeconds == 4545)  // 1h 15m 45s
+    }
+
+    // MARK: - Archived Filtering
+
     @Test func archivedActivityExcludedWhenNotIncluded() async throws {
         let service = try makeService()
         let active = try await service.createActivity(CreateActivityInput(title: "Active Work"))
