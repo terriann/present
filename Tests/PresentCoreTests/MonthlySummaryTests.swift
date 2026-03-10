@@ -339,8 +339,6 @@ struct MonthlySummaryTests {
         #expect(hasFeb25)
     }
 
-    // MARK: - Archived Filtering
-
     // MARK: - Hourly Breakdown Through Batch Path
 
     /// Verifies that hourly breakdown buckets are correctly populated when
