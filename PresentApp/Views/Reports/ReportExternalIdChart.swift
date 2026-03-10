@@ -130,7 +130,7 @@ struct ReportExternalIdChart: View {
                     Circle()
                         .fill(color)
                         .frame(width: 8, height: 8)
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: Constants.spacingTight) {
                         Text(group.externalId)
                             .font(.dataLabel)
                             .lineLimit(1)
@@ -159,8 +159,8 @@ struct ReportExternalIdChart: View {
                         }
                     }
                 }
-                .padding(.vertical, 4)
-                .padding(.horizontal, 6)
+                .padding(.vertical, Constants.spacingTight)
+                .padding(.horizontal, Constants.spacingCompact)
                 .background(
                     RoundedRectangle(cornerRadius: 4)
                         .fill(isHovered ? Color.primary.opacity(0.08) : Color.clear)
