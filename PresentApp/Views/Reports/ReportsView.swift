@@ -99,6 +99,7 @@ struct ReportsView: View {
                     sessionEntries: sessionEntries,
                     activityColorMap: activityColorMap,
                     includeActiveSession: shouldIncludeActive,
+                    timeReferenceDate: selectedPeriod == .daily ? Calendar.current.startOfDay(for: selectedDate) : nil,
                     resetToken: [selectedDate.description, selectedPeriod.rawValue] as [AnyHashable],
                     onReload: { reloadReport(clearData: false) }
                 )

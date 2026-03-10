@@ -11,6 +11,10 @@ struct ActivitySessionCard: View {
     let activityColorMap: [String: Color]
     var dayPortions: [Int64: Int] = [:]
     var includeActiveSession: Bool = false
+    /// Reference date for time annotations. When set, day-of-week is shown only for times on a
+    /// different calendar day (single-day mode). When nil, start times always include the day and
+    /// end times annotate only when they fall on a different day than the start (multi-day mode).
+    var timeReferenceDate: Date? = Date()
     var resetToken: AnyHashable?
     var onReload: (() -> Void)?
 
@@ -357,7 +361,7 @@ struct ActivitySessionCard: View {
                 Text(sessionTypeLabel(session))
                     .font(.body)
                     .foregroundStyle(.secondary)
-                Text(TimeFormatting.formatTime(session.startedAt, referenceDate: Date()))
+                Text(formatStartTime(session.startedAt))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -389,7 +393,7 @@ struct ActivitySessionCard: View {
                 HStack(spacing: Constants.spacingTight) {
                     Text(sessionTypeLabel(session))
                     Text("\u{00B7}")
-                    Text(TimeFormatting.formatTime(session.startedAt, referenceDate: Date()))
+                    Text(formatStartTime(session.startedAt))
                 }
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
@@ -596,6 +600,28 @@ struct ActivitySessionCard: View {
 
     // MARK: - Session Display Helpers
 
+    /// Format a start time respecting the current time reference mode.
+    /// Single-day: annotate only if the time falls on a different day than the reference.
+    /// Multi-day: always include the day-of-week.
+    private func formatStartTime(_ date: Date) -> String {
+        if let ref = timeReferenceDate {
+            return TimeFormatting.formatTime(date, referenceDate: ref)
+        }
+        // Multi-day: always include day — use .distantPast so the day never matches.
+        return TimeFormatting.formatTime(date, referenceDate: .distantPast)
+    }
+
+    /// Format an end time respecting the current time reference mode.
+    /// Single-day: annotate only if the time falls on a different day than the reference.
+    /// Multi-day: annotate only if the end falls on a different day than `sessionStart`.
+    private func formatEndTime(_ date: Date, sessionStart: Date) -> String {
+        if let ref = timeReferenceDate {
+            return TimeFormatting.formatTime(date, referenceDate: ref)
+        }
+        // Multi-day: annotate only when end day differs from start day.
+        return TimeFormatting.formatTime(date, referenceDate: sessionStart)
+    }
+
     private func activityTimeRange(_ sessions: [Session], active: Session?) -> String? {
         var starts: [Date] = sessions.map(\.startedAt)
         let ends: [Date] = sessions.compactMap(\.endedAt)
@@ -603,11 +629,10 @@ struct ActivitySessionCard: View {
             starts.append(active.startedAt)
         }
         guard let first = starts.min() else { return nil }
-        let today = Date()
         if let last = ends.max() {
-            return "\(TimeFormatting.formatTime(first, referenceDate: today)) \u{2013} \(TimeFormatting.formatTime(last, referenceDate: today))"
+            return "\(formatStartTime(first)) \u{2013} \(formatEndTime(last, sessionStart: first))"
         }
-        return TimeFormatting.formatTime(first, referenceDate: today)
+        return formatStartTime(first)
     }
 
     private func sessionTypeLabel(_ session: Session) -> String {
@@ -628,10 +653,9 @@ struct ActivitySessionCard: View {
     }
 
     private func sessionTimeRange(_ session: Session) -> String {
-        let today = Date()
-        let start = TimeFormatting.formatTime(session.startedAt, referenceDate: today)
+        let start = formatStartTime(session.startedAt)
         guard let end = session.endedAt else { return start }
-        return "\(start) \u{2013} \(TimeFormatting.formatTime(end, referenceDate: today))"
+        return "\(start) \u{2013} \(formatEndTime(end, sessionStart: session.startedAt))"
     }
 
     private func isSessionComplete(_ session: Session) -> Bool {
