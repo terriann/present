@@ -1790,11 +1790,11 @@ public final class PresentService: PresentAPI, Sendable {
             rangeEnd, rangeStart
         ])
 
-        // Accumulators keyed by day string (YYYY-MM-DD)
+        // Accumulators keyed by start-of-day Date
         var activityById: [Int64: Activity] = [:]
-        // dayStr -> activityId -> sessionId -> seconds (for per-session rounding)
+        // day -> activityId -> sessionId -> seconds (for per-session rounding)
         var dayActivitySessionSecs: [Date: [Int64: [Int64: Int]]] = [:]
-        // dayStr -> hour -> activityId -> seconds (for hourly breakdown)
+        // day -> hour -> activityId -> seconds (for hourly breakdown)
         var dayHourActivity: [Date: [Int: [Int64: Int]]] = [:]
 
         for row in segmentRows {
