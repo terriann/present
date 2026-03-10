@@ -278,6 +278,8 @@ struct ActivitySessionCard: View {
                                 activeSessionRow(session: active, activityTitle: group.activity.title)
                                     .background(subRowBackground(index: 0))
                                     .hoverHighlight()
+                                    // Dismiss inline edit form when tapping a non-editing row.
+                                    // The guard ensures this is a no-op when no form is open.
                                     .onTapGesture {
                                         guard editingSessionId != nil else { return }
                                         clearEditing()
