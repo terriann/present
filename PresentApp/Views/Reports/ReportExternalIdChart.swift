@@ -244,7 +244,7 @@ private struct ExternalIdLegendRow: View {
         .padding(.vertical, Constants.spacingTight)
         .padding(.horizontal, Constants.spacingCompact)
         .background(
-            RoundedRectangle(cornerRadius: 4)
+            RoundedRectangle(cornerRadius: Constants.cornerRadiusSmall)
                 .fill(isHighlighted ? Color.primary.opacity(0.08) : Color.clear)
         )
         .focusable()

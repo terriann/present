@@ -56,6 +56,11 @@ public enum Constants {
     /// Tight inner padding (GroupBox content wrappers)
     public static let spacingTight: CGFloat = 4
 
+    // MARK: - Corner Radius
+
+    /// Small corner radius for inline highlights, pills, and legend row backgrounds
+    public static let cornerRadiusSmall: CGFloat = 4
+
     // MARK: - Activity List
 
     /// Minimum row height for activity list items, matching the two-line variant (title + subtitle).
