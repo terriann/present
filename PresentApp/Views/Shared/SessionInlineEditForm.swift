@@ -206,6 +206,7 @@ struct SessionInlineEditForm: View {
         Button(action: action) {
             HStack(spacing: 2) {
                 Image(systemName: "calendar")
+                    .rotationEffect(.degrees(expanded ? 45 : 0))
                 if shouldShowDateLabel(for: date) {
                     Text(date.formatted(.dateTime.weekday(.abbreviated)))
                 }
