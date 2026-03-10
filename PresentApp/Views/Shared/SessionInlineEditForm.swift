@@ -1,3 +1,4 @@
+import os
 import SwiftUI
 import PresentCore
 
@@ -292,9 +293,11 @@ struct SessionInlineEditForm: View {
         }
     }
 
+    private static let logger = Logger(subsystem: "com.present.app", category: "session")
+
     /// Flush buffered changes (activity, note) when the form disappears without explicit save/cancel.
     /// Time fields auto-save via onChange so they are not included here.
-    /// Silently discards on failure — the form is already gone.
+    /// Logs on failure for diagnostics — the form is already gone so the user cannot retry.
     private func flushBufferedChanges() {
         guard let sessionId = session.id else { return }
 
@@ -308,7 +311,13 @@ struct SessionInlineEditForm: View {
         if activityChanged { input.activityId = selectedActivityId }
         if noteChanged { input.note = trimmed }
 
-        Task { try? await appState.updateSession(id: sessionId, input) }
+        Task {
+            do {
+                try await appState.updateSession(id: sessionId, input)
+            } catch {
+                Self.logger.warning("Failed to flush buffered changes for session \(sessionId, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            }
+        }
     }
 
     /// Save a single field change. Shows errors inline but does not dismiss the form.
