@@ -98,7 +98,7 @@ struct ReportsView: View {
                     title: "Session Logs",
                     sessionEntries: sessionEntries,
                     activityColorMap: activityColorMap,
-                    includeActiveSession: isShowingToday,
+                    includeActiveSession: shouldIncludeActive,
                     resetToken: [selectedDate.description, selectedPeriod.rawValue] as [AnyHashable],
                     onReload: { reloadReport(clearData: false) }
                 )

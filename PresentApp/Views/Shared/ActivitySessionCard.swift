@@ -16,6 +16,7 @@ struct ActivitySessionCard: View {
 
     @Environment(AppState.self) private var appState
     @Environment(ThemeManager.self) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var searchText = ""
     @State private var grouping: SessionGrouping = .activity
@@ -372,6 +373,7 @@ struct ActivitySessionCard: View {
         .contentShape(Rectangle())
         .sessionContextMenu(session: session, activityTitle: activityTitle,
             showEditActivity: false, onEdit: { beginEditing($0) })
+        .activePulse(isActive: session.state == .running, reduceMotion: reduceMotion)
     }
 
     /// Active session row for ungrouped view — SpinningClockIcon on left where the dot would be.
@@ -400,6 +402,7 @@ struct ActivitySessionCard: View {
             activeDurationLabel
         }
         .padding(.vertical, 2)
+        .activePulse(isActive: session.state == .running, reduceMotion: reduceMotion)
     }
 
     /// Completed/cancelled session row for ungrouped view — colored dot on left, no trailing icon.
@@ -540,17 +543,17 @@ struct ActivitySessionCard: View {
     private var activeDurationLabel: some View {
         if let preMidnight = activePreMidnightSeconds {
             HStack(spacing: 0) {
-                Text(TimeFormatting.formatDuration(seconds: max(0, appState.timerElapsedSeconds - preMidnight)))
+                Text(TimeFormatting.formatDuration(seconds: max(0, appState.timerElapsedSeconds - preMidnight), active: true))
                     .font(.durationDetail)
                     .foregroundStyle(theme.accent)
                     .contentTransition(.numericText())
-                Text(" / \(TimeFormatting.formatDuration(seconds: appState.timerElapsedSeconds))")
+                Text(" / \(TimeFormatting.formatDuration(seconds: appState.timerElapsedSeconds, active: true))")
                     .font(.durationDetail)
                     .foregroundStyle(theme.accent.opacity(0.5))
                     .contentTransition(.numericText())
             }
         } else {
-            Text(TimeFormatting.formatDuration(seconds: appState.timerElapsedSeconds))
+            Text(TimeFormatting.formatDuration(seconds: appState.timerElapsedSeconds, active: true))
                 .font(.durationDetail)
                 .foregroundStyle(theme.accent)
                 .contentTransition(.numericText())
