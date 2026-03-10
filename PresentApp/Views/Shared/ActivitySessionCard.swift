@@ -264,6 +264,7 @@ struct ActivitySessionCard: View {
                         if let active = activeSession, activeSessionMatchesSearch {
                             if active.id == editingSessionId {
                                 SessionInlineEditForm(session: active, activity: group.activity,
+                                    timeReferenceDate: timeReferenceDate,
                                     onSave: { clearEditing(); onReload?() },
                                     onCancel: { clearEditing() })
                                     .padding(.horizontal, Constants.spacingCard)
@@ -281,6 +282,7 @@ struct ActivitySessionCard: View {
                             let rowIndex = activeVisible ? subIndex + 1 : subIndex
                             if entry.0.id == editingSessionId {
                                 SessionInlineEditForm(session: entry.0, activity: entry.1,
+                                    timeReferenceDate: timeReferenceDate,
                                     onSave: { clearEditing(); onReload?() },
                                     onCancel: { clearEditing() })
                                     .padding(.horizontal, Constants.spacingCard)
@@ -308,6 +310,7 @@ struct ActivitySessionCard: View {
                let active = appState.currentSession, let activity = appState.currentActivity {
                 if active.id == editingSessionId {
                     SessionInlineEditForm(session: active, activity: activity,
+                        timeReferenceDate: timeReferenceDate,
                         onSave: { clearEditing(); onReload?() },
                         onCancel: { clearEditing() })
                         .padding(.horizontal, Constants.spacingCard)
@@ -328,6 +331,7 @@ struct ActivitySessionCard: View {
                 let adjustedIndex = hasActiveSessionMatchingSearch ? index + 1 : index
                 if entry.0.id == editingSessionId {
                     SessionInlineEditForm(session: entry.0, activity: entry.1,
+                        timeReferenceDate: timeReferenceDate,
                         onSave: { clearEditing(); onReload?() },
                         onCancel: { clearEditing() })
                         .padding(.horizontal, Constants.spacingCard)
