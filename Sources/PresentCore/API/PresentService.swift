@@ -1868,7 +1868,13 @@ public final class PresentService: PresentAPI, Sendable {
                            )
                        ), 0) as totalSecs,
                        COUNT(DISTINCT s.id) as sessCount,
-                       GROUP_CONCAT(DISTINCT a.title, '|') as activityNames,
+                       (SELECT GROUP_CONCAT(t.title, '|') FROM (
+                            SELECT DISTINCT a3.title
+                            FROM session s3
+                            INNER JOIN activity a3 ON a3.id = s3.activityId
+                            WHERE COALESCE(s3.ticketId, a3.externalId) = COALESCE(s.ticketId, a.externalId)
+                              AND s3.state = ?
+                        ) t) as activityNames,
                        (SELECT CASE WHEN s2.ticketId IS NOT NULL THEN s2.link ELSE a2.link END
                         FROM session s2
                         INNER JOIN activity a2 ON a2.id = s2.activityId
@@ -1890,6 +1896,7 @@ public final class PresentService: PresentAPI, Sendable {
 
             let rows = try Row.fetchAll(db, sql: sql, arguments: [
                 endDate, startDate,
+                SessionState.completed.rawValue,
                 SessionState.completed.rawValue,
                 SessionState.completed.rawValue,
                 endDate, startDate,

@@ -400,6 +400,7 @@ struct ReportsView: View {
 
     /// External ID summaries augmented with the active session's elapsed time.
     private var displayExternalIdSummaries: [ExternalIdSummary] {
+        guard let activity = activeActivity, !activity.isSystem else { return externalIdSummaries }
         guard let effectiveId = activeExternalId else { return externalIdSummaries }
         var result = externalIdSummaries
         let activityName = activeActivity?.title ?? ""
