@@ -158,7 +158,8 @@ struct SessionInlineEditForm: View {
     }
 
     private var liveTicketExtraction: (url: String, ticketId: String)? {
-        TicketExtractor.extractFirstTicketURL(from: noteText)
+        guard !activity.isSystem else { return nil }
+        return TicketExtractor.extractFirstTicketURL(from: noteText)
     }
 
     private var hasPendingChanges: Bool {

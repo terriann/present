@@ -84,7 +84,6 @@ public final class PresentService: PresentAPI, Sendable {
             nil
         }
         if let sanitizedLink { try Validation.validateLink(sanitizedLink) }
-        let ticketId = sanitizedLink.flatMap { TicketExtractor.extractTicketId(from: $0) }
 
         return try await dbWriter.write { db in
             // Check no active session
@@ -106,6 +105,10 @@ public final class PresentService: PresentAPI, Sendable {
                 throw PresentError.rhythmNotAllowedForSystemActivity
             }
 
+            // System activities never get external IDs or links
+            let effectiveLink = activity.isSystem ? nil : sanitizedLink
+            let ticketId = effectiveLink.flatMap { TicketExtractor.extractTicketId(from: $0) }
+
             let now = Date()
             var session = Session(
                 activityId: activityId,
@@ -118,7 +121,7 @@ public final class PresentService: PresentAPI, Sendable {
 
             // Attach note and link
             session.note = sanitizedNote
-            session.link = sanitizedLink
+            session.link = effectiveLink
             session.ticketId = ticketId
 
             // For rhythm sessions, store break duration and determine the session index
@@ -173,7 +176,6 @@ public final class PresentService: PresentAPI, Sendable {
             nil
         }
         if let sanitizedLink { try Validation.validateLink(sanitizedLink) }
-        let ticketId = sanitizedLink.flatMap { TicketExtractor.extractTicketId(from: $0) }
 
         return try await dbWriter.write { db in
             // Validate activity exists and is not archived
@@ -212,6 +214,10 @@ public final class PresentService: PresentAPI, Sendable {
                 throw PresentError.sessionOverlap
             }
 
+            // System activities never get external IDs or links
+            let effectiveLink = activity.isSystem ? nil : sanitizedLink
+            let ticketId = effectiveLink.flatMap { TicketExtractor.extractTicketId(from: $0) }
+
             let durationSeconds = Int(input.endedAt.timeIntervalSince(input.startedAt))
             let now = Date()
             var session = Session(
@@ -224,7 +230,7 @@ public final class PresentService: PresentAPI, Sendable {
                 state: .completed,
                 breakMinutes: input.breakMinutes,
                 note: sanitizedNote,
-                link: sanitizedLink,
+                link: effectiveLink,
                 ticketId: ticketId,
                 createdAt: now
             )
@@ -288,15 +294,19 @@ public final class PresentService: PresentAPI, Sendable {
 
             let isActive = session.state == .running || session.state == .paused
 
+            // Determine if the session belongs to a system activity (before any reassignment)
+            let currentActivity = try Activity.fetchOne(db, key: session.activityId)
+            let isSystemSession = currentActivity?.isSystem ?? false
+
             // Note change
             if noteChange.apply {
                 session.note = noteChange.value
             }
 
-            // Link change
+            // Link change — system activity sessions never get external IDs or links
             if linkChange.apply {
-                session.link = linkChange.link
-                session.ticketId = linkChange.ticketId
+                session.link = isSystemSession ? nil : linkChange.link
+                session.ticketId = isSystemSession ? nil : linkChange.ticketId
             }
 
             // Activity reassignment
