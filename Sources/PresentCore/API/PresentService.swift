@@ -1850,6 +1850,15 @@ public final class PresentService: PresentAPI, Sendable {
     public func externalIdSummary(from startDate: Date, to endDate: Date, includeArchived: Bool) async throws -> [ExternalIdSummary] {
         try await dbWriter.read { db in
             let archiveFilter = includeArchived ? "" : " AND a.isArchived = 0"
+            // Aggregate sessions by their effective external ID, preferring the session-level
+            // ticketId over the parent activity's externalId (via COALESCE). Each group gets:
+            //   - totalSecs: sum of segment durations clamped to the requested date range,
+            //     so cross-midnight sessions only count time within the window.
+            //   - sessCount: distinct sessions contributing to the group.
+            //   - activityNames: pipe-separated list of distinct activity titles (pipe avoids
+            //     splitting on commas that may appear in titles).
+            //   - sourceURL: link from the most recent session in the group, preferring the
+            //     session's own link when a ticketId is set, falling back to the activity link.
             let sql = """
                 SELECT COALESCE(s.ticketId, a.externalId) as effectiveId,
                        COALESCE(SUM(
@@ -1859,8 +1868,13 @@ public final class PresentService: PresentAPI, Sendable {
                            )
                        ), 0) as totalSecs,
                        COUNT(DISTINCT s.id) as sessCount,
-                       GROUP_CONCAT(DISTINCT a.title) as activityNames,
-                       MAX(CASE WHEN s.ticketId IS NOT NULL THEN s.link ELSE a.link END) as sourceURL
+                       GROUP_CONCAT(DISTINCT a.title, '|') as activityNames,
+                       (SELECT CASE WHEN s2.ticketId IS NOT NULL THEN s2.link ELSE a2.link END
+                        FROM session s2
+                        INNER JOIN activity a2 ON a2.id = s2.activityId
+                        WHERE COALESCE(s2.ticketId, a2.externalId) = COALESCE(s.ticketId, a.externalId)
+                          AND s2.state = ?
+                        ORDER BY s2.startedAt DESC LIMIT 1) as sourceURL
                 FROM session s
                 INNER JOIN activity a ON a.id = s.activityId
                 INNER JOIN session_segment ss ON ss.sessionId = s.id
@@ -1877,6 +1891,7 @@ public final class PresentService: PresentAPI, Sendable {
             let rows = try Row.fetchAll(db, sql: sql, arguments: [
                 endDate, startDate,
                 SessionState.completed.rawValue,
+                SessionState.completed.rawValue,
                 endDate, startDate,
                 endDate, startDate
             ])
@@ -1887,7 +1902,7 @@ public final class PresentService: PresentAPI, Sendable {
                     externalId: row["effectiveId"],
                     totalSeconds: row["totalSecs"],
                     sessionCount: row["sessCount"],
-                    activityNames: names.split(separator: ",").map(String.init),
+                    activityNames: names.split(separator: "|").map(String.init),
                     sourceURL: row["sourceURL"]
                 )
             }
