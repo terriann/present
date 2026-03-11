@@ -225,9 +225,10 @@ struct ActivitySessionCard: View {
                                     }
                                 }
 
-                                activityExternalIdBadges(activity: group.activity, sessions: sessions)
+                                activityOwnBadge(activity: group.activity)
+
+                                sessionOnlyBadges(activity: group.activity, sessions: sessions)
                                     .opacity(isExpanded ? 0 : 1)
-                                    .adaptiveAnimation(.easeInOut(duration: 0.2), value: isExpanded)
                             }
                             .font(.body)
                             .foregroundStyle(.secondary)
@@ -244,6 +245,7 @@ struct ActivitySessionCard: View {
                             .foregroundStyle(activeSession != nil ? theme.accent : .secondary)
                             .contentTransition(.numericText())
                     }
+                    .geometryGroup()
                     .padding(.vertical, Constants.spacingCompact)
                     .padding(.horizontal, Constants.spacingCard)
                     .background(index.isMultiple(of: 2) ? Color.clear : Constants.alternatingRowBackground)
@@ -251,7 +253,7 @@ struct ActivitySessionCard: View {
                     .contentShape(Rectangle())
                     .onTapGesture {
                         clearEditing()
-                        withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
+                        withAdaptiveAnimation(.easeInOut(duration: 0.45)) {
                             if isExpanded {
                                 expandedActivities.remove(activityId)
                             } else {
@@ -281,7 +283,7 @@ struct ActivitySessionCard: View {
                                     .padding(.vertical, Constants.spacingCompact)
                                     .background(subRowBackground(index: 0))
                             } else {
-                                activeSessionRow(session: active, activityTitle: group.activity.title)
+                                activeSessionRow(session: active, activityTitle: group.activity.title, activityExternalId: group.activity.externalId)
                                     .background(subRowBackground(index: 0))
                                     .hoverHighlight()
                                     // Dismiss inline edit form when tapping a non-editing row.
@@ -305,7 +307,7 @@ struct ActivitySessionCard: View {
                                     .padding(.vertical, Constants.spacingCompact)
                                     .background(subRowBackground(index: rowIndex))
                             } else {
-                                completedSessionRow(session: entry.0, activityTitle: group.activity.title)
+                                completedSessionRow(session: entry.0, activityTitle: group.activity.title, activityExternalId: group.activity.externalId)
                                     .background(subRowBackground(index: rowIndex))
                                     .hoverHighlight()
                                     .onTapGesture {
@@ -385,7 +387,7 @@ struct ActivitySessionCard: View {
 
     /// Active session row for grouped view — leading SpinningClockIcon, type label, time, live duration.
     @ViewBuilder
-    private func activeSessionRow(session: Session, activityTitle: String) -> some View {
+    private func activeSessionRow(session: Session, activityTitle: String, activityExternalId: String? = nil) -> some View {
         HStack(spacing: Constants.spacingCompact) {
             SpinningClockIcon(isRunning: session.state == .running)
 
@@ -395,7 +397,7 @@ struct ActivitySessionCard: View {
                     .foregroundStyle(.secondary)
                 HStack(spacing: Constants.spacingCompact) {
                     Text(formatStartTime(session.startedAt))
-                    sessionMetadataBadges(session)
+                    sessionMetadataBadges(session, activityExternalId: activityExternalId)
                 }
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
@@ -475,7 +477,7 @@ struct ActivitySessionCard: View {
     }
 
     @ViewBuilder
-    private func completedSessionRow(session: Session, activityTitle: String) -> some View {
+    private func completedSessionRow(session: Session, activityTitle: String, activityExternalId: String? = nil) -> some View {
         HStack(spacing: Constants.spacingCompact) {
             stateIcon(for: session)
 
@@ -486,7 +488,7 @@ struct ActivitySessionCard: View {
 
                 HStack(spacing: Constants.spacingCompact) {
                     Text(sessionTimeRange(session))
-                    sessionMetadataBadges(session)
+                    sessionMetadataBadges(session, activityExternalId: activityExternalId)
                 }
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
@@ -716,10 +718,18 @@ struct ActivitySessionCard: View {
         }))
     }
 
-    /// Deduplicated external ID badges for an activity row, collected from the activity and its child sessions.
+    /// The activity's own external ID badge — always visible, no animation.
     @ViewBuilder
-    private func activityExternalIdBadges(activity: Activity, sessions: [Session]) -> some View {
-        let badges = collectExternalIds(activity: activity, sessions: sessions)
+    private func activityOwnBadge(activity: Activity) -> some View {
+        if let extId = activity.externalId, !extId.isEmpty {
+            TicketBadge(ticketId: extId, link: activity.link, font: .caption, tint: mutedBadgeTint)
+        }
+    }
+
+    /// Deduplicated session-only external ID badges (excludes the activity's own externalId).
+    @ViewBuilder
+    private func sessionOnlyBadges(activity: Activity, sessions: [Session]) -> some View {
+        let badges = collectSessionOnlyExternalIds(activity: activity, sessions: sessions)
         if !badges.isEmpty {
             HStack(spacing: Constants.spacingTight) {
                 ForEach(badges, id: \.id) { badge in
@@ -729,19 +739,15 @@ struct ActivitySessionCard: View {
         }
     }
 
-    /// Collect and deduplicate external IDs from an activity and its sessions.
-    private func collectExternalIds(activity: Activity, sessions: [Session]) -> [(id: String, link: String?)] {
+    /// Collect deduplicated external IDs from sessions, excluding the activity's own externalId.
+    private func collectSessionOnlyExternalIds(activity: Activity, sessions: [Session]) -> [(id: String, link: String?)] {
+        let activityExtId = activity.externalId ?? ""
         var seen = Set<String>()
         var result: [(id: String, link: String?)] = []
 
-        // Activity's own external ID
-        if let extId = activity.externalId, !extId.isEmpty, seen.insert(extId).inserted {
-            result.append((id: extId, link: activity.link))
-        }
-
-        // Session-level external IDs
         for session in sessions {
-            if let ticketId = session.ticketId, !ticketId.isEmpty, seen.insert(ticketId).inserted {
+            if let ticketId = session.ticketId, !ticketId.isEmpty,
+               ticketId != activityExtId, seen.insert(ticketId).inserted {
                 result.append((id: ticketId, link: session.link))
             }
         }
@@ -750,8 +756,9 @@ struct ActivitySessionCard: View {
     }
 
     /// Note indicator and ticket badge shown between session details and the duration label.
+    /// When `activityExternalId` is provided, the session badge is hidden if it matches the activity's own ID.
     @ViewBuilder
-    private func sessionMetadataBadges(_ session: Session) -> some View {
+    private func sessionMetadataBadges(_ session: Session, activityExternalId: String? = nil) -> some View {
         if session.note != nil {
             Image(systemName: "doc.text")
                 .font(.caption)
@@ -760,7 +767,9 @@ struct ActivitySessionCard: View {
                 .help(session.note ?? "")
         }
 
-        TicketBadge(ticketId: session.ticketId, link: session.link, font: .caption, tint: mutedBadgeTint)
+        if let ticketId = session.ticketId, ticketId != activityExternalId {
+            TicketBadge(ticketId: ticketId, link: session.link, font: .caption, tint: mutedBadgeTint)
+        }
     }
 
     @ViewBuilder
