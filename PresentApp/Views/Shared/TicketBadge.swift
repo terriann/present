@@ -10,6 +10,12 @@ struct TicketBadge: View {
     let link: String?
     var font: Font = .caption
     var scale: CGFloat = 1.0
+    var tint: Color?
+
+    /// Resolved tint color — uses the override if provided, otherwise the theme accent.
+    private var resolvedTint: Color {
+        tint ?? theme.accent
+    }
 
     var body: some View {
         if let ticketId, let link, let url = URL(string: link) {
@@ -20,8 +26,8 @@ struct TicketBadge: View {
                     .font(font)
                     .padding(.horizontal, 6 * scale)
                     .padding(.vertical, 2 * scale)
-                    .background(theme.accent.opacity(0.12), in: Capsule())
-                    .foregroundStyle(theme.accent)
+                    .background(resolvedTint.opacity(0.12), in: Capsule())
+                    .foregroundStyle(resolvedTint)
             }
             .buttonStyle(.plain)
             .help(link)
@@ -34,8 +40,8 @@ struct TicketBadge: View {
                     .lineLimit(1)
                     .padding(.horizontal, 6 * scale)
                     .padding(.vertical, 2 * scale)
-                    .background(theme.accent.opacity(0.12), in: Capsule())
-                    .foregroundStyle(theme.accent)
+                    .background(resolvedTint.opacity(0.12), in: Capsule())
+                    .foregroundStyle(resolvedTint)
             }
             .buttonStyle(.plain)
             .help(link)

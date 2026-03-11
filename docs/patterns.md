@@ -500,8 +500,9 @@ without navigation.
 
 A custom switch-style toggle with theme-aware accent color.
 
-**When to use:** All toggles in the app. Never use the default system
-toggle style.
+**When to use:** Settings and preference forms where a prominent on/off
+switch is appropriate. For secondary filter controls in toolbars, prefer
+the Filter Menu pattern instead.
 
 **Structure:**
 
@@ -516,6 +517,81 @@ toggle style.
 
 **Usage:**
 `.toggleStyle(ThemedToggleStyle(tintColor: theme.accent))`
+
+---
+
+### Filter Menu
+
+A single icon button that collapses multiple boolean filter toggles into
+a popover. The icon fills and tints with the accent color when any
+filter differs from its default, providing a subtle visual cue without
+competing with primary content. Uses a popover (not a native `Menu`) so
+the panel stays within the application window.
+
+**When to use:** Secondary filter controls in toolbars or control bars
+where full-size toggles are too visually prominent. Ideal for 2-4
+boolean options that the user adjusts infrequently.
+
+**Structure:**
+
+- Icon: `line.3.horizontal.decrease.circle` (unfilled) /
+  `line.3.horizontal.decrease.circle.fill` (filled when non-default)
+- Color: `.secondary` when default, `theme.accent` when non-default
+- Font: `.controlIcon`
+- Popover: `VStack` of native `Toggle` views with a bold header,
+  `.fixedSize()`, padding `Constants.spacingPage`, arrow edge `.trailing`
+- Defaults: define `hasNonDefaultFilters` by comparing each toggle to its
+  initial value (e.g., `showArchived` defaults to `true`, so `!showArchived`
+  is non-default)
+- Always show all filter options; disable those that are irrelevant
+  rather than hiding them
+- Accessibility: `.accessibilityLabel("Chart filters")` on the button,
+  `.accessibilityValue("Active" / "Default")` for filter state,
+  `.help("Chart filters")` for tooltip
+
+**Canonical example:**
+`PresentApp/Views/Reports/ReportsView.swift` — `chartFilterMenu`
+computed property
+
+**Usage:**
+```swift
+@State private var showFilterPopover = false
+
+/// Defaults: showArchived=true, showActiveSessions=false.
+private var hasNonDefaultFilters: Bool {
+    !showArchived || showActiveSessions
+}
+
+Button {
+    showFilterPopover.toggle()
+} label: {
+    Image(systemName: hasNonDefaultFilters
+        ? "line.3.horizontal.decrease.circle.fill"
+        : "line.3.horizontal.decrease.circle")
+        .foregroundStyle(hasNonDefaultFilters
+            ? AnyShapeStyle(theme.accent)
+            : AnyShapeStyle(.secondary))
+        .font(.controlIcon)
+}
+.buttonStyle(.plain)
+.accessibilityLabel("Chart filters")
+.accessibilityValue(hasNonDefaultFilters ? "Active" : "Default")
+.popover(isPresented: $showFilterPopover, arrowEdge: .trailing) {
+    VStack(alignment: .leading, spacing: Constants.spacingCard) {
+        Text("Filters")
+            .font(.headline)
+            .accessibilityAddTraits(.isHeader)
+
+        VStack(alignment: .leading, spacing: Constants.spacingCompact) {
+            Toggle("Include archived activities", isOn: $showArchived)
+            Toggle("Include active session", isOn: $showActiveSessions)
+                .disabled(!isRelevant)
+        }
+    }
+    .padding(Constants.spacingPage)
+    .fixedSize()
+}
+```
 
 ---
 
