@@ -155,14 +155,44 @@ struct ReportsView: View {
 
             Spacer()
 
-            Toggle("Show archived", isOn: $showArchived)
-                .toggleStyle(ThemedToggleStyle(tintColor: theme.accent))
+            chartFilterMenu
+        }
+    }
 
-            if appState.isSessionActive {
-                Toggle("Show active session", isOn: $showActiveSessions)
-                    .toggleStyle(ThemedToggleStyle(tintColor: theme.accent))
-                    .disabled(!isShowingToday)
+    private var hasNonDefaultFilters: Bool {
+        !showArchived || showActiveSessions
+    }
+
+    @State private var showFilterPopover = false
+
+    private var chartFilterMenu: some View {
+        Button {
+            showFilterPopover.toggle()
+        } label: {
+            Image(systemName: hasNonDefaultFilters
+                ? "line.3.horizontal.decrease.circle.fill"
+                : "line.3.horizontal.decrease.circle")
+                .foregroundStyle(hasNonDefaultFilters ? AnyShapeStyle(theme.accent) : AnyShapeStyle(.secondary))
+                .font(.controlIcon)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Chart filters")
+        .accessibilityValue(hasNonDefaultFilters ? "Active" : "Default")
+        .help("Chart filters")
+        .popover(isPresented: $showFilterPopover, arrowEdge: .trailing) {
+            VStack(alignment: .leading, spacing: Constants.spacingCard) {
+                Text("Filters")
+                    .font(.headline)
+                    .accessibilityAddTraits(.isHeader)
+
+                VStack(alignment: .leading, spacing: Constants.spacingCompact) {
+                    Toggle("Include archived activities", isOn: $showArchived)
+                    Toggle("Include active session", isOn: $showActiveSessions)
+                        .disabled(!appState.isSessionActive || !isShowingToday)
+                }
             }
+            .padding(Constants.spacingPage)
+            .fixedSize()
         }
     }
 
