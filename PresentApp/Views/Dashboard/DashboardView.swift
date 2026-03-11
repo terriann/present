@@ -77,7 +77,10 @@ struct DashboardView: View {
             })
         }
         .navigationTitle("Dashboard")
-        .task { await loadTodaySessions() }
+        .task {
+            await appState.refreshAll()
+            await loadTodaySessions()
+        }
         .task { await refreshGreetingAtBoundary() }
         .onChange(of: appState.todayActivities) {
             Task { await loadTodaySessions() }
