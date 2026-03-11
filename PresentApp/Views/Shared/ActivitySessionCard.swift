@@ -406,6 +406,7 @@ struct ActivitySessionCard: View {
             Spacer()
             activeDurationLabel
         }
+        .geometryGroup()
         .padding(.vertical, 6)
         .padding(.horizontal, Constants.spacingCard)
         .padding(.leading, 20)
@@ -441,6 +442,7 @@ struct ActivitySessionCard: View {
 
             activeDurationLabel
         }
+        .geometryGroup()
         .padding(.vertical, 2)
         .activePulse(isActive: session.state == .running, reduceMotion: reduceMotion)
     }
@@ -473,6 +475,7 @@ struct ActivitySessionCard: View {
 
             sessionDurationLabel(session)
         }
+        .geometryGroup()
         .padding(.vertical, 2)
     }
 
@@ -498,6 +501,7 @@ struct ActivitySessionCard: View {
 
             sessionDurationLabel(session)
         }
+        .geometryGroup()
         .padding(.vertical, 6)
         .padding(.horizontal, Constants.spacingCard)
         .padding(.leading, 20)
