@@ -7,9 +7,15 @@ struct HoverableChartLegend: View {
     var onHoverStart: ((String) -> Void)?
     var onHoverEnd: (() -> Void)?
 
+    /// Deduplicated items — keeps the first occurrence of each label.
+    private var uniqueItems: [(label: String, color: Color)] {
+        var seen = Set<String>()
+        return items.filter { seen.insert($0.label).inserted }
+    }
+
     var body: some View {
         FlowLayout(spacing: Constants.spacingCompact) {
-            ForEach(items, id: \.label) { item in
+            ForEach(uniqueItems, id: \.label) { item in
                 HStack(spacing: Constants.spacingTight) {
                     Circle()
                         .fill(item.color)
