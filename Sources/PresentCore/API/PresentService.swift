@@ -2290,24 +2290,6 @@ public final class PresentService: PresentAPI, Sendable {
         }
     }
 
-    public func exportCSV(from: Date, to: Date, includeArchived: Bool) async throws -> Data {
-        try await dbWriter.read { db in
-            let archiveFilter = includeArchived ? "" : " AND a.isArchived = 0"
-            let sql = """
-                SELECT s.id, a.title, s.sessionType, s.startedAt, s.endedAt, s.durationSeconds, s.state
-                FROM session s
-                INNER JOIN activity a ON a.id = s.activityId
-                WHERE s.startedAt >= ? AND s.startedAt <= ?
-                  AND s.state = ?
-                  \(archiveFilter)
-                ORDER BY s.startedAt ASC
-                """
-
-            let rows = try Row.fetchAll(db, sql: sql, arguments: [from, to, SessionState.completed.rawValue])
-            return CSVExporter.export(rows: rows)
-        }
-    }
-
     // MARK: - Preferences
 
     public func getPreference(key: String) async throws -> String? {

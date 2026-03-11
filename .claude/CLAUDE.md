@@ -295,6 +295,11 @@ docs(readme): update CLI usage examples
 
 When a change spans multiple scopes, use the most significant one. If truly cross-cutting, omit the scope: `refactor: rename session states for clarity`.
 
+## Writing Style
+
+### Acronyms
+- On first use in any issue, PR, document, or conversation with the user, spell out the full term followed by the abbreviation in parentheses (e.g., "Full Text Search 5 (FTS5)"). Use the abbreviation alone after that.
+
 ## Filing Issues & Project Management
 
 **Always delegate bug reports, feature requests, triage, and milestone planning to the project manager agent** (`.claude/agents/project-manager.md`). Do not create GitHub issues directly.

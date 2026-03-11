@@ -404,20 +404,6 @@ struct PresentServiceTests {
         #expect(summary.sessionCount == 1)
     }
 
-    @Test func csvExport() async throws {
-        let service = try makeService()
-        let activity = try await service.createActivity(CreateActivityInput(title: "CSV Test"))
-        _ = try await service.startSession(activityId: activity.id!, type: .work)
-        _ = try await service.stopSession()
-
-        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
-        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
-        let data = try await service.exportCSV(from: yesterday, to: tomorrow, includeArchived: false)
-        let csv = String(data: data, encoding: .utf8)!
-        #expect(csv.contains("CSV Test"))
-        #expect(csv.contains("Session ID"))
-    }
-
     // MARK: - List Sessions (Filtered)
 
     @Test func listSessionsDateRange() async throws {

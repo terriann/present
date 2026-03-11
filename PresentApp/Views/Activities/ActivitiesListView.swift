@@ -99,7 +99,7 @@ struct ActivitiesListView: View {
             Task { await loadActivities() }
         }
         .onChange(of: showArchived) {
-            // No need to re-fetch — displayedActivities filters locally
+            Task { await loadActivities() }
         }
         .onAppear {
             isSearchFocused = true
@@ -157,7 +157,7 @@ struct ActivitiesListView: View {
     private func loadActivities() async {
         do {
             activities = try await appState.listActivities(
-                includeArchived: true, includeSystem: true
+                includeArchived: showArchived, includeSystem: true
             )
             let ids = activities.compactMap(\.id)
             if !ids.isEmpty {
@@ -214,9 +214,6 @@ struct ActivitiesListView: View {
 
     private var displayedActivities: [Activity] {
         var filtered = activities
-        if !showArchived {
-            filtered = filtered.filter { !$0.isArchived }
-        }
         if !searchText.isEmpty {
             filtered = filtered.filter { $0.title.localizedCaseInsensitiveContains(searchText) }
         }
