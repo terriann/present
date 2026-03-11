@@ -432,7 +432,7 @@ struct ActivitySessionCard: View {
                         Text("\u{00B7}")
                         Text(formatStartTime(session.startedAt))
                     }
-                    sessionMetadataBadges(session)
+                    sessionMetadataBadges(session, activityExternalId: activity.externalId)
                 }
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
@@ -465,7 +465,7 @@ struct ActivitySessionCard: View {
                         Text("\u{00B7}")
                         Text(sessionTimeRange(session))
                     }
-                    sessionMetadataBadges(session)
+                    sessionMetadataBadges(session, activityExternalId: activity.externalId)
                 }
                 .font(.subheadline)
                 .foregroundStyle(.secondary)

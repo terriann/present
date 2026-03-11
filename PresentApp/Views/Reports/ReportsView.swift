@@ -23,8 +23,9 @@ struct ReportsView: View {
     @State private var activeActivityTags: [Tag] = []
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    // Navigation state
+    // Navigation & filter state
     @State private var showDatePicker = false
+    @State private var showFilterPopover = false
     @State private var earliestDate: Date?
     @State private var weekStartDay: Int = 1 // Calendar.firstWeekday: 1=Sunday, 2=Monday
     @State private var loadTask: Task<Void, Never>?
@@ -159,11 +160,11 @@ struct ReportsView: View {
         }
     }
 
+    /// Defaults: showArchived=true (include everything), showActiveSessions=false (completed only).
+    /// The icon fills when archived is excluded OR active session is included.
     private var hasNonDefaultFilters: Bool {
         !showArchived || showActiveSessions
     }
-
-    @State private var showFilterPopover = false
 
     private var chartFilterMenu: some View {
         Button {

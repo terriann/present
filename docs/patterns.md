@@ -538,11 +538,15 @@ boolean options that the user adjusts infrequently.
   `line.3.horizontal.decrease.circle.fill` (filled when non-default)
 - Color: `.secondary` when default, `theme.accent` when non-default
 - Font: `.controlIcon`
-- Popover: `VStack` of native `Toggle` views, `.fixedSize()`,
-  padding `Constants.spacingCard`, arrow edge `.bottom`
+- Popover: `VStack` of native `Toggle` views with a bold header,
+  `.fixedSize()`, padding `Constants.spacingPage`, arrow edge `.trailing`
+- Defaults: define `hasNonDefaultFilters` by comparing each toggle to its
+  initial value (e.g., `showArchived` defaults to `true`, so `!showArchived`
+  is non-default)
 - Always show all filter options; disable those that are irrelevant
   rather than hiding them
 - Accessibility: `.accessibilityLabel("Chart filters")` on the button,
+  `.accessibilityValue("Active" / "Default")` for filter state,
   `.help("Chart filters")` for tooltip
 
 **Canonical example:**
@@ -553,6 +557,7 @@ computed property
 ```swift
 @State private var showFilterPopover = false
 
+/// Defaults: showArchived=true, showActiveSessions=false.
 private var hasNonDefaultFilters: Bool {
     !showArchived || showActiveSessions
 }
@@ -570,13 +575,20 @@ Button {
 }
 .buttonStyle(.plain)
 .accessibilityLabel("Chart filters")
-.popover(isPresented: $showFilterPopover, arrowEdge: .bottom) {
-    VStack(alignment: .leading, spacing: Constants.spacingCompact) {
-        Toggle("Include archived activities", isOn: $showArchived)
-        Toggle("Include active session", isOn: $showActiveSessions)
-            .disabled(!isRelevant)
+.accessibilityValue(hasNonDefaultFilters ? "Active" : "Default")
+.popover(isPresented: $showFilterPopover, arrowEdge: .trailing) {
+    VStack(alignment: .leading, spacing: Constants.spacingCard) {
+        Text("Filters")
+            .font(.headline)
+            .accessibilityAddTraits(.isHeader)
+
+        VStack(alignment: .leading, spacing: Constants.spacingCompact) {
+            Toggle("Include archived activities", isOn: $showArchived)
+            Toggle("Include active session", isOn: $showActiveSessions)
+                .disabled(!isRelevant)
+        }
     }
-    .padding(Constants.spacingCard)
+    .padding(Constants.spacingPage)
     .fixedSize()
 }
 ```
