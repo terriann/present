@@ -116,7 +116,11 @@ struct ActivitiesListView: View {
         List {
             ForEach(groupedActivities) { section in
                 Section {
-                    ForEach(section.activities) { activity in
+                    ForEach(Array(section.activities.enumerated()), id: \.element.id) { index, activity in
+                        let isSelected = selectedActivity?.id == activity.id
+                        let nextIsSelected = index + 1 < section.activities.count
+                            && selectedActivity?.id == section.activities[index + 1].id
+
                         Button {
                             selectedActivity = activity
                         } label: {
@@ -129,9 +133,10 @@ struct ActivitiesListView: View {
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        .listRowSeparator(isSelected || nextIsSelected ? .hidden : .automatic)
                         .listRowBackground(
                             RoundedRectangle(cornerRadius: 6)
-                                .fill(selectedActivity?.id == activity.id
+                                .fill(isSelected
                                     ? theme.accent.opacity(0.2)
                                     : Color.clear)
                                 .padding(.horizontal, Constants.spacingTight)
