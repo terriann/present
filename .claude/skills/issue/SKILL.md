@@ -57,14 +57,22 @@ This is the most important phase. Your job is to **interview the user** and docu
 2. Use `AskUserQuestion` to gather missing details. Ask 2-4 focused questions covering:
    - **Bug**: Steps to reproduce, expected vs actual behavior, frequency, severity
    - **Feature**: Use case, desired behavior, scope, edge cases, examples of current vs desired state
-3. For each requirement the user states, ask clarifying follow-ups:
+3. **Confirm priority** using `AskUserQuestion` (Low / Medium / High / Critical). For bugs, derive this from the severity discussion. Map to a `priority/*` label:
+
+   | Priority | Label |
+   |---|---|
+   | Critical | `priority/P0-critical` |
+   | High | `priority/P1-high` |
+   | Medium | `priority/P2-medium` |
+   | Low | `priority/P3-low` |
+4. For each requirement the user states, ask clarifying follow-ups:
    - What should the inputs and outputs be?
    - What are the constraints or rules?
    - Are there examples or formats they have in mind?
    - What's explicitly out of scope?
-4. **Challenge assumptions** — if something is vague or could be interpreted multiple ways, ask. Don't fill in gaps with implementation guesses.
-5. Do NOT proceed until you have enough detail to write a clear, actionable issue.
-6. Do NOT research the codebase. Requirements come from the user, not from code exploration.
+5. **Challenge assumptions** — if something is vague or could be interpreted multiple ways, ask. Don't fill in gaps with implementation guesses.
+6. Do NOT proceed until you have enough detail to write a clear, actionable issue.
+7. Do NOT research the codebase. Requirements come from the user, not from code exploration.
 
 ### Phase 3: Draft the Issue
 
@@ -75,7 +83,7 @@ Then create the issue using `gh issue create` with the appropriate template belo
 #### Bug Report Template
 
 ```
-gh issue create --title "fix(scope): brief description" --label "type/bug" --body "$(cat <<'EOF'
+gh issue create --title "fix(scope): brief description" --label "type/bug" --label "priority/P#-level" --body "$(cat <<'EOF'
 ## Bug Report
 
 **Description**
@@ -100,7 +108,7 @@ EOF
 #### Feature Request Template
 
 ```
-gh issue create --title "feat(scope): brief description" --label "type/enhancement" --body "$(cat <<'EOF'
+gh issue create --title "feat(scope): brief description" --label "type/enhancement" --label "priority/P#-level" --body "$(cat <<'EOF'
 ## Feature Request
 
 **Description**
@@ -143,6 +151,24 @@ After creating (or updating) the issue, offer to assign it to the current milest
 5. If **different milestone**, present the full list and let the user choose, then assign.
 6. If **No**, skip — the issue remains unassigned to any milestone.
 
+
+#### Image Handling
+
+The GitHub API does not support uploading image attachments. Images must be added manually through the GitHub web UI.
+
+When the user provides or references an image (screenshot, mockup, diagram, etc.) during the conversation:
+
+1. **Include a placeholder** in the issue body where the image should appear:
+   ```
+   <!-- 📷 IMAGE PLACEHOLDER: [brief description of the image] — must be added manually via GitHub web UI -->
+   ```
+2. **Number multiple placeholders** if there are several images (e.g., `IMAGE 1`, `IMAGE 2`).
+3. **After the issue is created**, remind the user to add the image(s) manually. Provide the issue URL and list each placeholder with its description so they know exactly what to upload and where. Example:
+   > This issue has 1 image placeholder that needs to be added manually via the GitHub web UI:
+   > - **IMAGE PLACEHOLDER**: Screenshot of the flickering timer
+   >
+   > Edit the issue at <URL> and replace the HTML comment(s) with the uploaded image(s).
+
 ### Phase 4: Link Related Issues
 
 After creating or updating an issue, link any related issues discovered during the Phase 1 search.
@@ -159,6 +185,18 @@ After creating or updating an issue, link any related issues discovered during t
    - **See also**: Loosely related — useful context but no direct dependency.
 3. **Cross-link** when appropriate: also comment on the related issue pointing back to the new one, so the relationship is visible from both sides.
 4. Do NOT link issues that are only tangentially related. The link should provide meaningful context to someone reading either issue.
+
+### Phase 5: Delegate Label Assessment to PM Agent
+
+After the issue is created and linked, **automatically delegate** to the PM agent to assess and apply any missing labels. The issue skill intentionally avoids codebase research, so label decisions that require technical context (like `size/*` and `design/*`) must be handled by the PM agent.
+
+**Use the `Agent` tool** with `subagent_type: "pm"` to request an issue review:
+
+```
+prompt: "Assess and apply missing labels for issue #NNN. Review the issue and codebase to determine the appropriate size/* label and any missing design/* labels. Use gh issue edit to apply them after confirming with the user."
+```
+
+Do NOT skip this step. Do NOT ask the user to delegate manually — just do it.
 
 ### Scope Conventions
 

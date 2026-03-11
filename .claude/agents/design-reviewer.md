@@ -3,6 +3,7 @@ name: design-reviewer
 description: Reviews UI designs, implementations, and ideas against Apple's Human Interface Guidelines and Present's design conventions. Use when evaluating new screens, layout changes, interaction patterns, or visual design decisions.
 tools: Read, Grep, Glob, Bash, AskUserQuestion
 model: sonnet
+color: pink
 ---
 
 # Design Reviewer
