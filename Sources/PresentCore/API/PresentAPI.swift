@@ -58,8 +58,6 @@ public protocol PresentAPI: Sendable {
     func externalIdSummary(from: Date, to: Date, includeArchived: Bool) async throws -> [ExternalIdSummary]
     func tagSummary(from: Date, to: Date, includeArchived: Bool) async throws -> [TagSummary]
     func tagActivitySummary(from: Date, to: Date, includeArchived: Bool, roundToMinute: Bool) async throws -> [TagActivitySummary]
-    func exportCSV(from: Date, to: Date, includeArchived: Bool) async throws -> Data
-
     // Preferences
     func getPreference(key: String) async throws -> String?
     func setPreference(key: String, value: String) async throws
