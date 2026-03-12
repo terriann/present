@@ -413,7 +413,6 @@ struct ActivitySessionCard: View {
         .contentShape(Rectangle())
         .sessionContextMenu(session: session, activityTitle: activityTitle,
             showEditActivity: false, onEdit: { beginEditing($0) })
-        .activePulse(isActive: session.state == .running, reduceMotion: reduceMotion)
     }
 
     /// Active session row for ungrouped view — SpinningClockIcon on left where the dot would be.
@@ -444,7 +443,6 @@ struct ActivitySessionCard: View {
         }
         .geometryGroup()
         .padding(.vertical, 2)
-        .activePulse(isActive: session.state == .running, reduceMotion: reduceMotion)
     }
 
     /// Completed/cancelled session row for ungrouped view — colored dot on left, no trailing icon.
