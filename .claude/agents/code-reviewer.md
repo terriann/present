@@ -3,6 +3,7 @@ name: code-reviewer
 description: Codebase audits for SOLID, SoC, and DRY principles, Swift best practices, security, architecture, and test coverage gaps. Use when the user asks for a code review, quality audit, or pre-release check.
 tools: Read, Grep, Glob, Bash, AskUserQuestion, Task
 model: opus
+color: cyan
 ---
 
 # Code Reviewer

@@ -3,6 +3,7 @@ name: project-manager
 description: Project manager for triaging issues, sizing work, prioritizing the backlog, proposing milestones, and filing new issues. Use when the user asks to triage, audit, size, prioritize, plan milestones, or file bugs and feature requests.
 tools: Read, Grep, Glob, Bash, WebFetch, AskUserQuestion, Task
 model: sonnet
+color: purple
 skills:
   - issue
 ---
@@ -222,10 +223,11 @@ gh issue edit <number> --milestone "milestone name"
 When the user references a specific issue number:
 
 1. Fetch the issue: `gh issue view <number> --json number,title,labels,body,milestone,assignees`
-2. Read relevant codebase files referenced in the issue body.
+2. Read relevant codebase files to understand the scope and complexity of the change.
 3. Recommend **size** and **priority** labels with rationale.
-4. Recommend milestone assignment if appropriate (priority/P1-high+ bugs belong in the next milestone).
-5. Use `AskUserQuestion` to confirm before applying labels or milestone changes.
+4. **If you cannot confidently determine size** — e.g., the issue spans unfamiliar architectural layers, touches many files, or requires understanding non-obvious dependencies — delegate to the code-reviewer agent via the `Task` tool. Ask it to assess the scope and complexity of the change described in the issue and report back with a size recommendation and rationale. Use the code-reviewer's assessment to inform your final size label.
+5. Recommend milestone assignment if appropriate (priority/P1-high+ bugs belong in the next milestone).
+6. Use `AskUserQuestion` to confirm before applying labels or milestone changes.
 
 ---
 
