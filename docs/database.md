@@ -248,7 +248,6 @@ All values are stored as TEXT strings regardless of logical type.
 | `rhythmCycleLength` | `"4"` | Int | Sessions before long break |
 | `notificationSound` | `"1"` | Bool | Notification sound on |
 | `soundEffectsEnabled` | `"1"` | Bool | UI sound effects on |
-| `includeArchivedInReports` | `"0"` | Bool | Archived in reports |
 | `rhythmDurationOptions` | `"25:5,30:5,45:10"` | String | Focus:break presets |
 | `defaultTimeboundMinutes` | `"25"` | Int | Timebound duration |
 | `colorPalette` | `"basic"` | Enum | `basic` or `modern` |

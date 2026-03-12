@@ -14,12 +14,10 @@ struct ReportStackedBarChart: View {
     let weekendDayLabels: Set<String>
 
     @Environment(ThemeManager.self) private var theme
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var hoveredBarLabel: String?
     @State private var hoveredBarActivity: String?
     @State private var barHoverLocation: CGPoint = .zero
-    @State private var pulseState = ActivePulseState()
 
     private var yAxisLabel: String {
         selectedPeriod == .daily ? "Minutes" : "Hours"
@@ -40,10 +38,6 @@ struct ReportStackedBarChart: View {
         }
     }
 
-    private var hasActiveEntries: Bool {
-        entries.contains { $0.isActive }
-    }
-
     var body: some View {
         // Guard: chartForegroundStyleScale crashes on empty domain (FB…).
         // During reload transitions the parent may clear state, leaving domain empty
@@ -52,21 +46,6 @@ struct ReportStackedBarChart: View {
             ChartCard(title: "Time by \(selectedPeriod.timeLabel)") {
                 stackedBarChart
                 barChartLegend
-            }
-            .onChange(of: hasActiveEntries) {
-                if hasActiveEntries {
-                    pulseState.start(reduceMotion: reduceMotion)
-                } else {
-                    pulseState.stop()
-                }
-            }
-            .onAppear {
-                if hasActiveEntries {
-                    pulseState.start(reduceMotion: reduceMotion)
-                }
-            }
-            .onDisappear {
-                pulseState.stop()
             }
         }
     }
@@ -86,6 +65,9 @@ struct ReportStackedBarChart: View {
                 .opacity(barEntryOpacity(entry: entry))
             }
         }
+        // Prevent Swift Charts transition animation during timer-driven re-renders.
+        // Without this, rapid resize + timer tick can crash CanvasDisplayList. (#FB…)
+        .transaction { $0.animation = nil }
         .chartForegroundStyleScale(domain: chartColorDomain, range: chartColorRange)
         .chartXScale(domain: domain)
         .chartXAxis {
@@ -206,8 +188,6 @@ struct ReportStackedBarChart: View {
         if let label = hoveredBarLabel {
             return entry.label == label ? 1.0 : 0.4
         }
-        // Active session segment pulses when no hover interaction is active
-        if entry.isActive { return pulseState.opacity }
         return 1.0
     }
 

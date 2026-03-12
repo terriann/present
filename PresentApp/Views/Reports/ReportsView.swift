@@ -6,7 +6,6 @@ struct ReportsView: View {
     @Environment(ThemeManager.self) private var theme
     @State private var selectedPeriod: ReportPeriod = .daily
     @State private var selectedDate: Date = Date()
-    @State private var showArchived = true
     @State private var activities: [ActivitySummary] = []
     @State private var totalSeconds: Int = 0
     @State private var sessionCount: Int = 0
@@ -18,14 +17,10 @@ struct ReportsView: View {
     @State private var sessionEntries: [(Session, Activity)] = []
     @State private var sessionSegments: [Int64: [SessionSegment]] = [:]
 
-    // Active session toggle (ephemeral, resets on view load and when navigating away from today)
-    @State private var showActiveSessions = false
     @State private var activeActivityTags: [Tag] = []
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    // Navigation & filter state
+    // Navigation state
     @State private var showDatePicker = false
-    @State private var showFilterPopover = false
     @State private var earliestDate: Date?
     @State private var weekStartDay: Int = 1 // Calendar.firstWeekday: 1=Sunday, 2=Monday
     @State private var loadTask: Task<Void, Never>?
@@ -43,8 +38,7 @@ struct ReportsView: View {
                             sessionEntries: sessionEntries,
                             sessionSegments: sessionSegments,
                             activityColorMap: activityColorMap,
-                            referenceDate: Calendar.current.startOfDay(for: selectedDate),
-                            showActiveSessions: shouldIncludeActive
+                            referenceDate: Calendar.current.startOfDay(for: selectedDate)
                         )
                     }
                     ReportStackedBarChart(
@@ -111,6 +105,7 @@ struct ReportsView: View {
         .navigationTitle("Reports")
         .task {
             await loadInitialState()
+            loadActiveActivityTags()
             await loadReport()
         }
         .onChange(of: selectedPeriod) { oldPeriod, newPeriod in
@@ -124,77 +119,23 @@ struct ReportsView: View {
         .onChange(of: selectedDate) {
             reloadReport()
         }
-        .onChange(of: showArchived) {
-            reloadReport()
-        }
-        .onChange(of: isShowingToday) {
-            if !isShowingToday {
-                showActiveSessions = false
-            }
-        }
-        .onChange(of: showActiveSessions) {
-            if showActiveSessions {
-                loadActiveActivityTags()
-            } else {
-                activeActivityTags = []
-            }
+        .onChange(of: appState.isSessionActive) {
+            loadActiveActivityTags()
         }
     }
 
     // MARK: - Controls
 
     private var controlsBar: some View {
-        HStack {
-            Picker("Report period", selection: $selectedPeriod) {
-                ForEach(ReportPeriod.allCases, id: \.self) { period in
-                    Text(period.rawValue).tag(period)
-                }
+        Picker("Report period", selection: $selectedPeriod) {
+            ForEach(ReportPeriod.allCases, id: \.self) { period in
+                Text(period.rawValue).tag(period)
             }
-            .labelsHidden()
-            .pickerStyle(.segmented)
-            .fixedSize()
-
-            Spacer()
-
-            chartFilterMenu
         }
-    }
-
-    /// Defaults: showArchived=true (include everything), showActiveSessions=false (completed only).
-    /// The icon fills when archived is excluded OR active session is included.
-    private var hasNonDefaultFilters: Bool {
-        !showArchived || showActiveSessions
-    }
-
-    private var chartFilterMenu: some View {
-        Button {
-            showFilterPopover.toggle()
-        } label: {
-            Image(systemName: hasNonDefaultFilters
-                ? "line.3.horizontal.decrease.circle.fill"
-                : "line.3.horizontal.decrease.circle")
-                .foregroundStyle(hasNonDefaultFilters ? AnyShapeStyle(theme.accent) : AnyShapeStyle(.secondary))
-                .font(.controlIcon)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Chart filters")
-        .accessibilityValue(hasNonDefaultFilters ? "Active" : "Default")
-        .help("Chart filters")
-        .popover(isPresented: $showFilterPopover, arrowEdge: .trailing) {
-            VStack(alignment: .leading, spacing: Constants.spacingCard) {
-                Text("Filters")
-                    .font(.headline)
-                    .accessibilityAddTraits(.isHeader)
-
-                VStack(alignment: .leading, spacing: Constants.spacingCompact) {
-                    Toggle("Include archived activities", isOn: $showArchived)
-                    Toggle("Include active session", isOn: $showActiveSessions)
-                        .disabled(!appState.isSessionActive || !isShowingToday)
-                }
-            }
-            .padding(Constants.spacingPage)
-            .fixedSize()
-        }
+        .labelsHidden()
+        .pickerStyle(.segmented)
+        .fixedSize()
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // MARK: - Period Navigation
@@ -341,7 +282,7 @@ struct ReportsView: View {
 
     /// Whether to include the active session's elapsed time in charts and stats.
     private var shouldIncludeActive: Bool {
-        showActiveSessions && isShowingToday && appState.isSessionActive
+        isShowingToday && appState.isSessionActive
     }
 
     /// The activity for the currently running session, when inclusion is enabled.
@@ -488,9 +429,8 @@ struct ReportsView: View {
         HStack(spacing: 40) {
             StatItem(
                 title: "Total Time",
-                value: TimeFormatting.formatDuration(seconds: displayTotalSeconds, active: shouldIncludeActive)
+                value: TimeFormatting.formatDuration(seconds: displayTotalSeconds)
             )
-            .activePulse(isActive: shouldIncludeActive, reduceMotion: reduceMotion)
 
             StatItem(
                 title: "Sessions",
@@ -725,6 +665,8 @@ struct ReportsView: View {
     private func loadInitialState() async {
         do {
             earliestDate = try await appState.earliestSessionDate()
+        } catch is CancellationError {
+            // Task cancelled by SwiftUI lifecycle — expected, not an error.
         } catch {
             appState.showError(error, context: "Could not load report data")
         }
@@ -746,16 +688,19 @@ struct ReportsView: View {
 
             switch selectedPeriod {
             case .daily:
-                let summary = try await appState.dailySummary(date: selectedDate, includeArchived: showArchived, roundToMinute: true)
+                let summary = try await appState.dailySummary(date: selectedDate, includeArchived: true, roundToMinute: true)
                 let startOfDay = calendar.startOfDay(for: selectedDate)
                 let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? selectedDate
-                let tags = try await appState.tagActivitySummary(from: startOfDay, to: endOfDay, includeArchived: showArchived, roundToMinute: true)
-                let extIds = try await appState.externalIdSummary(from: startOfDay, to: endOfDay, includeArchived: showArchived)
+                let tags = try await appState.tagActivitySummary(from: startOfDay, to: endOfDay, includeArchived: true, roundToMinute: true)
+                let extIds = try await appState.externalIdSummary(from: startOfDay, to: endOfDay, includeArchived: true)
                 try Task.checkCancellation()
                 // Batch all state updates together to avoid mid-render inconsistencies
-                let sessions = try await appState.listSessions(from: startOfDay, to: endOfDay, type: nil, activityId: nil, includeArchived: showArchived)
+                let sessions = try await appState.listSessions(from: startOfDay, to: endOfDay, type: nil, activityId: nil, includeArchived: true)
                 try Task.checkCancellation()
-                let sessionIds = sessions.compactMap { $0.0.id }
+                var sessionIds = sessions.compactMap { $0.0.id }
+                if let activeId = appState.currentSession?.id, !sessionIds.contains(activeId) {
+                    sessionIds.append(activeId)
+                }
                 let segments = try await appState.segmentsForSessions(sessionIds: sessionIds)
                 try Task.checkCancellation()
                 withAdaptiveAnimation(.easeInOut(duration: 0.35)) {
@@ -771,13 +716,13 @@ struct ReportsView: View {
                 }
 
             case .weekly:
-                let summary = try await appState.weeklySummary(weekOf: selectedDate, includeArchived: showArchived, weekStartDay: effectiveWeekStartDay, roundToMinute: true)
+                let summary = try await appState.weeklySummary(weekOf: selectedDate, includeArchived: true, weekStartDay: effectiveWeekStartDay, roundToMinute: true)
                 let wStart = weekStart(for: selectedDate)
                 let weekEnd = calendar.date(byAdding: .day, value: 7, to: wStart) ?? selectedDate
-                let tags = try await appState.tagActivitySummary(from: wStart, to: weekEnd, includeArchived: showArchived, roundToMinute: true)
-                let extIds = try await appState.externalIdSummary(from: wStart, to: weekEnd, includeArchived: showArchived)
+                let tags = try await appState.tagActivitySummary(from: wStart, to: weekEnd, includeArchived: true, roundToMinute: true)
+                let extIds = try await appState.externalIdSummary(from: wStart, to: weekEnd, includeArchived: true)
                 try Task.checkCancellation()
-                let sessions = try await appState.listSessions(from: wStart, to: weekEnd, type: nil, activityId: nil, includeArchived: showArchived)
+                let sessions = try await appState.listSessions(from: wStart, to: weekEnd, type: nil, activityId: nil, includeArchived: true)
                 try Task.checkCancellation()
                 withAdaptiveAnimation(.easeInOut(duration: 0.35)) {
                     weekStartDay = effectiveWeekStartDay
@@ -791,12 +736,12 @@ struct ReportsView: View {
                 }
 
             case .monthly:
-                let summary = try await appState.monthlySummary(monthOf: selectedDate, includeArchived: showArchived, weekStartDay: effectiveWeekStartDay, roundToMinute: true)
+                let summary = try await appState.monthlySummary(monthOf: selectedDate, includeArchived: true, weekStartDay: effectiveWeekStartDay, roundToMinute: true)
                 guard let monthInterval = calendar.dateInterval(of: .month, for: selectedDate) else { return }
-                let tags = try await appState.tagActivitySummary(from: monthInterval.start, to: monthInterval.end, includeArchived: showArchived, roundToMinute: true)
-                let extIds = try await appState.externalIdSummary(from: monthInterval.start, to: monthInterval.end, includeArchived: showArchived)
+                let tags = try await appState.tagActivitySummary(from: monthInterval.start, to: monthInterval.end, includeArchived: true, roundToMinute: true)
+                let extIds = try await appState.externalIdSummary(from: monthInterval.start, to: monthInterval.end, includeArchived: true)
                 try Task.checkCancellation()
-                let sessions = try await appState.listSessions(from: monthInterval.start, to: monthInterval.end, type: nil, activityId: nil, includeArchived: showArchived)
+                let sessions = try await appState.listSessions(from: monthInterval.start, to: monthInterval.end, type: nil, activityId: nil, includeArchived: true)
                 try Task.checkCancellation()
                 withAdaptiveAnimation(.easeInOut(duration: 0.35)) {
                     weekStartDay = effectiveWeekStartDay

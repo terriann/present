@@ -10,15 +10,12 @@ struct DashboardWeeklyChartCard: View {
     let hasActiveTodaySession: Bool
     let todayPortionSeconds: Int
     let currentActivity: Activity?
-    let reduceMotion: Bool
 
     @Environment(AppState.self) private var appState
 
     @State private var hoveredBarLabel: String?
     @State private var hoveredBarActivity: String?
     @State private var barHoverLocation: CGPoint = .zero
-    /// Drives the gentle pulse on the active session's bar segment.
-    @State private var pulseState = ActivePulseState()
 
     var body: some View {
         // Guard: chartForegroundStyleScale crashes on empty domain (FB…).
@@ -30,21 +27,6 @@ struct DashboardWeeklyChartCard: View {
             ChartCard(title: "Your Week", subtitle: weekRangeTitle) {
                 weeklyBarChart(entries: entries, domain: domain, activities: weekly.activities, tooltipLabels: tooltipLabels)
                 weeklyBarChartLegend
-            }
-            .onChange(of: hasActiveTodaySession) {
-                if hasActiveTodaySession {
-                    pulseState.start(reduceMotion: reduceMotion)
-                } else {
-                    pulseState.stop()
-                }
-            }
-            .onAppear {
-                if hasActiveTodaySession {
-                    pulseState.start(reduceMotion: reduceMotion)
-                }
-            }
-            .onDisappear {
-                pulseState.stop()
             }
         }
     }
@@ -88,6 +70,9 @@ struct DashboardWeeklyChartCard: View {
                 .opacity(weeklyBarEntryOpacity(entry: entry))
             }
         }
+        // Prevent Swift Charts transition animation during timer-driven re-renders.
+        // Without this, rapid resize + timer tick can crash CanvasDisplayList.
+        .transaction { $0.animation = nil }
         .chartForegroundStyleScale(domain: chartColorDomain, range: chartColorRange)
         .chartXScale(domain: domain)
         .chartYScale(domain: yDomain)
@@ -224,8 +209,6 @@ struct DashboardWeeklyChartCard: View {
         if let label = hoveredBarLabel {
             return entry.label == label ? 1.0 : 0.4
         }
-        // Active session segment pulses when no hover interaction is active
-        if entry.isActive { return pulseState.opacity }
         return 1.0
     }
 

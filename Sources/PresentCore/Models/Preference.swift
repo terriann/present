@@ -26,7 +26,6 @@ public enum PreferenceKey {
     public static let rhythmCycleLength = "rhythmCycleLength"
     public static let notificationSound = "notificationSound"
     public static let soundEffectsEnabled = "soundEffectsEnabled"
-    public static let includeArchivedInReports = "includeArchivedInReports"
     public static let rhythmDurationOptions = "rhythmDurationOptions"
     public static let defaultTimeboundMinutes = "defaultTimeboundMinutes"
     public static let colorPalette = "colorPalette"
@@ -41,7 +40,6 @@ public enum PreferenceKey {
         (rhythmCycleLength, "4"),
         (notificationSound, "1"),
         (soundEffectsEnabled, "1"),
-        (includeArchivedInReports, "0"),
         (rhythmDurationOptions, "25:5,30:5,45:10"),
         (defaultTimeboundMinutes, "25"),
         (colorPalette, "basic"),

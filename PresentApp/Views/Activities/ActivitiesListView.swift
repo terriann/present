@@ -163,6 +163,8 @@ struct ActivitiesListView: View {
             if !ids.isEmpty {
                 activityTags = try await appState.tagsForActivities(activityIds: ids)
             }
+        } catch is CancellationError {
+            // Task cancelled by SwiftUI lifecycle — expected, not an error.
         } catch {
             appState.showError(error, context: "Could not load activities")
         }
