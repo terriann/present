@@ -23,8 +23,8 @@ struct ZoomContainer<Content: View>: View {
         GeometryReader { geo in
             content()
                 .frame(
-                    width: geo.size.width / scale,
-                    height: geo.size.height / scale
+                    width: (geo.size.width / scale).rounded(.down),
+                    height: (geo.size.height / scale).rounded(.down)
                 )
                 .scaleEffect(scale, anchor: anchor)
         }
