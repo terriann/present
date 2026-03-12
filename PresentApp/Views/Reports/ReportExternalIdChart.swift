@@ -45,7 +45,7 @@ struct ReportExternalIdChart: View {
             .foregroundStyle(by: .value("External ID", group.externalId))
             .opacity(sectorOpacity(for: group.externalId))
         }
-        .transaction { $0.disablesAnimations = true }
+        .transaction { $0.animation = nil }
         .chartForegroundStyleScale(
             domain: groups.map(\.externalId),
             range: groups.indices.map { palette[$0 % palette.count] }

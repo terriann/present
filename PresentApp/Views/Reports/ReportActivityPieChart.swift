@@ -39,7 +39,7 @@ struct ReportActivityPieChart: View {
             .foregroundStyle(by: .value("Activity", summary.activity.title))
             .opacity(sectorOpacity(for: summary.activity.title))
         }
-        .transaction { $0.disablesAnimations = true }
+        .transaction { $0.animation = nil }
         .chartForegroundStyleScale(domain: chartColorDomain, range: chartColorRange)
         .chartAngleSelection(value: $activityAngleSelection)
         .onChange(of: activityAngleSelection) {
