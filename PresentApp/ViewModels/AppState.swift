@@ -194,6 +194,8 @@ final class AppState {
 
             // 3. Refresh preferences
             await zoom.loadFromPreferences()
+        } catch is CancellationError {
+            // Task cancelled by SwiftUI lifecycle — expected, not an error.
         } catch {
             print("Error refreshing data: \(error)")
         }
