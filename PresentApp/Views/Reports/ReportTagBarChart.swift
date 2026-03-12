@@ -56,6 +56,7 @@ struct ReportTagBarChart: View {
             .foregroundStyle(by: .value("Activity", entry.activityTitle))
             .opacity(tagBarOpacity(entry: entry))
         }
+        .transaction { $0.disablesAnimations = true }
         .chartForegroundStyleScale(domain: chartColorDomain, range: chartColorRange)
         .chartLegend(.hidden)
         .chartXAxis {

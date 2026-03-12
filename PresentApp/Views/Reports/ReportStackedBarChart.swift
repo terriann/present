@@ -65,6 +65,9 @@ struct ReportStackedBarChart: View {
                 .opacity(barEntryOpacity(entry: entry))
             }
         }
+        // Prevent Swift Charts transition animation during timer-driven re-renders.
+        // Without this, rapid resize + timer tick can crash CanvasDisplayList. (#FB…)
+        .transaction { $0.disablesAnimations = true }
         .chartForegroundStyleScale(domain: chartColorDomain, range: chartColorRange)
         .chartXScale(domain: domain)
         .chartXAxis {

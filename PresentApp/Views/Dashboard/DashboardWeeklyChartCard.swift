@@ -70,6 +70,9 @@ struct DashboardWeeklyChartCard: View {
                 .opacity(weeklyBarEntryOpacity(entry: entry))
             }
         }
+        // Prevent Swift Charts transition animation during timer-driven re-renders.
+        // Without this, rapid resize + timer tick can crash CanvasDisplayList.
+        .transaction { $0.disablesAnimations = true }
         .chartForegroundStyleScale(domain: chartColorDomain, range: chartColorRange)
         .chartXScale(domain: domain)
         .chartYScale(domain: yDomain)

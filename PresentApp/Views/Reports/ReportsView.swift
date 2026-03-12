@@ -724,6 +724,8 @@ struct ReportsView: View {
     private func loadInitialState() async {
         do {
             earliestDate = try await appState.earliestSessionDate()
+        } catch is CancellationError {
+            // Task cancelled by SwiftUI lifecycle — expected, not an error.
         } catch {
             appState.showError(error, context: "Could not load report data")
         }

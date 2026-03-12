@@ -220,6 +220,8 @@ struct DashboardView: View {
             } else {
                 todayPortions = [:]
             }
+        } catch is CancellationError {
+            // Task cancelled by SwiftUI lifecycle — expected, not an error.
         } catch {
             appState.showError(error, context: "Could not load today's sessions")
         }
