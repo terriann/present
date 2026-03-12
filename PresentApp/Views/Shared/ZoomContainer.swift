@@ -20,17 +20,13 @@ struct ZoomContainer<Content: View>: View {
     }
 
     var body: some View {
-        if scale == 1.0 {
+        GeometryReader { geo in
             content()
-        } else {
-            GeometryReader { geo in
-                content()
-                    .frame(
-                        width: geo.size.width / scale,
-                        height: geo.size.height / scale
-                    )
-                    .scaleEffect(scale, anchor: anchor)
-            }
+                .frame(
+                    width: geo.size.width / scale,
+                    height: geo.size.height / scale
+                )
+                .scaleEffect(scale, anchor: anchor)
         }
     }
 }
