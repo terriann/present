@@ -19,7 +19,7 @@ struct ReportsView: View {
     @State private var sessionSegments: [Int64: [SessionSegment]] = [:]
 
     // Active session toggle (ephemeral, resets on view load and when navigating away from today)
-    @State private var showActiveSessions = false
+    @State private var showActiveSessions = true
     @State private var activeActivityTags: [Tag] = []
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -160,10 +160,10 @@ struct ReportsView: View {
         }
     }
 
-    /// Defaults: showArchived=true (include everything), showActiveSessions=false (completed only).
-    /// The icon fills when archived is excluded OR active session is included.
+    /// Defaults: showArchived=true (include everything), showActiveSessions=true (include active).
+    /// The icon fills when either filter deviates from its default.
     private var hasNonDefaultFilters: Bool {
-        !showArchived || showActiveSessions
+        !showArchived || !showActiveSessions
     }
 
     private var chartFilterMenu: some View {
@@ -180,7 +180,7 @@ struct ReportsView: View {
         .accessibilityLabel("Chart filters")
         .accessibilityValue(hasNonDefaultFilters ? "Active" : "Default")
         .help("Chart filters")
-        .popover(isPresented: $showFilterPopover, arrowEdge: .trailing) {
+        .popover(isPresented: $showFilterPopover, arrowEdge: .bottom) {
             VStack(alignment: .leading, spacing: Constants.spacingCard) {
                 Text("Filters")
                     .font(.headline)
