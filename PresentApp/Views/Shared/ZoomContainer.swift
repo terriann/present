@@ -19,6 +19,10 @@ struct ZoomContainer<Content: View>: View {
         self.content = content
     }
 
+    // Always use GeometryReader + scaleEffect, even at scale 1.0. A conditional
+    // fast path (if/else on scale == 1.0) breaks SwiftUI structural identity —
+    // child views get destroyed and recreated when crossing the threshold,
+    // resetting @State and flashing chart data.
     var body: some View {
         GeometryReader { geo in
             content()
