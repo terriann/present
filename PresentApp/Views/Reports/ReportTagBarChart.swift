@@ -12,15 +12,9 @@ struct ReportTagBarChart: View {
     var activeTagNames: Set<String> = []
 
     @Environment(ThemeManager.self) private var theme
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var hoveredTagName: String?
     @State private var tagHoverLocation: CGPoint = .zero
-    @State private var pulseState = ActivePulseState()
-
-    private var hasActiveEntries: Bool {
-        !activeTagNames.isEmpty
-    }
 
     var body: some View {
         // Guard: chartForegroundStyleScale crashes on empty domain (FB…).
@@ -47,21 +41,6 @@ struct ReportTagBarChart: View {
 
             ChartCard(title: "Tag Distribution") {
                 tagBarChart(entries: entries, sorted: sorted, barHeight: barHeight)
-            }
-            .onChange(of: hasActiveEntries) {
-                if hasActiveEntries {
-                    pulseState.start(reduceMotion: reduceMotion)
-                } else {
-                    pulseState.stop()
-                }
-            }
-            .onAppear {
-                if hasActiveEntries {
-                    pulseState.start(reduceMotion: reduceMotion)
-                }
-            }
-            .onDisappear {
-                pulseState.stop()
             }
         }
     }
@@ -145,8 +124,6 @@ struct ReportTagBarChart: View {
         if hoveredTagName != nil {
             return hoveredTagName == entry.tagName ? 1.0 : 0.4
         }
-        // Pulse active tag bars when no hover is active
-        if entry.isActive { return pulseState.opacity }
         return 1.0
     }
 

@@ -8,16 +8,10 @@ struct ReportExternalIdChart: View {
     var activeExternalId: String?
 
     @Environment(ThemeManager.self) private var theme
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.openURL) private var openURL
 
     @State private var externalIdAngleSelection: Int?
     @State private var hoveredExternalSegment: String?
-    @State private var pulseState = ActivePulseState()
-
-    private var hasActiveEntry: Bool {
-        activeExternalId != nil && groups.contains { $0.externalId == activeExternalId }
-    }
 
     var body: some View {
         guard !groups.isEmpty else { return AnyView(EmptyView()) }
@@ -32,21 +26,6 @@ struct ReportExternalIdChart: View {
                     externalIdDonutChart(combinedTotal: combinedTotal, palette: palette)
                     externalIdLegend(palette: palette, combinedTotal: combinedTotal)
                 }
-            }
-            .onChange(of: hasActiveEntry) {
-                if hasActiveEntry {
-                    pulseState.start(reduceMotion: reduceMotion)
-                } else {
-                    pulseState.stop()
-                }
-            }
-            .onAppear {
-                if hasActiveEntry {
-                    pulseState.start(reduceMotion: reduceMotion)
-                }
-            }
-            .onDisappear {
-                pulseState.stop()
             }
         )
     }
@@ -148,8 +127,6 @@ struct ReportExternalIdChart: View {
         if hoveredExternalSegment != nil {
             return hoveredExternalSegment == externalId ? 1.0 : 0.4
         }
-        // Pulse the active sector when no hover is active
-        if externalId == activeExternalId { return pulseState.opacity }
         return 1.0
     }
 

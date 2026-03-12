@@ -132,10 +132,12 @@ struct DayTimelineChart: View {
 
                         RoundedRectangle(cornerRadius: 2.5)
                             .fill(color.opacity(isActive ? 1.0 : 0.75))
+                            // Apply pulse before layout modifiers so phaseAnimator
+                            // only animates opacity, not frame/offset during resize.
+                            .activePulse(isActive: block.isLiveSegment && !dimmed, reduceMotion: reduceMotion)
                             .frame(width: w, height: barHeight)
                             .offset(x: x)
                             .opacity(dimmed ? 0.2 : 1.0)
-                            .activePulse(isActive: block.isLiveSegment && !dimmed, reduceMotion: reduceMotion)
                     }
 
                     // X-axis tick marks

@@ -12,16 +12,10 @@ struct ReportActivityPieChart: View {
     var activeActivityTitle: String?
 
     @Environment(ThemeManager.self) private var theme
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var activityAngleSelection: Int?
     @State private var hoveredActivityName: String?
     @State private var legendHoveredActivity: String?
-    @State private var pulseState = ActivePulseState()
-
-    private var hasActiveEntry: Bool {
-        activeActivityTitle != nil
-    }
 
     var body: some View {
         // Guard: chartForegroundStyleScale crashes on empty domain (FB…).
@@ -29,21 +23,6 @@ struct ReportActivityPieChart: View {
             ChartCard(title: "Activity Distribution") {
                 activityDonutChart
                 activityDonutLegend
-            }
-            .onChange(of: hasActiveEntry) {
-                if hasActiveEntry {
-                    pulseState.start(reduceMotion: reduceMotion)
-                } else {
-                    pulseState.stop()
-                }
-            }
-            .onAppear {
-                if hasActiveEntry {
-                    pulseState.start(reduceMotion: reduceMotion)
-                }
-            }
-            .onDisappear {
-                pulseState.stop()
             }
         }
     }
@@ -142,8 +121,6 @@ struct ReportActivityPieChart: View {
         if hoveredActivityName != nil {
             return hoveredActivityName == title ? 1.0 : 0.4
         }
-        // Pulse the active sector when no hover is active
-        if title == activeActivityTitle { return pulseState.opacity }
         return 1.0
     }
 

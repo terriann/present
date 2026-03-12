@@ -4,7 +4,6 @@ import PresentCore
 struct DashboardView: View {
     @Environment(AppState.self) private var appState
     @Environment(ThemeManager.self) private var theme
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var repeatSuggestions: [(Session, Activity)] = []
     @State private var contentWidth: CGFloat = 600
     /// Tracks the current date for greeting/date text; updated at period boundaries.
@@ -61,8 +60,7 @@ struct DashboardView: View {
                         weekly: weekly,
                         hasActiveTodaySession: hasActiveTodaySession,
                         todayPortionSeconds: todayPortionSeconds,
-                        currentActivity: appState.currentActivity,
-                        reduceMotion: reduceMotion
+                        currentActivity: appState.currentActivity
                     )
                 }
 

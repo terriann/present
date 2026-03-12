@@ -488,9 +488,8 @@ struct ReportsView: View {
         HStack(spacing: 40) {
             StatItem(
                 title: "Total Time",
-                value: TimeFormatting.formatDuration(seconds: displayTotalSeconds, active: shouldIncludeActive)
+                value: TimeFormatting.formatDuration(seconds: displayTotalSeconds)
             )
-            .activePulse(isActive: shouldIncludeActive, reduceMotion: reduceMotion)
 
             StatItem(
                 title: "Sessions",
