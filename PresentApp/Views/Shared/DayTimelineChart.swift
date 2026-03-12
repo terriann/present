@@ -11,6 +11,10 @@ struct TimelineBlock: Identifiable {
     let isLiveSegment: Bool // only the last open segment of a running session
 
     /// Build timeline blocks from session/activity pairs and their segments.
+    ///
+    /// Adjacent segments with less than 90 seconds between them are coalesced
+    /// into a single continuous block. Short pauses are below the timeline's
+    /// display resolution and would otherwise create visual clutter.
     static func blocks(
         from sessions: [(Session, Activity)],
         segments: [Int64: [SessionSegment]],
@@ -20,18 +24,48 @@ struct TimelineBlock: Identifiable {
         for (session, activity) in sessions {
             guard let sessionId = session.id else { continue }
             if let segs = segments[sessionId], !segs.isEmpty {
-                for (index, segment) in segs.enumerated() {
-                    let isLast = index == segs.count - 1
-                    let isLive = isLast && session.state == .running && segment.endedAt == nil
-                    result.append(TimelineBlock(
-                        id: "\(sessionId)-\(index)",
-                        start: segment.startedAt,
-                        end: isLive ? nil : segment.endedAt,
-                        session: session,
-                        activity: activity,
-                        isLiveSegment: isLive
-                    ))
+                // Coalesce segments with < 90s gaps
+                var coalescedStart = segs[0].startedAt
+                var coalescedEnd = segs[0].endedAt
+                var blockIndex = 0
+
+                for i in 1..<segs.count {
+                    let gap: TimeInterval
+                    if let prevEnd = coalescedEnd {
+                        gap = segs[i].startedAt.timeIntervalSince(prevEnd)
+                    } else {
+                        gap = 0 // previous segment is still open (live)
+                    }
+
+                    if gap < 90 {
+                        // Merge: extend the coalesced block
+                        coalescedEnd = segs[i].endedAt ?? coalescedEnd
+                    } else {
+                        // Emit the current coalesced block
+                        result.append(TimelineBlock(
+                            id: "\(sessionId)-\(blockIndex)",
+                            start: coalescedStart,
+                            end: coalescedEnd,
+                            session: session,
+                            activity: activity,
+                            isLiveSegment: false
+                        ))
+                        blockIndex += 1
+                        coalescedStart = segs[i].startedAt
+                        coalescedEnd = segs[i].endedAt
+                    }
                 }
+
+                // Emit the final coalesced block
+                let isLastSegmentLive = segs.last?.endedAt == nil && session.state == .running
+                result.append(TimelineBlock(
+                    id: "\(sessionId)-\(blockIndex)",
+                    start: coalescedStart,
+                    end: isLastSegmentLive ? nil : coalescedEnd,
+                    session: session,
+                    activity: activity,
+                    isLiveSegment: isLastSegmentLive
+                ))
             } else {
                 // Fallback: no segments loaded yet, render as single block
                 result.append(TimelineBlock(
