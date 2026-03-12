@@ -159,7 +159,8 @@ weeks, or months.
 - Hover overlay via `.chartOverlay` with `GeometryReader` and
   `ChartTooltip`
 - Legend below chart via `HoverableChartLegend`
-- Active session bars pulse via `ActivePulseState`
+- Chart animations suppressed via `.transaction { $0.animation = nil }`
+  to prevent Swift Charts crash during resize
 - Accessibility:
   `.accessibilityElement(children: .combine)` + label + value summary
 - Height: `.frame(height: 250)`, padding: `Constants.spacingCard`
@@ -193,8 +194,8 @@ categories.
   showing title + duration + percentage
 - Legend below: `HoverableChartLegend` with optional
   `onHoverStart`/`onHoverEnd` callbacks
-- Opacity: hovered sector 1.0, others 0.4; active sector pulses via
-  `ActivePulseState`
+- Opacity: hovered sector 1.0, others 0.4
+- Chart animations suppressed via `.transaction { $0.animation = nil }`
 - Accessibility:
   `.accessibilityElement(children: .combine)` + label + value with
   percentages
