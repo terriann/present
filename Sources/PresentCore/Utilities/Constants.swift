@@ -83,6 +83,13 @@ public enum Constants {
     /// Milliseconds between pulse animation state updates (~6.7fps).
     public static let activePulseInterval: Int = 150
 
+    // MARK: - Timeline
+
+    /// Pause gaps shorter than this threshold (in seconds) are coalesced into
+    /// a single continuous block on the day timeline. Keeps brief pauses from
+    /// creating visual clutter at common window sizes.
+    public static let timelineGapCoalesceThreshold: TimeInterval = 90
+
     // MARK: - Version
 
     public static let appVersion = "0.2.0-dev"

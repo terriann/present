@@ -37,7 +37,7 @@ struct TimelineBlock: Identifiable {
                         gap = 0 // previous segment is still open (live)
                     }
 
-                    if gap < 90 {
+                    if gap < Constants.timelineGapCoalesceThreshold {
                         // Merge: extend the coalesced block
                         coalescedEnd = segs[i].endedAt ?? coalescedEnd
                     } else {
