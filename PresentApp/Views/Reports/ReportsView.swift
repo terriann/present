@@ -756,7 +756,10 @@ struct ReportsView: View {
                 // Batch all state updates together to avoid mid-render inconsistencies
                 let sessions = try await appState.listSessions(from: startOfDay, to: endOfDay, type: nil, activityId: nil, includeArchived: showArchived)
                 try Task.checkCancellation()
-                let sessionIds = sessions.compactMap { $0.0.id }
+                var sessionIds = sessions.compactMap { $0.0.id }
+                if let activeId = appState.currentSession?.id, !sessionIds.contains(activeId) {
+                    sessionIds.append(activeId)
+                }
                 let segments = try await appState.segmentsForSessions(sessionIds: sessionIds)
                 try Task.checkCancellation()
                 withAdaptiveAnimation(.easeInOut(duration: 0.35)) {
