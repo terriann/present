@@ -18,7 +18,6 @@ struct ReportsView: View {
     @State private var sessionSegments: [Int64: [SessionSegment]] = [:]
 
     @State private var activeActivityTags: [Tag] = []
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     // Navigation state
     @State private var showDatePicker = false
