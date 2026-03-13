@@ -41,32 +41,13 @@ struct SessionTypeConvertControls: View {
                 }
             }
 
-            // Controls for selected target type
+            // Duration/option controls for selected target type
             switch targetType {
             case .work:
-                Button("Convert to Work Session") {
-                    onConvert()
-                    Task { await appState.convertSession(ConvertSessionInput(targetType: .work)) }
-                }
-                .font(.caption.weight(.medium))
-                .buttonStyle(.plain)
-                .foregroundStyle(theme.accent)
+                EmptyView()
 
             case .timebound:
-                HStack(spacing: Constants.spacingTight) {
-                    TimeboundDurationField(minutes: $timeboundMinutes, size: .compact)
-                    Button("Convert to Timebound") {
-                        onConvert()
-                        Task {
-                            await appState.convertSession(
-                                ConvertSessionInput(targetType: .timebound, timerMinutes: timeboundMinutes)
-                            )
-                        }
-                    }
-                    .font(.caption.weight(.medium))
-                    .buttonStyle(.plain)
-                    .foregroundStyle(theme.accent)
-                }
+                TimeboundDurationField(minutes: $timeboundMinutes, size: .compact)
 
             case .rhythm:
                 HStack(spacing: Constants.spacingTight) {
@@ -84,32 +65,65 @@ struct SessionTypeConvertControls: View {
                         }
                         .buttonStyle(.plain)
                     }
-
-                    Button("Convert") {
-                        guard let option = rhythmOption else { return }
-                        onConvert()
-                        Task {
-                            await appState.convertSession(
-                                ConvertSessionInput(
-                                    targetType: .rhythm,
-                                    timerMinutes: option.focusMinutes,
-                                    breakMinutes: option.breakMinutes
-                                )
-                            )
-                        }
-                    }
-                    .font(.caption2.weight(.medium))
-                    .buttonStyle(.plain)
-                    .foregroundStyle(rhythmOption == nil ? .secondary : theme.accent)
-                    .disabled(rhythmOption == nil)
                 }
             }
+
+            // Convert button — always on its own row
+            convertButton
         }
+        .padding(Constants.spacingCompact)
+        .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
         .task {
             targetType = SessionType.allCases.first { $0 != session.sessionType } ?? .work
             timeboundMinutes = await appState.loadDefaultTimeboundMinutes()
             rhythmOption = appState.rhythmDurationOptions.first
         }
+    }
+
+    // MARK: - Convert Button
+
+    private var convertButton: some View {
+        let label = "Convert to \(SessionTypeConfig.config(for: targetType).displayName)"
+        let isDisabled = targetType == .rhythm && rhythmOption == nil
+
+        return Button {
+            switch targetType {
+            case .work:
+                onConvert()
+                Task { await appState.convertSession(ConvertSessionInput(targetType: .work)) }
+            case .timebound:
+                onConvert()
+                Task {
+                    await appState.convertSession(
+                        ConvertSessionInput(targetType: .timebound, timerMinutes: timeboundMinutes)
+                    )
+                }
+            case .rhythm:
+                guard let option = rhythmOption else { return }
+                onConvert()
+                Task {
+                    await appState.convertSession(
+                        ConvertSessionInput(
+                            targetType: .rhythm,
+                            timerMinutes: option.focusMinutes,
+                            breakMinutes: option.breakMinutes
+                        )
+                    )
+                }
+            }
+        } label: {
+            Text(label)
+                .font(.caption.weight(.semibold))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 5)
+                .background(
+                    isDisabled ? Color.secondary.opacity(0.08) : theme.accent,
+                    in: RoundedRectangle(cornerRadius: 6)
+                )
+                .foregroundStyle(isDisabled ? .secondary : theme.constantWhite)
+        }
+        .buttonStyle(.plain)
+        .disabled(isDisabled)
     }
 
 }
