@@ -141,20 +141,20 @@ struct SessionTypeConvertLabel: View {
                     showConvertPicker.toggle()
                 }
             } label: {
-                Text(SessionTypeConfig.config(for: session.sessionType).displayName)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .overlay(alignment: .trailing) {
-                        Image(systemName: showConvertPicker ? "xmark.circle.fill" : "square.and.pencil")
-                            .font(.system(size: 9, weight: .medium))
-                            .foregroundStyle(.secondary)
-                            .contentTransition(.symbolEffect(.replace))
-                            .opacity(showIcon ? 1 : 0)
-                            .offset(x: 14)
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .contentShape(Rectangle())
+                HStack(spacing: 4) {
+                    Text(SessionTypeConfig.config(for: session.sessionType).displayName)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Image(systemName: showConvertPicker ? "xmark.circle.fill" : "square.and.pencil")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .contentTransition(.symbolEffect(.replace))
+                        .opacity(showIcon ? 1 : 0)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .onHover { hovering in isHovered = hovering }

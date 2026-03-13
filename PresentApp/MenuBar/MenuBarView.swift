@@ -73,6 +73,7 @@ struct MenuBarView: View {
             selectedIndex = nil
             switchActivityTarget = nil
             switchFromActivityTitle = nil
+            showConvertPicker = false
         }
         .onKeyPress(.escape) {
             if switchActivityTarget != nil {
@@ -291,8 +292,14 @@ struct MenuBarView: View {
 
     private var chevronToggle: some View {
         Button {
+            let wasCollapsed = !isExpanded
             withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
                 isExpanded.toggle()
+            }
+            if wasCollapsed && showConvertPicker {
+                withAdaptiveAnimation(.easeInOut(duration: 0.25)) {
+                    showConvertPicker = false
+                }
             }
         } label: {
             Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
