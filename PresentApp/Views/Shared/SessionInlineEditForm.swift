@@ -314,6 +314,9 @@ struct SessionInlineEditForm: View {
         Task {
             do {
                 try await appState.updateSession(id: sessionId, input)
+                // The form is already gone — trigger onSave to refresh the parent's data
+                // so the row immediately reflects the saved changes.
+                onSave()
             } catch {
                 Self.logger.warning("Failed to flush buffered changes for session \(sessionId, privacy: .public): \(error.localizedDescription, privacy: .public)")
             }
