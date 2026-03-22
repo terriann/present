@@ -182,6 +182,15 @@ struct SessionEditForm: View {
         return TicketExtractor.extractFirstTicketURL(from: noteText)
     }
 
+    /// Whether the form has unsaved edits.
+    ///
+    /// `startTime` and `noteText` are `@State` values set from `session` in `init`.
+    /// `@State` only writes its initial value on first view creation, so after a
+    /// successful save `session` updates via observation but the `@State` values
+    /// stay at whatever the user entered. This is fine because:
+    /// - On success, both sides match (the saved value equals the user's input).
+    /// - On failure, `session` keeps the old value while the `@State` keeps the
+    ///   rejected input, so `hasPendingChanges` correctly returns `true`.
     private var hasPendingChanges: Bool {
         startTime != session.startedAt
             || noteText.trimmingCharacters(in: .whitespacesAndNewlines) != (session.note ?? "")
