@@ -40,7 +40,7 @@ struct SessionTypeConvertControls: View {
                                 .font(.caption2.weight(isSelected ? .semibold : .regular))
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 3)
-                                .background(isSelected ? theme.accent.opacity(0.12) : Color.secondary.opacity(0.08), in: Capsule())
+                                .background(isSelected ? theme.accent.opacity(0.12) : Color.primary.opacity(0.06), in: Capsule())
                                 .foregroundStyle(isSelected ? theme.accent : .secondary)
                         }
                         .buttonStyle(.plain)
@@ -67,7 +67,7 @@ struct SessionTypeConvertControls: View {
                                 .font(.caption2.weight(isSelected ? .semibold : .regular))
                                 .padding(.horizontal, Constants.spacingCompact)
                                 .padding(.vertical, 3)
-                                .background(isSelected ? theme.accent.opacity(0.12) : Color.secondary.opacity(0.08), in: Capsule())
+                                .background(isSelected ? theme.accent.opacity(0.12) : Color.primary.opacity(0.06), in: Capsule())
                                 .foregroundStyle(isSelected ? theme.accent : .secondary)
                         }
                         .buttonStyle(.plain)
@@ -124,7 +124,7 @@ struct SessionTypeConvertControls: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 5)
                 .background(
-                    isDisabled ? Color.secondary.opacity(0.08) : theme.accent,
+                    isDisabled ? Color.primary.opacity(0.06) : theme.accent,
                     in: RoundedRectangle(cornerRadius: 6)
                 )
                 .foregroundStyle(isDisabled ? .secondary : theme.constantWhite)
