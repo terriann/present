@@ -17,10 +17,11 @@ struct MenuBarView: View {
     @State private var isSortAlphaHovered = false
     @State private var isLaunchHovered = false
     @State private var isSettingsHovered = false
-    @State private var showConvertPicker = false
+    @State private var showSessionEditForm = false
     @State private var isExpanded = false
     @State private var switchActivityTarget: Activity?
     @State private var switchFromActivityTitle: String?
+    @State private var isEditHovered = false
     @State private var isChevronHovered = false
     @State private var hoveredSessionType: SessionType?
     @State private var hoveredRhythmOption: RhythmOption?
@@ -69,11 +70,17 @@ struct MenuBarView: View {
             isExpanded = false
         }
         .onDisappear {
+            // Force any active text editor to resign first responder before removing the form.
+            // This triggers save-on-blur callbacks (e.g., saveNote) synchronously, ensuring
+            // buffered changes are flushed before the form disappears.
+            if showSessionEditForm {
+                NSApp.keyWindow?.makeFirstResponder(nil)
+            }
             searchText = ""
             selectedIndex = nil
             switchActivityTarget = nil
             switchFromActivityTitle = nil
-            showConvertPicker = false
+            showSessionEditForm = false
         }
         .onKeyPress(.escape) {
             if switchActivityTarget != nil {
@@ -253,23 +260,38 @@ struct MenuBarView: View {
     private var currentSessionSection: some View {
         VStack(spacing: 12 * zoomScale) {
             if let activity = appState.currentActivity, let session = appState.currentSession {
-                VStack(spacing: 4 * zoomScale) {
-                    Text(activity.title)
-                        .font(scaledFont(.headline, weight: .semibold))
-                        .lineLimit(1)
-
-                    SessionTypeConvertLabel(
-                        session: session,
-                        isSystemActivity: activity.isSystem,
-                        showConvertPicker: $showConvertPicker
-                    )
-
-                    if showConvertPicker {
-                        SessionTypeConvertControls(session: session) {
-                            showConvertPicker = false
-                        }
+                // Clickable region: activity name + session type + timer
+                Button {
+                    withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
+                        showSessionEditForm.toggle()
                     }
+                } label: {
+                    VStack(spacing: 4 * zoomScale) {
+                        Text(activity.title)
+                            .font(scaledFont(.headline, weight: .semibold))
+                            .lineLimit(1)
+
+                        HStack(spacing: 4) {
+                            Text(SessionTypeConfig.config(for: session.sessionType).displayName)
+                                .font(scaledFont(.caption, weight: .regular))
+                                .foregroundStyle(.secondary)
+
+                            Image(systemName: "pencil")
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundStyle(.secondary)
+                                .opacity(isEditHovered && !showSessionEditForm ? 1 : 0)
+                        }
+
+                        Text(appState.formattedTimerValue)
+                            .font(scaledFont(.title, weight: .light).monospacedDigit())
+                            .contentTransition(.numericText())
+                    }
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel(showSessionEditForm ? "Close edit form" : "Edit session")
+                .help(showSessionEditForm ? "Close edit form" : "Edit session")
+                .onHover { hovering in isEditHovered = hovering }
 
                 TicketBadge(
                     ticketId: session.ticketId,
@@ -278,11 +300,26 @@ struct MenuBarView: View {
                     scale: zoomScale
                 )
 
-                Text(appState.formattedTimerValue)
-                    .font(scaledFont(.title, weight: .light).monospacedDigit())
-                    .contentTransition(.numericText())
-
                 SessionControls()
+
+                if showSessionEditForm {
+                    SessionEditForm(
+                        session: session,
+                        activity: activity,
+                        zoomScale: zoomScale,
+                        scaledFont: scaledFont,
+                        onSave: {
+                            withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
+                                showSessionEditForm = false
+                            }
+                        },
+                        onCancel: {
+                            withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
+                                showSessionEditForm = false
+                            }
+                        }
+                    )
+                }
             }
         }
         .padding(Constants.spacingCard * zoomScale)
@@ -296,9 +333,9 @@ struct MenuBarView: View {
             withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
                 isExpanded.toggle()
             }
-            if wasCollapsed && showConvertPicker {
+            if wasCollapsed && showSessionEditForm {
                 withAdaptiveAnimation(.easeInOut(duration: 0.25)) {
-                    showConvertPicker = false
+                    showSessionEditForm = false
                 }
             }
         } label: {
@@ -723,6 +760,10 @@ struct MenuBarView: View {
     private var bottomBar: some View {
         HStack {
             Button {
+                if showSessionEditForm {
+                    NSApp.keyWindow?.makeFirstResponder(nil)
+                    showSessionEditForm = false
+                }
                 dismiss()
                 appState.navigate(to: .showDashboard)
             } label: {

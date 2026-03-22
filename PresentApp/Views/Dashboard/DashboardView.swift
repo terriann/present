@@ -8,7 +8,8 @@ struct DashboardView: View {
     @State private var contentWidth: CGFloat = 600
     /// Tracks the current date for greeting/date text; updated at period boundaries.
     @State private var greetingDate = Date()
-    @State private var showConvertPicker = false
+    @State private var showSessionEditForm = false
+    @State private var isEditHovered = false
     @State private var todaySessions: [(Session, Activity)] = []
     @State private var todayPortions: [Int64: Int] = [:]
 
@@ -87,7 +88,7 @@ struct DashboardView: View {
             if appState.isSessionActive {
                 repeatSuggestions = []
             } else {
-                showConvertPicker = false
+                showSessionEditForm = false
                 await loadRepeatSuggestions()
             }
         }
@@ -297,30 +298,58 @@ struct DashboardView: View {
         GroupBox {
             VStack(spacing: Constants.spacingCard) {
                 if let activity = appState.currentActivity, let session = appState.currentSession {
-                    VStack(spacing: Constants.spacingTight) {
-                        Text(activity.title)
-                            .font(.headline)
-                            .lineLimit(1)
-
-                        SessionTypeConvertLabel(
-                            session: session,
-                            isSystemActivity: activity.isSystem,
-                            showConvertPicker: $showConvertPicker
-                        )
-
-                        if showConvertPicker {
-                            SessionTypeConvertControls(session: session) {
-                                showConvertPicker = false
-                            }
+                    // Clickable region: activity name + session type + timer
+                    Button {
+                        withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
+                            showSessionEditForm.toggle()
                         }
+                    } label: {
+                        VStack(spacing: Constants.spacingTight) {
+                            Text(activity.title)
+                                .font(.headline)
+                                .lineLimit(1)
+
+                            HStack(spacing: 4) {
+                                Text(SessionTypeConfig.config(for: session.sessionType).displayName)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+
+                                Image(systemName: "pencil")
+                                    .font(.system(size: 9, weight: .medium))
+                                    .foregroundStyle(.secondary)
+                                    .opacity(isEditHovered && !showSessionEditForm ? 1 : 0)
+                            }
+
+                            Text(appState.formattedTimerValue)
+                                .font(.timerDisplay)
+                                .contentTransition(.numericText())
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(showSessionEditForm ? "Close edit form" : "Edit session")
+                    .help(showSessionEditForm ? "Close edit form" : "Edit session")
+                    .onHover { hovering in isEditHovered = hovering }
+
+                    SessionControls()
+
+                    if showSessionEditForm {
+                        SessionEditForm(
+                            session: session,
+                            activity: activity,
+                            onSave: {
+                                withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
+                                    showSessionEditForm = false
+                                }
+                            },
+                            onCancel: {
+                                withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
+                                    showSessionEditForm = false
+                                }
+                            }
+                        )
                     }
                 }
-
-                Text(appState.formattedTimerValue)
-                    .font(.timerDisplay)
-                    .contentTransition(.numericText())
-
-                SessionControls()
             }
             .padding(Constants.spacingCard)
             .frame(maxWidth: .infinity)

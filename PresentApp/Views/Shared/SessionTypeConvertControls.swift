@@ -18,14 +18,21 @@ struct SessionTypeConvertControls: View {
     @State private var rhythmOption: RhythmOption?
 
     var body: some View {
-        let targets = SessionType.allCases.filter { $0 != session.sessionType }
-
         VStack(spacing: Constants.spacingCompact) {
-            // Target type picker (only when there are multiple targets)
-            if targets.count > 1 {
-                HStack(spacing: Constants.spacingTight) {
-                    ForEach(targets, id: \.self) { type in
-                        let isSelected = targetType == type
+            // Session type picker — current type shown as non-interactive label
+            HStack(spacing: Constants.spacingTight) {
+                ForEach(SessionType.allCases, id: \.self) { type in
+                    let isCurrent = type == session.sessionType
+                    let isSelected = !isCurrent && targetType == type
+
+                    if isCurrent {
+                        Text(SessionTypeConfig.config(for: type).displayName)
+                            .font(.caption2.weight(.semibold))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(theme.accent.opacity(0.15), in: Capsule())
+                            .foregroundStyle(theme.accent)
+                    } else {
                         Button {
                             targetType = type
                         } label: {
