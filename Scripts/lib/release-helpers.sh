@@ -90,9 +90,11 @@ get_last_stable_tag() {
         | tail -1
 }
 
-# Most recent tag of any kind
+# Most recent tag at or before the commit before HEAD.
+# Used by beta-release to find the previous tag when HEAD itself may be untagged
+# but we want the tag *before* the current set of commits.
 get_last_tag() {
-    git describe --tags --abbrev=0 HEAD 2>/dev/null || echo ""
+    git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo ""
 }
 
 # ── Changelog generation ────────────────────────────────────────────────────
