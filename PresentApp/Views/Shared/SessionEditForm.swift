@@ -232,7 +232,7 @@ struct SessionEditForm: View {
         }
     }
 
-    private static let logger = Logger(subsystem: "com.present.app", category: "menubar-edit")
+    private static let logger = Logger(subsystem: "com.present.app", category: "session-edit")
 
     private func flushBufferedChanges() {
         guard let sessionId = session.id else { return }
