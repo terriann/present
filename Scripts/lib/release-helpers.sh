@@ -167,25 +167,36 @@ generate_changelog() {
         esac
     done
 
-    # Emit categorized sections
-    _emit_section() {
-        local file="$1" heading="$2"
-        if [[ -f "$file" ]]; then
-            echo ""
-            echo "### ${heading}"
-            cat "$file"
+    # Check if any category files were created
+    local has_entries=false
+    for f in "$tmpdir"/[1-6]-*; do
+        if [[ -f "$f" ]]; then
+            has_entries=true
+            break
         fi
-    }
+    done
 
-    echo ""
-    echo "## What's Changed"
+    if [[ "$has_entries" == "true" ]]; then
+        echo ""
+        echo "## What's Changed"
 
-    _emit_section "$tmpdir/1-feat"     "New Features"
-    _emit_section "$tmpdir/2-fix"      "Bug Fixes"
-    _emit_section "$tmpdir/3-refactor" "Improvements"
-    _emit_section "$tmpdir/4-perf"     "Performance"
-    _emit_section "$tmpdir/5-docs"     "Documentation"
-    _emit_section "$tmpdir/6-maint"    "Maintenance"
+        local file heading
+        for file_heading in \
+            "$tmpdir/1-feat:New Features" \
+            "$tmpdir/2-fix:Bug Fixes" \
+            "$tmpdir/3-refactor:Improvements" \
+            "$tmpdir/4-perf:Performance" \
+            "$tmpdir/5-docs:Documentation" \
+            "$tmpdir/6-maint:Maintenance"; do
+            file="${file_heading%%:*}"
+            heading="${file_heading#*:}"
+            if [[ -f "$file" ]]; then
+                echo ""
+                echo "### ${heading}"
+                cat "$file"
+            fi
+        done
+    fi
 
     # Issue references from commit bodies
     local issues
