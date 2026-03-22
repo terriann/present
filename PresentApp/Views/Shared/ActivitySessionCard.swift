@@ -286,8 +286,10 @@ struct ActivitySessionCard: View {
                                 activeSessionRow(session: active, activityTitle: group.activity.title, activityExternalId: group.activity.externalId)
                                     .background(subRowBackground(index: 0))
                                     .hoverHighlight()
-                                    // Dismiss inline edit form when tapping a non-editing row.
-                                    // The guard ensures this is a no-op when no form is open.
+                                    .onTapGesture(count: 2) {
+                                        guard let id = active.id, editingSessionId != id else { return }
+                                        beginEditing(id)
+                                    }
                                     .onTapGesture {
                                         guard editingSessionId != nil else { return }
                                         clearEditing()
@@ -310,6 +312,10 @@ struct ActivitySessionCard: View {
                                 completedSessionRow(session: entry.0, activityTitle: group.activity.title, activityExternalId: group.activity.externalId)
                                     .background(subRowBackground(index: rowIndex))
                                     .hoverHighlight()
+                                    .onTapGesture(count: 2) {
+                                        guard let id = entry.0.id, editingSessionId != id else { return }
+                                        beginEditing(id)
+                                    }
                                     .onTapGesture {
                                         guard editingSessionId != nil else { return }
                                         clearEditing()
@@ -346,6 +352,10 @@ struct ActivitySessionCard: View {
                         .contentShape(Rectangle())
                         .sessionContextMenu(session: active, activityTitle: activity.title,
                             onEdit: { beginEditing($0) })
+                        .onTapGesture(count: 2) {
+                            guard let id = active.id, editingSessionId != id else { return }
+                            beginEditing(id)
+                        }
                         .onTapGesture {
                             guard editingSessionId != nil else { return }
                             clearEditing()
@@ -372,6 +382,10 @@ struct ActivitySessionCard: View {
                         .sessionContextMenu(session: entry.0, activityTitle: entry.1.title,
                             onEdit: { beginEditing($0) }) {
                             onReload?()
+                        }
+                        .onTapGesture(count: 2) {
+                            guard let id = entry.0.id, editingSessionId != id else { return }
+                            beginEditing(id)
                         }
                         .onTapGesture {
                             guard editingSessionId != nil else { return }
@@ -519,6 +533,10 @@ struct ActivitySessionCard: View {
     }
 
     private func clearEditing() {
+        // Force any active text editor to resign first responder before removing the form.
+        // This triggers save-on-blur callbacks (e.g., saveNote) synchronously, ensuring
+        // buffered changes are flushed before the form disappears.
+        NSApp.keyWindow?.makeFirstResponder(nil)
         withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
             editingSessionId = nil
         }
@@ -767,6 +785,10 @@ struct ActivitySessionCard: View {
                 .foregroundStyle(.secondary)
                 .accessibilityLabel("Has note")
                 .help(session.note ?? "")
+                .onTapGesture {
+                    guard let id = session.id, editingSessionId != id else { return }
+                    beginEditing(id)
+                }
         }
 
         if let ticketId = session.ticketId, ticketId != activityExternalId {

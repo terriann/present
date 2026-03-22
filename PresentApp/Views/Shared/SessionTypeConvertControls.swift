@@ -18,14 +18,21 @@ struct SessionTypeConvertControls: View {
     @State private var rhythmOption: RhythmOption?
 
     var body: some View {
-        let targets = SessionType.allCases.filter { $0 != session.sessionType }
-
         VStack(spacing: Constants.spacingCompact) {
-            // Target type picker (only when there are multiple targets)
-            if targets.count > 1 {
-                HStack(spacing: Constants.spacingTight) {
-                    ForEach(targets, id: \.self) { type in
-                        let isSelected = targetType == type
+            // Session type picker — current type shown as non-interactive label
+            HStack(spacing: Constants.spacingTight) {
+                ForEach(SessionType.allCases, id: \.self) { type in
+                    let isCurrent = type == session.sessionType
+                    let isSelected = !isCurrent && targetType == type
+
+                    if isCurrent {
+                        Text(SessionTypeConfig.config(for: type).displayName)
+                            .font(.caption2.weight(.semibold))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(theme.accent.opacity(0.15), in: Capsule())
+                            .foregroundStyle(theme.accent)
+                    } else {
                         Button {
                             targetType = type
                         } label: {
@@ -33,7 +40,7 @@ struct SessionTypeConvertControls: View {
                                 .font(.caption2.weight(isSelected ? .semibold : .regular))
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 3)
-                                .background(isSelected ? theme.accent.opacity(0.12) : Color.secondary.opacity(0.08), in: Capsule())
+                                .background(isSelected ? theme.accent.opacity(0.12) : Color.primary.opacity(0.06), in: Capsule())
                                 .foregroundStyle(isSelected ? theme.accent : .secondary)
                         }
                         .buttonStyle(.plain)
@@ -41,32 +48,13 @@ struct SessionTypeConvertControls: View {
                 }
             }
 
-            // Controls for selected target type
+            // Duration/option controls for selected target type
             switch targetType {
             case .work:
-                Button("Convert to Work Session") {
-                    onConvert()
-                    Task { await appState.convertSession(ConvertSessionInput(targetType: .work)) }
-                }
-                .font(.caption.weight(.medium))
-                .buttonStyle(.plain)
-                .foregroundStyle(theme.accent)
+                EmptyView()
 
             case .timebound:
-                HStack(spacing: Constants.spacingTight) {
-                    TimeboundDurationField(minutes: $timeboundMinutes, size: .compact)
-                    Button("Convert to Timebound") {
-                        onConvert()
-                        Task {
-                            await appState.convertSession(
-                                ConvertSessionInput(targetType: .timebound, timerMinutes: timeboundMinutes)
-                            )
-                        }
-                    }
-                    .font(.caption.weight(.medium))
-                    .buttonStyle(.plain)
-                    .foregroundStyle(theme.accent)
-                }
+                TimeboundDurationField(minutes: $timeboundMinutes, size: .compact)
 
             case .rhythm:
                 HStack(spacing: Constants.spacingTight) {
@@ -79,32 +67,19 @@ struct SessionTypeConvertControls: View {
                                 .font(.caption2.weight(isSelected ? .semibold : .regular))
                                 .padding(.horizontal, Constants.spacingCompact)
                                 .padding(.vertical, 3)
-                                .background(isSelected ? theme.accent.opacity(0.12) : Color.secondary.opacity(0.08), in: Capsule())
+                                .background(isSelected ? theme.accent.opacity(0.12) : Color.primary.opacity(0.06), in: Capsule())
                                 .foregroundStyle(isSelected ? theme.accent : .secondary)
                         }
                         .buttonStyle(.plain)
                     }
-
-                    Button("Convert") {
-                        guard let option = rhythmOption else { return }
-                        onConvert()
-                        Task {
-                            await appState.convertSession(
-                                ConvertSessionInput(
-                                    targetType: .rhythm,
-                                    timerMinutes: option.focusMinutes,
-                                    breakMinutes: option.breakMinutes
-                                )
-                            )
-                        }
-                    }
-                    .font(.caption2.weight(.medium))
-                    .buttonStyle(.plain)
-                    .foregroundStyle(rhythmOption == nil ? .secondary : theme.accent)
-                    .disabled(rhythmOption == nil)
                 }
             }
+
+            // Convert button — always on its own row
+            convertButton
         }
+        .padding(Constants.spacingCompact)
+        .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: Constants.cornerRadiusCard))
         .task {
             targetType = SessionType.allCases.first { $0 != session.sessionType } ?? .work
             timeboundMinutes = await appState.loadDefaultTimeboundMinutes()
@@ -112,52 +87,50 @@ struct SessionTypeConvertControls: View {
         }
     }
 
-}
+    // MARK: - Convert Button
 
-// MARK: - Session Type Convert Label
+    private var convertButton: some View {
+        let label = "Convert to \(SessionTypeConfig.config(for: targetType).displayName)"
+        let isDisabled = targetType == .rhythm && rhythmOption == nil
 
-/// The session type label with an edit icon for convertible sessions.
-/// The edit icon appears on hover; an X shows when the picker is open.
-/// System activities show a faded, non-interactive label.
-struct SessionTypeConvertLabel: View {
-    let session: Session
-    let isSystemActivity: Bool
-    @Binding var showConvertPicker: Bool
-
-    @State private var isHovered = false
-
-    private var showIcon: Bool {
-        isHovered || showConvertPicker
-    }
-
-    var body: some View {
-        if isSystemActivity {
-            Text(SessionTypeConfig.config(for: session.sessionType).displayName)
-                .font(.caption)
-                .foregroundStyle(.secondary.opacity(0.35))
-        } else {
-            Button {
-                withAdaptiveAnimation(.easeInOut(duration: 0.15)) {
-                    showConvertPicker.toggle()
+        return Button {
+            switch targetType {
+            case .work:
+                onConvert()
+                Task { await appState.convertSession(ConvertSessionInput(targetType: .work)) }
+            case .timebound:
+                onConvert()
+                Task {
+                    await appState.convertSession(
+                        ConvertSessionInput(targetType: .timebound, timerMinutes: timeboundMinutes)
+                    )
                 }
-            } label: {
-                Text(SessionTypeConfig.config(for: session.sessionType).displayName)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .overlay(alignment: .trailing) {
-                        Image(systemName: showConvertPicker ? "xmark.circle.fill" : "square.and.pencil")
-                            .font(.system(size: 9, weight: .medium))
-                            .foregroundStyle(.secondary)
-                            .contentTransition(.symbolEffect(.replace))
-                            .opacity(showIcon ? 1 : 0)
-                            .offset(x: 14)
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .contentShape(Rectangle())
+            case .rhythm:
+                guard let option = rhythmOption else { return }
+                onConvert()
+                Task {
+                    await appState.convertSession(
+                        ConvertSessionInput(
+                            targetType: .rhythm,
+                            timerMinutes: option.focusMinutes,
+                            breakMinutes: option.breakMinutes
+                        )
+                    )
+                }
             }
-            .buttonStyle(.plain)
-            .onHover { hovering in isHovered = hovering }
+        } label: {
+            Text(label)
+                .font(.caption.weight(.semibold))
+                .padding(.horizontal, Constants.spacingCard)
+                .padding(.vertical, 5)
+                .background(
+                    isDisabled ? Color.primary.opacity(0.06) : theme.accent,
+                    in: RoundedRectangle(cornerRadius: 6)
+                )
+                .foregroundStyle(isDisabled ? .secondary : theme.constantWhite)
         }
+        .buttonStyle(.plain)
+        .disabled(isDisabled)
     }
+
 }

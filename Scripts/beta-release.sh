@@ -77,6 +77,19 @@ fi
 BETA_TAG="v${VERSION}-beta.${BETA_NUM}"
 echo "    Tag:     $BETA_TAG"
 
+# ── Determine previous tag for changelog ────────────────────────────
+
+if [[ "$BETA_NUM" -gt 1 ]]; then
+    PREV_TAG="v${VERSION}-beta.${LAST}"
+else
+    # First beta — use the most recent tag before HEAD
+    PREV_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
+fi
+
+if [[ -n "$PREV_TAG" ]]; then
+    echo "    Changes: $PREV_TAG..HEAD"
+fi
+
 # ── Build DMG ───────────────────────────────────────────────────────
 
 echo ""
@@ -97,10 +110,96 @@ NOTES_FILE=$(mktemp)
 sed "s/{{DMG_FILENAME}}/$DMG_FILENAME/g" "$SCRIPT_DIR/beta-release-header.md" > "$NOTES_FILE"
 trap "rm -f '$NOTES_FILE'" EXIT
 
+# ── Generate changelog ─────────────────────────────────────────────
+
+if [[ -n "${PREV_TAG:-}" ]]; then
+    REPO_URL="https://github.com/terriann/present"
+
+    # Generate categorized changelog from conventional commit subjects
+    # Uses temp files per category (bash 3.2 / macOS awk compatible)
+    TMPDIR_CL=$(mktemp -d)
+    trap "rm -rf '$TMPDIR_CL' '$NOTES_FILE'" EXIT
+
+    git log "$PREV_TAG"..HEAD --no-merges --format="%s" | while IFS= read -r line; do
+        # Extract type and format entry from conventional commit prefix
+        type=""
+        entry=""
+        case "$line" in
+            # type(scope): description
+            *\(*\):\ *)
+                type="${line%%(*}"
+                rest="${line#*(}"
+                scope="${rest%%)*}"
+                desc="${rest#*): }"
+                entry="- **${scope}**: ${desc}"
+                ;;
+            # type: description
+            *:\ *)
+                type="${line%%:*}"
+                desc="${line#*: }"
+                # Only treat as conventional commit if type is lowercase alpha
+                case "$type" in
+                    *[!a-z]*) type="other"; entry="- ${line}" ;;
+                    *)        entry="- ${desc}" ;;
+                esac
+                ;;
+            *)
+                type="other"
+                entry="- ${line}"
+                ;;
+        esac
+
+        case "$type" in
+            feat)     echo "$entry" >> "$TMPDIR_CL/1-feat" ;;
+            fix)      echo "$entry" >> "$TMPDIR_CL/2-fix" ;;
+            refactor) echo "$entry" >> "$TMPDIR_CL/3-refactor" ;;
+            perf)     echo "$entry" >> "$TMPDIR_CL/4-perf" ;;
+            docs)     echo "$entry" >> "$TMPDIR_CL/5-docs" ;;
+            *)        echo "$entry" >> "$TMPDIR_CL/6-maint" ;;
+        esac
+    done
+
+    # Build changelog from category files
+    append_changelog_section() {
+        local file="$1" heading="$2" outfile="$3"
+        if [[ -f "$file" ]]; then
+            echo "" >> "$outfile"
+            echo "### ${heading}" >> "$outfile"
+            cat "$file" >> "$outfile"
+        fi
+    }
+
+    echo "" >> "$NOTES_FILE"
+    echo "## What's Changed" >> "$NOTES_FILE"
+
+    append_changelog_section "$TMPDIR_CL/1-feat"     "New Features"   "$NOTES_FILE"
+    append_changelog_section "$TMPDIR_CL/2-fix"       "Bug Fixes"      "$NOTES_FILE"
+    append_changelog_section "$TMPDIR_CL/3-refactor"  "Improvements"   "$NOTES_FILE"
+    append_changelog_section "$TMPDIR_CL/4-perf"      "Performance"    "$NOTES_FILE"
+    append_changelog_section "$TMPDIR_CL/5-docs"      "Documentation"  "$NOTES_FILE"
+    append_changelog_section "$TMPDIR_CL/6-maint"     "Maintenance"    "$NOTES_FILE"
+
+    # Extract unique issue references from commit bodies
+    ISSUES=$(git log "$PREV_TAG"..HEAD --no-merges --format="%b" \
+        | grep -oE '#[0-9]+' 2>/dev/null | sort -t'#' -k2 -n -u | paste -sd',' - | sed 's/,/, /g')
+
+    if [[ -n "$ISSUES" ]]; then
+        {
+            echo ""
+            echo "### Referenced Issues"
+            echo "Closes ${ISSUES}"
+        } >> "$NOTES_FILE"
+    fi
+
+    echo "" >> "$NOTES_FILE"
+    echo "**Full Changelog**: ${REPO_URL}/compare/${PREV_TAG}...${BETA_TAG}" >> "$NOTES_FILE"
+
+    rm -rf "$TMPDIR_CL"
+fi
+
 gh release create "$BETA_TAG" \
     "$DMG_PATH" \
     --prerelease \
-    --generate-notes \
     --notes-file "$NOTES_FILE" \
     --title "Present $BETA_TAG"
 
