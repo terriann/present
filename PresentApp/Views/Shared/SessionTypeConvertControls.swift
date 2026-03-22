@@ -121,7 +121,7 @@ struct SessionTypeConvertControls: View {
         } label: {
             Text(label)
                 .font(.caption.weight(.semibold))
-                .padding(.horizontal, 12)
+                .padding(.horizontal, Constants.spacingCard)
                 .padding(.vertical, 5)
                 .background(
                     isDisabled ? Color.primary.opacity(0.06) : theme.accent,
