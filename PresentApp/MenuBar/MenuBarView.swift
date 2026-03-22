@@ -308,16 +308,8 @@ struct MenuBarView: View {
                         activity: activity,
                         zoomScale: zoomScale,
                         scaledFont: scaledFont,
-                        onSave: {
-                            withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
-                                showSessionEditForm = false
-                            }
-                        },
-                        onCancel: {
-                            withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
-                                showSessionEditForm = false
-                            }
-                        }
+                        onSave: dismissEditForm,
+                        onCancel: dismissEditForm
                     )
                 }
             }
@@ -752,6 +744,12 @@ struct MenuBarView: View {
         activitySort = sort
         Task {
             try? await appState.setPreference(key: PreferenceKey.menuBarActivitySort, value: sort)
+        }
+    }
+
+    private func dismissEditForm() {
+        withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
+            showSessionEditForm = false
         }
     }
 

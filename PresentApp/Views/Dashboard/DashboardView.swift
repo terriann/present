@@ -337,22 +337,20 @@ struct DashboardView: View {
                         SessionEditForm(
                             session: session,
                             activity: activity,
-                            onSave: {
-                                withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
-                                    showSessionEditForm = false
-                                }
-                            },
-                            onCancel: {
-                                withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
-                                    showSessionEditForm = false
-                                }
-                            }
+                            onSave: dismissEditForm,
+                            onCancel: dismissEditForm
                         )
                     }
                 }
             }
             .padding(Constants.spacingCard)
             .frame(maxWidth: .infinity)
+        }
+    }
+
+    private func dismissEditForm() {
+        withAdaptiveAnimation(.easeInOut(duration: 0.2)) {
+            showSessionEditForm = false
         }
     }
 
