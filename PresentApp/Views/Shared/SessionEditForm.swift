@@ -141,7 +141,7 @@ struct SessionEditForm: View {
             }
         }
         .padding(Constants.spacingCard * zoomScale)
-        .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
+        .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: Constants.cornerRadiusCard))
         .padding(.horizontal, Constants.spacingCard * zoomScale)
         .onKeyPress(.escape) {
             if hasPendingChanges {

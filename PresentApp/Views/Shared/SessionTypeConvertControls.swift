@@ -79,7 +79,7 @@ struct SessionTypeConvertControls: View {
             convertButton
         }
         .padding(Constants.spacingCompact)
-        .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
+        .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: Constants.cornerRadiusCard))
         .task {
             targetType = SessionType.allCases.first { $0 != session.sessionType } ?? .work
             timeboundMinutes = await appState.loadDefaultTimeboundMinutes()

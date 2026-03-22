@@ -182,7 +182,7 @@ struct SessionInlineEditForm: View {
             }
         }
         .padding(Constants.spacingCard)
-        .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
+        .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: Constants.cornerRadiusCard))
         .onKeyPress(.escape) {
             if hasPendingChanges {
                 revertAll()

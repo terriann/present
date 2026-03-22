@@ -61,6 +61,9 @@ public enum Constants {
     /// Small corner radius for inline highlights, pills, and legend row backgrounds
     public static let cornerRadiusSmall: CGFloat = 4
 
+    /// Card-level corner radius for edit form backgrounds and section containers
+    public static let cornerRadiusCard: CGFloat = 8
+
     // MARK: - Activity List
 
     /// Minimum row height for activity list items, matching the two-line variant (title + subtitle).
