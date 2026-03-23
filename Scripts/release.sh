@@ -44,10 +44,16 @@ fi
 
 PREV_TAG=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' | grep -v '-' | grep -v "^${TAG}$" | sort -V | tail -1 || true)
 
+# If no previous stable tag, fall back to any tag (including betas) so
+# the changelog is scoped to this milestone rather than all commits.
+if [[ -z "$PREV_TAG" ]]; then
+    PREV_TAG=$(git tag -l 'v[0-9]*' | grep -v "^${TAG}$" | sort -V | tail -1 || true)
+fi
+
 if [[ -n "$PREV_TAG" ]]; then
     echo "    Changes: $PREV_TAG..HEAD"
 else
-    echo "    Changes: (all commits — no previous stable tag found)"
+    echo "    Changes: (all commits — no previous tag found)"
 fi
 
 # ── Regenerate CHANGELOG.md ──────────────────────────────────────────────────
