@@ -169,13 +169,17 @@ What it does:
    `origin/main`, `gh` CLI available).
 2. Resolves the version from `project.yml` `MARKETING_VERSION`
    (stripping the `-dev` suffix) or from the explicit argument.
-3. Validates semver format and guards against duplicate tags.
+3. Validates semver format and guards against duplicate GitHub releases.
 4. Finds the previous stable tag (skips beta tags) for the changelog
    range.
-5. Builds a versioned DMG via `build-dmg.sh`.
-6. Generates categorized release notes with scope prefixes and issue
+5. Regenerates the `CHANGELOG.md` section for this version, replacing
+   the initial section created by `bump-version.sh` with the complete
+   set of changes since the previous stable tag. Commits the update
+   and moves the version tag to the new HEAD.
+6. Builds a versioned DMG via `build-dmg.sh`.
+7. Generates categorized release notes with scope prefixes and issue
    references.
-7. Creates a GitHub release with `--latest`, attaching the DMG.
+8. Creates a GitHub release with `--latest`, attaching the DMG.
 
 ### beta-release.sh
 
