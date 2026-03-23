@@ -95,7 +95,7 @@ public enum Constants {
 
     // MARK: - Version
 
-    public static let appVersion = "0.2.0-dev"
+    public static let appVersion = "0.2.0 (2)"
 
 }
 

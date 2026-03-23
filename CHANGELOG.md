@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-03-22
+
+### Added
+- unified click-to-edit panel in menu bar and dashboard
+- double-click row to open inline edit form
+- restyle convert section layout
+- generate categorized changelog in beta-release script
+
+### Changed
+- extract shared _classify_commit() to deduplicate parsing
+- extract shared release helpers and add production release script
+- extract dismissEditForm to deduplicate onSave/onCancel closures
+- replace magic number with Constants.spacingCard in convert button
+- extract corner radius magic number to Constants
+- remove unused SessionTypeConvertLabel struct
+
+### Fixed
+- fix awk newline handling in bump-version.sh
+- validate semver format in resolve_version
+- clean up tmpdir on interrupt in generate_changelog
+- include root commit in changelog when no prior tags exist
+- restore HEAD~1 in get_last_tag to avoid empty changelog
+- guard "What's Changed" heading and remove nested helper
+- rename logger category to reflect shared usage
+- replace secondary opacity with primary in convert controls
+- fix X button hit target and convert section state
+
+### Other
+- Merge pull request #313 from terriann/fix/bump-version-awk
+- Merge pull request #312 from terriann/feat/release-script
+- Merge pull request #310 from terriann/feat/0.2-milestone
+
 ## [1.0.0] - 2026-02-20
 
 Initial release of Present — a simple, intentional time tracking app for macOS.
