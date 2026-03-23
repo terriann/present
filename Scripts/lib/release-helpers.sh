@@ -223,12 +223,21 @@ generate_changelog() {
 #   $2  HEAD_REF   — end ref (default: HEAD)
 
 generate_keepachangelog() {
-    local prev_tag="$1"
-    local head_ref="${2:-HEAD}"
+    _keepachangelog_from_commits "$(git log --pretty=format:"%s" "${1}..${2:-HEAD}")"
+}
+
+# Variant that includes all commits up to HEAD_REF (no baseline tag).
+# Used when no tags exist yet.
+generate_keepachangelog_all() {
+    _keepachangelog_from_commits "$(git log --pretty=format:"%s" "${1:-HEAD}")"
+}
+
+# Internal: classify commits and emit Keep a Changelog sections.
+# Args: $1 — newline-separated commit subjects
+_keepachangelog_from_commits() {
+    local commits="$1"
 
     local section_added="" section_changed="" section_fixed="" section_other=""
-    local commits
-    commits=$(git log --pretty=format:"%s" "${prev_tag}..${head_ref}")
 
     # Store regexes in variables for bash 3.2 compatibility
     local re_feat='^feat(\([^)]+\))?!?:[[:space:]](.+)$'

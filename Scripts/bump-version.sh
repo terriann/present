@@ -105,18 +105,15 @@ CHANGELOG="$PROJECT_DIR/CHANGELOG.md"
 TODAY=$(date +%Y-%m-%d)
 
 # Determine baseline tag for changelog
-if git describe --tags --abbrev=0 2>/dev/null; then
-    LAST_TAG=$(git describe --tags --abbrev=0)
-else
-    LAST_TAG=""
-fi
+LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
 
-# Generate Keep a Changelog sections via shared helper
+# Generate Keep a Changelog sections via shared helper.
+# When no tags exist, use --root range to include the initial commit.
 CHANGELOG_BODY=""
 if [[ -n "$LAST_TAG" ]]; then
     CHANGELOG_BODY=$(generate_keepachangelog "$LAST_TAG" HEAD)
 else
-    CHANGELOG_BODY=$(generate_keepachangelog "$(git rev-list --max-parents=0 HEAD)" HEAD)
+    CHANGELOG_BODY=$(generate_keepachangelog_all HEAD)
 fi
 
 # Build the new changelog section
