@@ -29,16 +29,19 @@ resolve_version "${1:-}"
 
 TAG="v${VERSION}"
 
-# ── Guard: tag must not already exist ────────────────────────────────────────
+# ── Guard: GitHub release must not already exist ─────────────────────────────
+# The git tag is expected to exist (created by bump-version.sh). Only block if
+# a GitHub release has already been published for this tag.
 
-if git rev-parse "$TAG" &>/dev/null; then
-    echo "Error: tag $TAG already exists. Aborting."
+if gh release view "$TAG" &>/dev/null; then
+    echo "Error: GitHub release $TAG already exists. Aborting."
     exit 1
 fi
 
 # ── Determine previous stable tag for changelog ─────────────────────────────
+# Exclude the current tag so the range covers what's new in this release.
 
-PREV_TAG=$(get_last_stable_tag)
+PREV_TAG=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' | grep -v '-' | grep -v "^${TAG}$" | sort -V | tail -1)
 
 if [[ -n "$PREV_TAG" ]]; then
     echo "    Changes: $PREV_TAG..HEAD"
