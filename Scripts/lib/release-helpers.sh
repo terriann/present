@@ -49,6 +49,10 @@ preflight_checks() {
 resolve_version() {
     if [[ -n "${1:-}" ]]; then
         VERSION="$1"
+        if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Error: invalid version format '$VERSION'. Expected X.Y.Z (e.g. 0.2.0)"
+            exit 1
+        fi
     else
         local raw_version
         raw_version=$(grep 'MARKETING_VERSION:' "$PROJECT_DIR/project.yml" | head -1 | sed 's/.*: *"\(.*\)"/\1/')
