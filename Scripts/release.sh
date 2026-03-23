@@ -41,7 +41,7 @@ fi
 # ── Determine previous stable tag for changelog ─────────────────────────────
 # Exclude the current tag so the range covers what's new in this release.
 
-PREV_TAG=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' | grep -v '-' | grep -v "^${TAG}$" | sort -V | tail -1)
+PREV_TAG=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' | grep -v '-' | grep -v "^${TAG}$" | sort -V | tail -1 || true)
 
 if [[ -n "$PREV_TAG" ]]; then
     echo "    Changes: $PREV_TAG..HEAD"
