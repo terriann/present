@@ -124,19 +124,25 @@ else
     NEW_SECTION+=$'\n'"No user-facing changes."$'\n'
 fi
 
-# Prepend the new section after the [Unreleased] header
+# Prepend the new section after the [Unreleased] header.
+# Write the section to a temp file first — BSD awk on macOS cannot handle
+# literal newlines passed via -v.
 if [[ -f "$CHANGELOG" ]]; then
+    SECTION_FILE=$(mktemp)
+    printf '%s' "$NEW_SECTION" > "$SECTION_FILE"
     TEMP_FILE=$(mktemp)
-    awk -v section="$NEW_SECTION" '
+    awk -v sfile="$SECTION_FILE" '
         /^## \[Unreleased\]/ {
             print
             print ""
-            printf "%s", section
+            while ((getline line < sfile) > 0) print line
+            close(sfile)
             next
         }
         { print }
     ' "$CHANGELOG" > "$TEMP_FILE"
     mv "$TEMP_FILE" "$CHANGELOG"
+    rm -f "$SECTION_FILE"
 else
     # Create a minimal changelog if none exists
     cat > "$CHANGELOG" << EOF
