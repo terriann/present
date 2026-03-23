@@ -26,6 +26,9 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 INFO_PLIST="$PROJECT_DIR/PresentApp/Info.plist"
 CONSTANTS_SWIFT="$PROJECT_DIR/Sources/PresentCore/Utilities/Constants.swift"
 
+# shellcheck source=lib/release-helpers.sh
+source "$SCRIPT_DIR/lib/release-helpers.sh"
+
 # ── Validate arguments ────────────────────────────────────────────────────────
 
 if [[ $# -ne 1 ]]; then
@@ -101,57 +104,23 @@ echo "Updated Constants.swift"
 CHANGELOG="$PROJECT_DIR/CHANGELOG.md"
 TODAY=$(date +%Y-%m-%d)
 
-# Collect commits since the last tag (or all commits if no tags exist)
-if git describe --tags --abbrev=0 2>/dev/null; then
-    LAST_TAG=$(git describe --tags --abbrev=0)
-    COMMITS=$(git log --pretty=format:"%s" "$LAST_TAG..HEAD")
+# Determine baseline tag for changelog
+LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+
+# Generate Keep a Changelog sections via shared helper.
+# When no tags exist, use --root range to include the initial commit.
+CHANGELOG_BODY=""
+if [[ -n "$LAST_TAG" ]]; then
+    CHANGELOG_BODY=$(generate_keepachangelog "$LAST_TAG" HEAD)
 else
-    COMMITS=$(git log --pretty=format:"%s")
+    CHANGELOG_BODY=$(generate_keepachangelog_all HEAD)
 fi
-
-# Group commits by conventional commit type
-section_added=""
-section_changed=""
-section_fixed=""
-section_removed=""
-section_other=""
-
-while IFS= read -r commit; do
-    [[ -z "$commit" ]] && continue
-    if [[ "$commit" =~ ^feat(\([^)]+\))?!?:\ (.+)$ ]]; then
-        section_added+="- ${BASH_REMATCH[2]}"$'\n'
-    elif [[ "$commit" =~ ^fix(\([^)]+\))?!?:\ (.+)$ ]]; then
-        section_fixed+="- ${BASH_REMATCH[2]}"$'\n'
-    elif [[ "$commit" =~ ^refactor(\([^)]+\))?!?:\ (.+)$ ]]; then
-        section_changed+="- ${BASH_REMATCH[2]}"$'\n'
-    elif [[ "$commit" =~ ^(perf|style)(\([^)]+\))?!?:\ (.+)$ ]]; then
-        section_changed+="- ${BASH_REMATCH[3]}"$'\n'
-    elif [[ "$commit" =~ ^(chore|build|ci|test|docs)(\([^)]+\))?!?:\ .+$ ]]; then
-        : # skip internal/meta commits
-    else
-        section_other+="- $commit"$'\n'
-    fi
-done <<< "$COMMITS"
 
 # Build the new changelog section
 NEW_SECTION="## [$NEW_VERSION] - $TODAY"$'\n'
-if [[ -n "$section_added" ]]; then
-    NEW_SECTION+=$'\n'"### Added"$'\n'"$section_added"
-fi
-if [[ -n "$section_changed" ]]; then
-    NEW_SECTION+=$'\n'"### Changed"$'\n'"$section_changed"
-fi
-if [[ -n "$section_fixed" ]]; then
-    NEW_SECTION+=$'\n'"### Fixed"$'\n'"$section_fixed"
-fi
-if [[ -n "$section_removed" ]]; then
-    NEW_SECTION+=$'\n'"### Removed"$'\n'"$section_removed"
-fi
-if [[ -n "$section_other" ]]; then
-    NEW_SECTION+=$'\n'"### Other"$'\n'"$section_other"
-fi
-
-if [[ -z "$section_added$section_changed$section_fixed$section_removed$section_other" ]]; then
+if [[ -n "$CHANGELOG_BODY" ]]; then
+    NEW_SECTION+="$CHANGELOG_BODY"$'\n'
+else
     NEW_SECTION+=$'\n'"No user-facing changes."$'\n'
 fi
 
