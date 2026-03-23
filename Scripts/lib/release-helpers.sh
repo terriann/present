@@ -114,6 +114,9 @@ generate_changelog() {
 
     local tmpdir
     tmpdir=$(mktemp -d)
+    # Ensure tmpdir is cleaned up even if the caller is interrupted.
+    # Append to any existing EXIT trap rather than replacing it.
+    trap "rm -rf '$tmpdir'; $(trap -p EXIT | sed "s/^trap -- '//;s/' EXIT$//")" EXIT
 
     git log "${prev_tag}..${head_ref}" --no-merges --format="%s" | while IFS= read -r line; do
         local type="" entry=""
