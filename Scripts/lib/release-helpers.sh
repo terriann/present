@@ -97,6 +97,56 @@ get_last_tag() {
     git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo ""
 }
 
+# ── Shared commit classifier ─────────────────────────────────────────────────
+# Parses a conventional commit subject line and sets globals:
+#   _CC_TYPE   — commit type (feat, fix, refactor, etc.) or "other"
+#   _CC_SCOPE  — scope string (empty if none)
+#   _CC_DESC   — description text
+#
+# Args: $1 — single commit subject line
+
+_classify_commit() {
+    local line="$1"
+    _CC_TYPE="" _CC_SCOPE="" _CC_DESC=""
+
+    case "$line" in
+        # type(scope): description
+        *\(*\):\ *)
+            _CC_TYPE="${line%%(*}"
+            local rest="${line#*(}"
+            _CC_SCOPE="${rest%%)*}"
+            _CC_DESC="${rest#*): }"
+            ;;
+        # type: description
+        *:\ *)
+            _CC_TYPE="${line%%:*}"
+            _CC_DESC="${line#*: }"
+            # Only treat as conventional commit if type is lowercase alpha
+            case "$_CC_TYPE" in
+                *[!a-z]*) _CC_TYPE="other"; _CC_DESC="$line" ;;
+            esac
+            ;;
+        *)
+            _CC_TYPE="other"
+            _CC_DESC="$line"
+            ;;
+    esac
+}
+
+# Map a commit type to a category file suffix.
+# Args: $1 — commit type
+# Prints: category key (e.g., "1-feat", "6-maint")
+_commit_category() {
+    case "$1" in
+        feat)     echo "1-feat" ;;
+        fix)      echo "2-fix" ;;
+        refactor) echo "3-refactor" ;;
+        perf)     echo "4-perf" ;;
+        docs)     echo "5-docs" ;;
+        *)        echo "6-maint" ;;
+    esac
+}
+
 # ── Changelog generation ────────────────────────────────────────────────────
 # Writes changelog markdown to stdout.
 #
@@ -119,57 +169,23 @@ generate_changelog() {
     trap "rm -rf '$tmpdir'; $(trap -p EXIT | sed "s/^trap -- '//;s/' EXIT$//")" EXIT
 
     git log "${prev_tag}..${head_ref}" --no-merges --format="%s" | while IFS= read -r line; do
-        local type="" entry=""
-
-        case "$line" in
-            # type(scope): description
-            *\(*\):\ *)
-                type="${line%%(*}"
-                local rest="${line#*(}"
-                local scope="${rest%%)*}"
-                local desc="${rest#*): }"
-                if [[ "$include_scope" == "true" ]]; then
-                    entry="- **${scope}**: ${desc}"
-                else
-                    entry="- ${desc}"
-                fi
-                ;;
-            # type: description
-            *:\ *)
-                type="${line%%:*}"
-                local desc="${line#*: }"
-                case "$type" in
-                    *[!a-z]*) type="other"; entry="- ${line}" ;;
-                    *)
-                        if [[ "$include_scope" == "true" ]]; then
-                            entry="- ${desc}"
-                        else
-                            entry="- ${desc}"
-                        fi
-                        ;;
-                esac
-                ;;
-            *)
-                type="other"
-                entry="- ${line}"
-                ;;
-        esac
+        _classify_commit "$line"
 
         # Skip internal types when requested
         if [[ "$skip_internal" == "true" ]]; then
-            case "$type" in
+            case "$_CC_TYPE" in
                 chore|build|ci|test|docs) continue ;;
             esac
         fi
 
-        case "$type" in
-            feat)     echo "$entry" >> "$tmpdir/1-feat" ;;
-            fix)      echo "$entry" >> "$tmpdir/2-fix" ;;
-            refactor) echo "$entry" >> "$tmpdir/3-refactor" ;;
-            perf)     echo "$entry" >> "$tmpdir/4-perf" ;;
-            docs)     echo "$entry" >> "$tmpdir/5-docs" ;;
-            *)        echo "$entry" >> "$tmpdir/6-maint" ;;
-        esac
+        local entry
+        if [[ -n "$_CC_SCOPE" && "$include_scope" == "true" ]]; then
+            entry="- **${_CC_SCOPE}**: ${_CC_DESC}"
+        else
+            entry="- ${_CC_DESC}"
+        fi
+
+        echo "$entry" >> "$tmpdir/$(_commit_category "$_CC_TYPE")"
     done
 
     # Check if any category files were created
@@ -242,28 +258,17 @@ _keepachangelog_from_commits() {
 
     local section_added="" section_changed="" section_fixed="" section_other=""
 
-    # Store regexes in variables for bash 3.2 compatibility
-    local re_feat='^feat(\([^)]+\))?!?:[[:space:]](.+)$'
-    local re_fix='^fix(\([^)]+\))?!?:[[:space:]](.+)$'
-    local re_refactor='^refactor(\([^)]+\))?!?:[[:space:]](.+)$'
-    local re_perf_style='^(perf|style)(\([^)]+\))?!?:[[:space:]](.+)$'
-    local re_internal='^(chore|build|ci|test|docs)(\([^)]+\))?!?:[[:space:]].+$'
-
     while IFS= read -r commit; do
         [[ -z "$commit" ]] && continue
-        if [[ "$commit" =~ $re_feat ]]; then
-            section_added+="- ${BASH_REMATCH[2]}"$'\n'
-        elif [[ "$commit" =~ $re_fix ]]; then
-            section_fixed+="- ${BASH_REMATCH[2]}"$'\n'
-        elif [[ "$commit" =~ $re_refactor ]]; then
-            section_changed+="- ${BASH_REMATCH[2]}"$'\n'
-        elif [[ "$commit" =~ $re_perf_style ]]; then
-            section_changed+="- ${BASH_REMATCH[3]}"$'\n'
-        elif [[ "$commit" =~ $re_internal ]]; then
-            : # skip internal/meta commits
-        else
-            section_other+="- $commit"$'\n'
-        fi
+        _classify_commit "$commit"
+
+        case "$_CC_TYPE" in
+            feat)                section_added+="- ${_CC_DESC}"$'\n' ;;
+            fix)                 section_fixed+="- ${_CC_DESC}"$'\n' ;;
+            refactor|perf|style) section_changed+="- ${_CC_DESC}"$'\n' ;;
+            chore|build|ci|test|docs) : ;; # skip internal
+            *)                   section_other+="- ${_CC_DESC}"$'\n' ;;
+        esac
     done <<< "$commits"
 
     if [[ -n "$section_added" ]]; then
