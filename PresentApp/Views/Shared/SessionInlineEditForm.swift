@@ -188,6 +188,7 @@ struct SessionInlineEditForm: View {
             return .handled
         }
         .onDisappear {
+            pendingTimeChange?.cancel()
             guard !explicitlyClosed else { return }
             flushBufferedChanges()
         }
@@ -240,6 +241,7 @@ struct SessionInlineEditForm: View {
     }
 
     private func revertAll() {
+        pendingTimeChange?.cancel()
         selectedActivityId = session.activityId
         startTime = session.startedAt
         endTime = session.endedAt ?? Date()
@@ -256,7 +258,7 @@ struct SessionInlineEditForm: View {
     private func debouncedTimeSave() {
         pendingTimeChange?.cancel()
         pendingTimeChange = Task {
-            try? await Task.sleep(for: .milliseconds(100))
+            try? await Task.sleep(for: .milliseconds(Constants.inlineEditDebounceMs))
             guard !Task.isCancelled else { return }
 
             let startChanged = startTime != session.startedAt

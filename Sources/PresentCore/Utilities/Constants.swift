@@ -86,6 +86,11 @@ public enum Constants {
     /// Milliseconds between pulse animation state updates (~6.7fps).
     public static let activePulseInterval: Int = 150
 
+    // MARK: - Inline Editing
+
+    /// Debounce delay (milliseconds) for batching inline time field changes into a single save.
+    public static let inlineEditDebounceMs: Int = 100
+
     // MARK: - Timeline
 
     /// Pause gaps shorter than this threshold (in seconds) are coalesced into
