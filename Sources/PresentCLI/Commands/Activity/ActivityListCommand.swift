@@ -57,9 +57,9 @@ struct ActivityListCommand: AsyncParsableCommand {
         case .csv:
             print("ID,Title,Archived,External ID,Link")
             for activity in activities {
-                let escapedTitle = activity.title.contains(",") ? "\"\(activity.title)\"" : activity.title
-                let externalId = activity.externalId ?? ""
-                let link = activity.link ?? ""
+                let escapedTitle = escapeCSVField(activity.title)
+                let externalId = escapeCSVField(activity.externalId ?? "")
+                let link = escapeCSVField(activity.link ?? "")
                 print("\(activity.id ?? 0),\(escapedTitle),\(activity.isArchived),\(externalId),\(link)")
             }
         }

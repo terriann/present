@@ -56,8 +56,8 @@ struct ConfigListCommand: AsyncParsableCommand {
         case .csv:
             print("Key,Value")
             for pref in prefs {
-                let escapedValue = pref.value.contains(",") ? "\"\(pref.value)\"" : pref.value
-                print("\(pref.key),\(escapedValue)")
+                let escapedValue = escapeCSVField(pref.value)
+                print("\(escapeCSVField(pref.key)),\(escapedValue)")
             }
         }
     }

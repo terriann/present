@@ -64,7 +64,7 @@ struct ActivityTagListCommand: AsyncParsableCommand {
         case .csv:
             print("Tag ID,Name")
             for tag in tags {
-                let escapedName = tag.name.contains(",") ? "\"\(tag.name)\"" : tag.name
+                let escapedName = escapeCSVField(tag.name)
                 print("\(tag.id ?? 0),\(escapedName)")
             }
         }

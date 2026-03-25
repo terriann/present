@@ -130,7 +130,7 @@ struct ReportCommand: AsyncParsableCommand {
         case .csv:
             print("Activity,Total Seconds,Sessions")
             for actSummary in activities {
-                let escapedTitle = actSummary.activity.title.contains(",") ? "\"\(actSummary.activity.title)\"" : actSummary.activity.title
+                let escapedTitle = escapeCSVField(actSummary.activity.title)
                 print("\(escapedTitle),\(actSummary.totalSeconds),\(actSummary.sessionCount)")
             }
         }

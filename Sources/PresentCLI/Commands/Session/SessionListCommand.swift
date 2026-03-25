@@ -194,7 +194,7 @@ struct SessionListCommand: AsyncParsableCommand {
             isoFormatter.formatOptions = [.withInternetDateTime]
             print("Session ID,Activity,Type,State,Started At,Ended At,Duration (seconds)")
             for (session, act) in pageResults {
-                let escapedTitle = act.title.contains(",") ? "\"\(act.title)\"" : act.title
+                let escapedTitle = escapeCSVField(act.title)
                 let endedStr = session.endedAt.map { isoFormatter.string(from: $0) } ?? ""
                 let durationStr = session.durationSeconds.map { String($0) } ?? ""
                 print("\(session.id ?? 0),\(escapedTitle),\(session.sessionType.rawValue),\(session.state.rawValue),\(isoFormatter.string(from: session.startedAt)),\(endedStr),\(durationStr)")
