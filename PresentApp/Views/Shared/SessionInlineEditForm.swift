@@ -28,6 +28,7 @@ struct SessionInlineEditForm: View {
     @State private var showStartDate: Bool
     @State private var showEndDate: Bool
     @State private var explicitlyClosed = false
+    @State private var pendingTimeChange: Task<Void, Never>?
 
     private enum ErrorField: Hashable { case activity, start, end, note }
 
@@ -142,14 +143,8 @@ struct SessionInlineEditForm: View {
             }
             // Activity change is buffered until Done — auto-saving it would move the
             // session to a different group mid-edit, causing the form to jump or vanish.
-            .onChange(of: startTime) { oldValue, newValue in
-                guard newValue != session.startedAt else { return }
-                saveField { UpdateSessionInput(startedAt: newValue) }
-            }
-            .onChange(of: endTime) { oldValue, newValue in
-                guard !isActive, newValue != session.endedAt else { return }
-                saveField { UpdateSessionInput(endedAt: newValue) }
-            }
+            .onChange(of: startTime) { _, _ in debouncedTimeSave() }
+            .onChange(of: endTime) { _, _ in debouncedTimeSave() }
 
             // Note row
             VStack(alignment: .leading, spacing: 2) {
@@ -251,6 +246,28 @@ struct SessionInlineEditForm: View {
         noteText = session.note ?? ""
         errorMessage = nil
         errorFields = []
+    }
+
+    // MARK: - Time Debounce
+
+    /// Debounce start/end time changes into a single update so validation sees both values together.
+    /// Without this, changing start time validates against the old end time in the database,
+    /// which can reject valid edits where both times change together.
+    private func debouncedTimeSave() {
+        pendingTimeChange?.cancel()
+        pendingTimeChange = Task {
+            try? await Task.sleep(for: .milliseconds(100))
+            guard !Task.isCancelled else { return }
+
+            let startChanged = startTime != session.startedAt
+            let endChanged = !isActive && endTime != session.endedAt
+            guard startChanged || endChanged else { return }
+
+            var input = UpdateSessionInput()
+            if startChanged { input.startedAt = startTime }
+            if endChanged { input.endedAt = endTime }
+            saveField { input }
+        }
     }
 
     // MARK: - Save & Dismiss

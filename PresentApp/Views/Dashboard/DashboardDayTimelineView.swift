@@ -34,9 +34,20 @@ struct DashboardDayTimelineView: View {
             timerElapsedSeconds: appState.timerElapsedSeconds,
             hoveredActivityTitle: $hoveredActivityTitle
         )
-        .task(id: "\(appState.todayActivities.map(\.activity.id))-\(appState.currentSession?.state.rawValue ?? "")") {
+        .task(id: timelineTaskId) {
             await loadSessions()
         }
+    }
+
+    // MARK: - Helpers
+
+    /// Identity string for the `.task` modifier. SwiftUI re-runs the task whenever this changes.
+    /// Includes activity IDs, session state, and the global refresh counter so the timeline
+    /// reloads when sessions are added, removed, or have their times edited inline.
+    private var timelineTaskId: String {
+        let activityIds = appState.todayActivities.map(\.activity.id)
+        let sessionState = appState.currentSession?.state.rawValue ?? ""
+        return "\(activityIds)-\(sessionState)-\(appState.refreshCounter)"
     }
 
     // MARK: - Data Loading
