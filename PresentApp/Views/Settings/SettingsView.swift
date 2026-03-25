@@ -386,6 +386,7 @@ struct CLISettingsTab: View {
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
             return String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
         } catch {
+            // Non-critical — CLI version badge just won't show
             return nil
         }
     }
