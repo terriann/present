@@ -54,29 +54,18 @@ struct SessionListCommand: AsyncParsableCommand {
         let service = try CLIServiceFactory.makeService()
 
         // Parse dates
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.timeZone = .current
-
         let calendar = Calendar.current
 
         let fromDate: Date
         if let after {
-            guard let parsed = formatter.date(from: after) else {
-                print("Invalid date format: \(after). Use YYYY-MM-DD.")
-                throw ExitCode.failure
-            }
-            fromDate = calendar.startOfDay(for: parsed)
+            fromDate = calendar.startOfDay(for: try DateParsing.parseDateOrFail(after, label: "--after"))
         } else {
             fromDate = Date.distantPast
         }
 
         let toDate: Date
         if let before {
-            guard let parsed = formatter.date(from: before) else {
-                print("Invalid date format: \(before). Use YYYY-MM-DD.")
-                throw ExitCode.failure
-            }
+            let parsed = try DateParsing.parseDateOrFail(before, label: "--before")
             guard let nextDay = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: parsed)) else {
                 print("Failed to compute date range.")
                 throw ExitCode.failure
@@ -87,14 +76,7 @@ struct SessionListCommand: AsyncParsableCommand {
         }
 
         // Parse session type
-        var sessionType: SessionType?
-        if let type {
-            guard let parsed = SessionType(rawValue: type) else {
-                print("Invalid session type: \(type). Use: work, rhythm, timebound.")
-                throw ExitCode.failure
-            }
-            sessionType = parsed
-        }
+        let sessionType = try type.map(SessionType.parseOrFail)
 
         // Resolve activity name to ID
         var activityId: Int64?

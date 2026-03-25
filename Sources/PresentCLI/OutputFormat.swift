@@ -19,6 +19,13 @@ struct OutputOptions: ParsableArguments {
 
 extension OutputOptions {
 
+    /// Throws `ExitCode.failure` when CSV output is not supported by a command.
+    /// Call inside `case .csv:` to replace the repeated boilerplate.
+    func throwCSVNotSupported(for command: String) throws -> Never {
+        printError("CSV output not supported for \(command).")
+        throw ExitCode.failure
+    }
+
     /// Validates option compatibility. Call at the start of run().
     func validateOptions() throws {
         if field != nil && format == .csv {

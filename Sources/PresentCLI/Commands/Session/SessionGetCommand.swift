@@ -51,8 +51,7 @@ struct SessionGetCommand: AsyncParsableCommand {
             }
 
         case .csv:
-            print("CSV output not supported for session get.")
-            throw ExitCode.failure
+            try outputOptions.throwCSVNotSupported(for: "session get")
         }
     }
 }

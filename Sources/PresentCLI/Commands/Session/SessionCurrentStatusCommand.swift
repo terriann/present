@@ -69,8 +69,7 @@ struct SessionCurrentStatusCommand: AsyncParsableCommand {
                 }
 
             case .csv:
-                print("CSV output not supported for session current status.")
-                throw ExitCode.failure
+                try outputOptions.throwCSVNotSupported(for: "session current status")
             }
         } else {
             switch outputOptions.format {
@@ -88,8 +87,7 @@ struct SessionCurrentStatusCommand: AsyncParsableCommand {
                 print("No active session.")
 
             case .csv:
-                print("CSV output not supported for session current status.")
-                throw ExitCode.failure
+                try outputOptions.throwCSVNotSupported(for: "session current status")
             }
         }
     }

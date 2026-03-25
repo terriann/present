@@ -45,8 +45,7 @@ struct ActivityDeleteCommand: AsyncParsableCommand {
             print("Deleted \"\(activity.title)\"")
 
         case .csv:
-            print("CSV output not supported for activity delete.")
-            throw ExitCode.failure
+            try outputOptions.throwCSVNotSupported(for: "activity delete")
         }
 
         IPCClient().send(.dataChanged)

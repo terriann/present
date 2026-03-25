@@ -54,10 +54,7 @@ struct SessionStartCommand: AsyncParsableCommand {
     func run() async throws {
         try outputOptions.validateOptions()
 
-        guard let sessionType = SessionType(rawValue: type) else {
-            print("Invalid session type: \(type). Use: work, rhythm, timebound.")
-            throw ExitCode.failure
-        }
+        let sessionType = try SessionType.parseOrFail(type)
 
         let service = try CLIServiceFactory.makeService()
 
@@ -126,8 +123,7 @@ struct SessionStartCommand: AsyncParsableCommand {
             }
 
         case .csv:
-            print("CSV output not supported for session start.")
-            throw ExitCode.failure
+            try outputOptions.throwCSVNotSupported(for: "session start")
         }
 
         IPCClient().send(.sessionStarted)

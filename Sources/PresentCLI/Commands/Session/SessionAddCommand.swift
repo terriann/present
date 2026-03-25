@@ -64,27 +64,10 @@ struct SessionAddCommand: AsyncParsableCommand {
     func run() async throws {
         try outputOptions.validateOptions()
 
-        guard let sessionType = SessionType(rawValue: type) else {
-            print("Invalid session type: \(type). Use: work, rhythm, timebound.")
-            throw ExitCode.failure
-        }
+        let sessionType = try SessionType.parseOrFail(type)
 
-        let isoFormatter = ISO8601DateFormatter()
-        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-
-        // Try with fractional seconds first, then without
-        let localFormatter = ISO8601DateFormatter()
-        localFormatter.formatOptions = [.withInternetDateTime]
-
-        guard let startDate = isoFormatter.date(from: startedAt) ?? localFormatter.date(from: startedAt) ?? parseLocalISO(startedAt) else {
-            print("Invalid start time: \(startedAt). Use ISO8601 format (e.g., 2026-01-15T09:30:00).")
-            throw ExitCode.failure
-        }
-
-        guard let endDate = isoFormatter.date(from: endedAt) ?? localFormatter.date(from: endedAt) ?? parseLocalISO(endedAt) else {
-            print("Invalid end time: \(endedAt). Use ISO8601 format (e.g., 2026-01-15T10:30:00).")
-            throw ExitCode.failure
-        }
+        let startDate = try DateParsing.parseDateTimeOrFail(startedAt, label: "start time")
+        let endDate = try DateParsing.parseDateTimeOrFail(endedAt, label: "end time")
 
         let now = Date()
         if startDate > now {
@@ -124,18 +107,10 @@ struct SessionAddCommand: AsyncParsableCommand {
             print("Added \(typeLabel) for \"\(activity.title)\" (\(duration))")
 
         case .csv:
-            print("CSV output not supported for session add.")
-            throw ExitCode.failure
+            try outputOptions.throwCSVNotSupported(for: "session add")
         }
 
         IPCClient().send(.dataChanged)
     }
 
-    /// Parse a local ISO8601 datetime without timezone (e.g., "2026-01-15T09:30:00")
-    private func parseLocalISO(_ string: String) -> Date? {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-        formatter.timeZone = .current
-        return formatter.date(from: string)
-    }
 }

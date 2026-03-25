@@ -878,17 +878,7 @@ public final class PresentService: PresentAPI, Sendable {
             }
 
             let session = try Session(row: row)
-            let activity = Activity(
-                id: row["a_id"],
-                title: row["a_title"],
-                externalId: row["a_externalId"],
-                link: row["a_link"],
-                notes: row["a_notes"],
-                isArchived: row["a_isArchived"],
-                createdAt: row["a_createdAt"],
-                updatedAt: row["a_updatedAt"]
-            )
-            return (session, activity)
+            return (session, activityFromJoinedRow(row))
         }
     }
 
@@ -912,17 +902,7 @@ public final class PresentService: PresentAPI, Sendable {
             }
 
             let session = try Session(row: row)
-            let activity = Activity(
-                id: row["a_id"],
-                title: row["a_title"],
-                externalId: row["a_externalId"],
-                link: row["a_link"],
-                notes: row["a_notes"],
-                isArchived: row["a_isArchived"],
-                createdAt: row["a_createdAt"],
-                updatedAt: row["a_updatedAt"]
-            )
-            return (session, activity)
+            return (session, activityFromJoinedRow(row))
         }
     }
 
@@ -946,17 +926,7 @@ public final class PresentService: PresentAPI, Sendable {
             }
 
             let session = try Session(row: row)
-            let activity = Activity(
-                id: row["a_id"],
-                title: row["a_title"],
-                externalId: row["a_externalId"],
-                link: row["a_link"],
-                notes: row["a_notes"],
-                isArchived: row["a_isArchived"],
-                createdAt: row["a_createdAt"],
-                updatedAt: row["a_updatedAt"]
-            )
-            return (session, activity)
+            return (session, activityFromJoinedRow(row))
         }
     }
 
@@ -967,6 +937,23 @@ public final class PresentService: PresentAPI, Sendable {
                 arguments: [SessionState.completed.rawValue]
             )
         }
+    }
+
+    // MARK: - Row Mapping Helpers
+
+    /// Build an Activity from a joined row using the `a_` column alias convention.
+    /// Used by session queries that JOIN activity and alias columns as `a_id`, `a_title`, etc.
+    private func activityFromJoinedRow(_ row: Row) -> Activity {
+        Activity(
+            id: row["a_id"],
+            title: row["a_title"],
+            externalId: row["a_externalId"],
+            link: row["a_link"],
+            notes: row["a_notes"],
+            isArchived: row["a_isArchived"],
+            createdAt: row["a_createdAt"],
+            updatedAt: row["a_updatedAt"]
+        )
     }
 
     // MARK: - Activities

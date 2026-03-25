@@ -84,8 +84,7 @@ struct SessionUpdateCommand: AsyncParsableCommand {
             print("Updated session \(session.id ?? 0) for \"\(activity.title)\"")
 
         case .csv:
-            print("CSV output not supported for session update.")
-            throw ExitCode.failure
+            try outputOptions.throwCSVNotSupported(for: "session update")
         }
 
         IPCClient().send(.sessionUpdated)

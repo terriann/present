@@ -63,8 +63,7 @@ struct ActivityNoteCommand: AsyncParsableCommand {
             print("Note appended to \"\(activityTitle)\"")
 
         case .csv:
-            print("CSV output not supported for activity note.")
-            throw ExitCode.failure
+            try outputOptions.throwCSVNotSupported(for: "activity note")
         }
 
         IPCClient().send(.activityUpdated)

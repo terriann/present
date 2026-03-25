@@ -48,8 +48,7 @@ struct SessionCancelCommand: AsyncParsableCommand {
             print("Cancelled session for \"\(activity.title)\"")
 
         case .csv:
-            print("CSV output not supported for session cancel.")
-            throw ExitCode.failure
+            try outputOptions.throwCSVNotSupported(for: "session cancel")
         }
 
         IPCClient().send(.sessionCancelled)

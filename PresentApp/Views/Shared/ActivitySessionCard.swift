@@ -841,6 +841,7 @@ struct ActivitySessionCard: View {
             let todayFromSegments = portions[sessionId] ?? 0
             activePreMidnightSeconds = max(0, appState.timerElapsedSeconds - todayFromSegments)
         } catch {
+            // Non-critical — cross-midnight annotation just won't show
             activePreMidnightSeconds = nil
         }
     }

@@ -51,8 +51,7 @@ struct ActivityAddCommand: AsyncParsableCommand {
             print("Added activity: \(activity.title) [\(activity.id ?? 0)]")
 
         case .csv:
-            print("CSV output not supported for activity add.")
-            throw ExitCode.failure
+            try outputOptions.throwCSVNotSupported(for: "activity add")
         }
 
         IPCClient().send(.dataChanged)

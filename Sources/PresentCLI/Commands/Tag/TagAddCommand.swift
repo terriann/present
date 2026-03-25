@@ -39,8 +39,7 @@ struct TagAddCommand: AsyncParsableCommand {
             print("Added tag: \(tag.name) [\(tag.id ?? 0)]")
 
         case .csv:
-            print("CSV output not supported for tag add.")
-            throw ExitCode.failure
+            try outputOptions.throwCSVNotSupported(for: "tag add")
         }
 
         IPCClient().send(.dataChanged)
