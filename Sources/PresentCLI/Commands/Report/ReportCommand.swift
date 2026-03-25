@@ -42,29 +42,18 @@ struct ReportCommand: AsyncParsableCommand {
     func run() async throws {
         try outputOptions.validateOptions()
 
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.timeZone = .current
-
         let calendar = Calendar.current
 
         let fromDate: Date
         if let after {
-            guard let parsed = formatter.date(from: after) else {
-                print("Invalid date format: \(after). Use YYYY-MM-DD.")
-                throw ExitCode.failure
-            }
-            fromDate = calendar.startOfDay(for: parsed)
+            fromDate = calendar.startOfDay(for: try DateParsing.parseDateOrFail(after, label: "--after"))
         } else {
             fromDate = calendar.startOfDay(for: Date())
         }
 
         let toDate: Date
         if let before {
-            guard let parsed = formatter.date(from: before) else {
-                print("Invalid date format: \(before). Use YYYY-MM-DD.")
-                throw ExitCode.failure
-            }
+            let parsed = try DateParsing.parseDateOrFail(before, label: "--before")
             guard let nextDay = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: parsed)) else {
                 print("Failed to compute date range.")
                 throw ExitCode.failure
