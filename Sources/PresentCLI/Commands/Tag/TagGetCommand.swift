@@ -38,8 +38,7 @@ struct TagGetCommand: AsyncParsableCommand {
             print("[\(tag.id ?? 0)] \(tag.name)")
 
         case .csv:
-            print("CSV output not supported for tag get.")
-            throw ExitCode.failure
+            try outputOptions.throwCSVNotSupported(for: "tag get")
         }
     }
 }

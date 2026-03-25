@@ -54,8 +54,7 @@ struct ConfigGetCommand: AsyncParsableCommand {
             }
 
         case .csv:
-            print("CSV output not supported for config get.")
-            throw ExitCode.failure
+            try outputOptions.throwCSVNotSupported(for: "config get")
         }
     }
 }

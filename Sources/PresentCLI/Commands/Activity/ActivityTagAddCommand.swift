@@ -55,8 +55,7 @@ struct ActivityTagAddCommand: AsyncParsableCommand {
             print("Tagged \"\(activity.title)\" with \(tag.name)")
 
         case .csv:
-            print("CSV output not supported for activity tag add.")
-            throw ExitCode.failure
+            try outputOptions.throwCSVNotSupported(for: "activity tag add")
         }
 
         IPCClient().send(.dataChanged)

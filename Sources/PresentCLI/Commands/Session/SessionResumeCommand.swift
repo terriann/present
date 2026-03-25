@@ -39,8 +39,7 @@ struct SessionResumeCommand: AsyncParsableCommand {
             print("Resumed session for \"\(activity.title)\"")
 
         case .csv:
-            print("CSV output not supported for session resume.")
-            throw ExitCode.failure
+            try outputOptions.throwCSVNotSupported(for: "session resume")
         }
 
         IPCClient().send(.sessionResumed)

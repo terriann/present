@@ -126,8 +126,7 @@ struct SessionStartCommand: AsyncParsableCommand {
             }
 
         case .csv:
-            print("CSV output not supported for session start.")
-            throw ExitCode.failure
+            try outputOptions.throwCSVNotSupported(for: "session start")
         }
 
         IPCClient().send(.sessionStarted)

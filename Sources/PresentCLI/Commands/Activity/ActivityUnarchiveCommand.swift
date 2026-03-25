@@ -39,8 +39,7 @@ struct ActivityUnarchiveCommand: AsyncParsableCommand {
             print("Unarchived \"\(activity.title)\"")
 
         case .csv:
-            print("CSV output not supported for activity unarchive.")
-            throw ExitCode.failure
+            try outputOptions.throwCSVNotSupported(for: "activity unarchive")
         }
 
         IPCClient().send(.dataChanged)

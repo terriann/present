@@ -41,8 +41,7 @@ struct TagUpdateCommand: AsyncParsableCommand {
             print("Updated tag: \(tag.name) [\(tag.id ?? 0)]")
 
         case .csv:
-            print("CSV output not supported for tag update.")
-            throw ExitCode.failure
+            try outputOptions.throwCSVNotSupported(for: "tag update")
         }
 
         IPCClient().send(.dataChanged)

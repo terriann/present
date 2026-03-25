@@ -42,8 +42,7 @@ struct SessionStopCommand: AsyncParsableCommand {
             }
 
         case .csv:
-            print("CSV output not supported for session stop.")
-            throw ExitCode.failure
+            try outputOptions.throwCSVNotSupported(for: "session stop")
         }
 
         IPCClient().send(.sessionStopped)

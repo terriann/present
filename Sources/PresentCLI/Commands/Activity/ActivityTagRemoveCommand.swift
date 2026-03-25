@@ -57,8 +57,7 @@ struct ActivityTagRemoveCommand: AsyncParsableCommand {
             print("Removed \(tag.name) from \"\(activity.title)\"")
 
         case .csv:
-            print("CSV output not supported for activity tag remove.")
-            throw ExitCode.failure
+            try outputOptions.throwCSVNotSupported(for: "activity tag remove")
         }
 
         IPCClient().send(.dataChanged)

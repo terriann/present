@@ -56,8 +56,7 @@ struct ConfigSetCommand: AsyncParsableCommand {
             print("Set \(key) = \(value)")
 
         case .csv:
-            print("CSV output not supported for config set.")
-            throw ExitCode.failure
+            try outputOptions.throwCSVNotSupported(for: "config set")
         }
 
         IPCClient().send(.dataChanged)

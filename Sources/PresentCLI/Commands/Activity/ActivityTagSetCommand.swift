@@ -62,8 +62,7 @@ struct ActivityTagSetCommand: AsyncParsableCommand {
             }
 
         case .csv:
-            print("CSV output not supported for activity tag set.")
-            throw ExitCode.failure
+            try outputOptions.throwCSVNotSupported(for: "activity tag set")
         }
 
         IPCClient().send(.dataChanged)

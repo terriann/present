@@ -39,8 +39,7 @@ struct SessionPauseCommand: AsyncParsableCommand {
             print("Paused session for \"\(activity.title)\"")
 
         case .csv:
-            print("CSV output not supported for session pause.")
-            throw ExitCode.failure
+            try outputOptions.throwCSVNotSupported(for: "session pause")
         }
 
         IPCClient().send(.sessionPaused)

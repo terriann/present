@@ -59,8 +59,7 @@ struct ActivityUpdateCommand: AsyncParsableCommand {
             print("Updated activity: \(activity.title) [\(activity.id ?? 0)]")
 
         case .csv:
-            print("CSV output not supported for activity update.")
-            throw ExitCode.failure
+            try outputOptions.throwCSVNotSupported(for: "activity update")
         }
 
         IPCClient().send(.dataChanged)

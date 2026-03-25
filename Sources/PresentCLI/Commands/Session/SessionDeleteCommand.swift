@@ -37,8 +37,7 @@ struct SessionDeleteCommand: AsyncParsableCommand {
         try outputOptions.validateOptions()
 
         if outputOptions.format == .csv {
-            print("CSV output not supported for session delete.")
-            throw ExitCode.failure
+            try outputOptions.throwCSVNotSupported(for: "session delete")
         }
 
         guard !ids.isEmpty else {
@@ -98,8 +97,7 @@ struct SessionDeleteCommand: AsyncParsableCommand {
             }
 
         case .csv:
-            print("CSV output not supported for session delete.")
-            throw ExitCode.failure
+            try outputOptions.throwCSVNotSupported(for: "session delete")
         }
     }
 }

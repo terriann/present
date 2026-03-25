@@ -124,8 +124,7 @@ struct SessionAddCommand: AsyncParsableCommand {
             print("Added \(typeLabel) for \"\(activity.title)\" (\(duration))")
 
         case .csv:
-            print("CSV output not supported for session add.")
-            throw ExitCode.failure
+            try outputOptions.throwCSVNotSupported(for: "session add")
         }
 
         IPCClient().send(.dataChanged)

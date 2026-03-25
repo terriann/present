@@ -59,8 +59,7 @@ struct ActivityGetCommand: AsyncParsableCommand {
             }
 
         case .csv:
-            print("CSV output not supported for activity get.")
-            throw ExitCode.failure
+            try outputOptions.throwCSVNotSupported(for: "activity get")
         }
     }
 }
