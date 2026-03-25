@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-03-24
+
+No user-facing changes.
 
 ## [0.2.1] - 2026-03-22
 
@@ -433,6 +436,7 @@ Requires:
 * feat(ipc): Unix domain socket IPC so CLI mutations are reflected in the running app in real time
 * feat(app): user-facing error feedback for failed operations
 
-[Unreleased]: https://github.com/terriann/present/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/terriann/present/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/terriann/present/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/terriann/present/compare/v0.1.0-beta.5...v0.2.1
 [1.0.0]: https://github.com/terriann/present/releases/tag/v0.1.0-beta.1
