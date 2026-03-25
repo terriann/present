@@ -64,10 +64,7 @@ struct SessionAddCommand: AsyncParsableCommand {
     func run() async throws {
         try outputOptions.validateOptions()
 
-        guard let sessionType = SessionType(rawValue: type) else {
-            print("Invalid session type: \(type). Use: work, rhythm, timebound.")
-            throw ExitCode.failure
-        }
+        let sessionType = try SessionType.parseOrFail(type)
 
         let isoFormatter = ISO8601DateFormatter()
         isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]

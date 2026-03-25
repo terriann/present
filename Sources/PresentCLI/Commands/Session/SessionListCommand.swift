@@ -87,14 +87,7 @@ struct SessionListCommand: AsyncParsableCommand {
         }
 
         // Parse session type
-        var sessionType: SessionType?
-        if let type {
-            guard let parsed = SessionType(rawValue: type) else {
-                print("Invalid session type: \(type). Use: work, rhythm, timebound.")
-                throw ExitCode.failure
-            }
-            sessionType = parsed
-        }
+        let sessionType = try type.map(SessionType.parseOrFail)
 
         // Resolve activity name to ID
         var activityId: Int64?
