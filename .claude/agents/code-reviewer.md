@@ -101,6 +101,7 @@ Explore `PresentApp/Views/`. Check:
 Explore all `Sources/` and `PresentApp/`. Check:
 - No force unwraps (`!`) on optionals — should use `guard let`, `if let`, `??`
 - No `try!` or `.first!` — use safe alternatives
+- No dense inlined expressions — long string interpolations or complex ternaries in modifiers should be extracted into named computed properties for readability
 - No string interpolation in SQL queries
 - Swift 6 strict concurrency: all models/DTOs `Sendable`
 - `@unchecked Sendable` used sparingly and justified
@@ -281,6 +282,7 @@ This is the consolidated checklist derived from `.claude/CLAUDE.md`. Use it as a
 - [ ] No force unwraps (`!`) — use `guard let`, `if let`, `??`, `compactMap`
 - [ ] No `try!` — use `do/catch` or `try?`
 - [ ] No `.first!`, `.last!` — use safe subscripting
+- [ ] No dense inlined expressions — long string interpolations, complex ternaries, and multi-clause conditions in modifiers (`.task(id:)`, `.onChange()`, etc.) should be extracted into named computed properties
 
 ### Deprecated APIs
 - [ ] No deprecated SwiftUI modifiers (e.g., `.foregroundColor` → `.foregroundStyle`, `.cornerRadius` → `.clipShape(.rect(cornerRadius:))`)

@@ -203,6 +203,7 @@ CLI Commands ──────────────────────�
 
 ### Swift Safety
 - **Never force unwrap** (`!`) optionals. Use `if let`, `guard let`, `??` (nil coalescing), or `compactMap` instead. Force unwraps compile fine but crash at runtime when the value is `nil` — use safe alternatives that handle the nil case gracefully.
+- **Extract dense expressions into computed properties.** Long string interpolations, complex ternaries, and multi-clause conditionals become unreadable when inlined — especially inside SwiftUI modifiers like `.task(id:)` or `.onChange()`. Extract them into a named computed property with a doc comment explaining the intent. Example: a `.task(id: "\(a)-\(b)-\(c)")` should become `.task(id: taskIdentity)` with a `private var taskIdentity: String` that builds the value readably.
 
 ### Animations & Reduce Motion
 - **Never use raw `.animation()` or `withAnimation()`** — use the adaptive wrappers in `PresentApp/Views/Shared/AdaptiveAnimation.swift`.
