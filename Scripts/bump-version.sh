@@ -1,8 +1,13 @@
 #!/bin/bash
 set -euo pipefail
 
-# Bump marketing version and build number in Info.plist and Constants.swift,
-# then create a git commit and tag.
+# Bump marketing version and build number, then create a git commit and tag.
+#
+# Version sources (project.yml is the single source of truth):
+#   - project.yml      → MARKETING_VERSION (with -dev suffix during development)
+#   - project.yml      → CURRENT_PROJECT_VERSION (build number)
+#   - Constants.swift   → appVersion string shown in UI and CLI
+#   - Info.plist        → Owned by xcodegen; never edited directly by this script
 #
 # Usage:
 #   ./Scripts/bump-version.sh [major|minor|patch|X.Y.Z]
@@ -12,18 +17,10 @@ set -euo pipefail
 #   ./Scripts/bump-version.sh minor     # 1.0.0 -> 1.1.0
 #   ./Scripts/bump-version.sh major     # 1.0.0 -> 2.0.0
 #   ./Scripts/bump-version.sh 1.2.3     # Set to an explicit version
-#
-# What it does:
-#   1. Reads CFBundleShortVersionString and CFBundleVersion from Info.plist
-#   2. Computes the new marketing version (bump type or explicit semver)
-#   3. Increments the build number by 1
-#   4. Writes both values back to Info.plist via plutil
-#   5. Updates Constants.appVersion in Constants.swift
-#   6. Stages the changed files and creates a commit + git tag
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-INFO_PLIST="$PROJECT_DIR/PresentApp/Info.plist"
+PROJECT_YML="$PROJECT_DIR/project.yml"
 CONSTANTS_SWIFT="$PROJECT_DIR/Sources/PresentCore/Utilities/Constants.swift"
 
 # shellcheck source=lib/release-helpers.sh
@@ -47,10 +44,12 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
     exit 1
 fi
 
-# ── Read current version ──────────────────────────────────────────────────────
+# ── Read current version from project.yml ─────────────────────────────────────
 
-CURRENT_VERSION=$(plutil -extract CFBundleShortVersionString raw "$INFO_PLIST")
-CURRENT_BUILD=$(plutil -extract CFBundleVersion raw "$INFO_PLIST")
+RAW_VERSION=$(grep 'MARKETING_VERSION:' "$PROJECT_YML" | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+CURRENT_VERSION="${RAW_VERSION%%-*}"  # Strip -dev suffix
+CURRENT_BUILD=$(grep 'CURRENT_PROJECT_VERSION:' "$PROJECT_YML" | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+CURRENT_BUILD="${CURRENT_BUILD:-0}"
 
 echo "Current: $CURRENT_VERSION (build $CURRENT_BUILD)"
 
@@ -86,11 +85,17 @@ NEW_BUILD="$((CURRENT_BUILD + 1))"
 
 echo "New:     $NEW_VERSION (build $NEW_BUILD)"
 
-# ── Update Info.plist ─────────────────────────────────────────────────────────
+# ── Update project.yml ───────────────────────────────────────────────────────
+# Uses -dev suffix so local Xcode builds are clearly marked as development.
+# Release scripts strip -dev at build time via MARKETING_VERSION override.
 
-plutil -replace CFBundleShortVersionString -string "$NEW_VERSION" "$INFO_PLIST"
-plutil -replace CFBundleVersion -string "$NEW_BUILD" "$INFO_PLIST"
-echo "Updated Info.plist"
+sed -i '' \
+    "s/MARKETING_VERSION: \".*\"/MARKETING_VERSION: \"$NEW_VERSION-dev\"/" \
+    "$PROJECT_YML"
+sed -i '' \
+    "s/CURRENT_PROJECT_VERSION: \".*\"/CURRENT_PROJECT_VERSION: \"$NEW_BUILD\"/" \
+    "$PROJECT_YML"
+echo "Updated project.yml"
 
 # ── Update Constants.swift ────────────────────────────────────────────────────
 
@@ -163,7 +168,7 @@ echo "Updated CHANGELOG.md"
 
 # ── Commit and tag ────────────────────────────────────────────────────────────
 
-git add "$INFO_PLIST" "$CONSTANTS_SWIFT" "$CHANGELOG"
+git add "$PROJECT_YML" "$CONSTANTS_SWIFT" "$CHANGELOG"
 git commit -m "chore(build): bump version to $NEW_VERSION"
 git tag "v$NEW_VERSION"
 
