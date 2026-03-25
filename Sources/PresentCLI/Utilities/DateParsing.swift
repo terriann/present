@@ -14,7 +14,7 @@ enum DateParsing {
         formatter.dateFormat = "yyyy-MM-dd"
         formatter.timeZone = .current
         guard let date = formatter.date(from: string) else {
-            print("Invalid date format for \(label): \(string). Use YYYY-MM-DD.")
+            CLIError.print("Invalid date format for \(label): \(string). Use YYYY-MM-DD.")
             throw ExitCode.failure
         }
         return date
@@ -27,7 +27,7 @@ enum DateParsing {
     /// Used by `--started-at` and `--ended-at` flags.
     static func parseDateTimeOrFail(_ string: String, label: String) throws -> Date {
         if let date = parseDateTime(string) { return date }
-        print("Invalid \(label): \(string). Use ISO8601 format (e.g., 2026-01-15T09:30:00).")
+        CLIError.print("Invalid \(label): \(string). Use ISO8601 format (e.g., 2026-01-15T09:30:00).")
         throw ExitCode.failure
     }
 
