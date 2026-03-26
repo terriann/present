@@ -37,7 +37,7 @@ public final class DatabaseManager: Sendable {
 
     public static func defaultDatabasePath() throws -> String {
         guard let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
-            throw PresentError.invalidInput("Application Support directory unavailable.")
+            throw PresentError.environmentUnavailable("Application Support directory unavailable.")
         }
         let presentDir = appSupport.appendingPathComponent("Present", isDirectory: true)
         try FileManager.default.createDirectory(at: presentDir, withIntermediateDirectories: true)

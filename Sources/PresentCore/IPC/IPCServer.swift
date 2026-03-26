@@ -101,9 +101,7 @@ public final class IPCServer: @unchecked Sendable {
             close(serverFD)
             serverFD = -1
         }
-        if FileManager.default.fileExists(atPath: socketPath) {
-            try? FileManager.default.removeItem(atPath: socketPath)
-        }
+        unlink(socketPath)
     }
 }
 

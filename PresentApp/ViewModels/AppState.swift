@@ -649,8 +649,10 @@ final class AppState {
 
         case .alertSecondButtonReturn:
             // Reveal in Finder, then show the alert again
-            let dbURL = URL(fileURLWithPath: (try? DatabaseManager.defaultDatabasePath()) ?? "").deletingLastPathComponent()
-            NSWorkspace.shared.open(dbURL)
+            if let dbPath = try? DatabaseManager.defaultDatabasePath() {
+                let dbURL = URL(fileURLWithPath: dbPath).deletingLastPathComponent()
+                NSWorkspace.shared.open(dbURL)
+            }
             // Re-show the alert so they can still choose reset or quit
             Self.showDatabaseErrorAndTerminate(error)
 
