@@ -4,8 +4,8 @@ import Foundation
 public struct IPCClient: Sendable {
     private let socketPath: String
 
-    public init(socketPath: String = IPCServer.defaultSocketPath) {
-        self.socketPath = socketPath
+    public init(socketPath: String? = nil) {
+        self.socketPath = socketPath ?? (try? IPCServer.defaultSocketPath()) ?? ""
     }
 
     /// Send a message to the app. Fails silently if the app isn't running.

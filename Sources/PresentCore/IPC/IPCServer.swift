@@ -7,17 +7,17 @@ public final class IPCServer: @unchecked Sendable {
     private let handler: @Sendable (IPCMessage) -> Void
     private var serverFD: Int32 = -1
 
-    public init(socketPath: String? = nil, handler: @escaping @Sendable (IPCMessage) -> Void) {
-        self.socketPath = socketPath ?? IPCServer.defaultSocketPath
+    public init(socketPath: String? = nil, handler: @escaping @Sendable (IPCMessage) -> Void) throws {
+        self.socketPath = try socketPath ?? IPCServer.defaultSocketPath()
         self.handler = handler
     }
 
-    public static var defaultSocketPath: String {
+    public static func defaultSocketPath() throws -> String {
         guard let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
-            fatalError("Application Support directory unavailable")
+            throw IPCError.socketCreationFailed
         }
         let presentDir = appSupport.appendingPathComponent("Present", isDirectory: true)
-        try? FileManager.default.createDirectory(at: presentDir, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: presentDir, withIntermediateDirectories: true)
         return presentDir.appendingPathComponent("present.sock").path
     }
 
@@ -27,10 +27,9 @@ public final class IPCServer: @unchecked Sendable {
             throw IPCError.pathTooLong
         }
 
-        // Clean up existing socket
-        if FileManager.default.fileExists(atPath: socketPath) {
-            try FileManager.default.removeItem(atPath: socketPath)
-        }
+        // Atomically remove any existing socket — avoids TOCTOU race
+        // between fileExists() and removeItem(). Ignores ENOENT if absent.
+        unlink(socketPath)
 
         let fd = socket(AF_UNIX, SOCK_STREAM, 0)
         guard fd >= 0 else {
@@ -69,10 +68,19 @@ public final class IPCServer: @unchecked Sendable {
 
         // Accept connections in background
         let handler = self.handler
+        let myUID = getuid()
         DispatchQueue.global(qos: .utility).async {
             while true {
                 let clientFD = accept(fd, nil, nil)
                 guard clientFD >= 0 else { break }
+
+                // Verify the connecting process runs as the same user
+                var peerUID: uid_t = 0
+                var peerGID: gid_t = 0
+                if getpeereid(clientFD, &peerUID, &peerGID) != 0 || peerUID != myUID {
+                    close(clientFD)
+                    continue
+                }
 
                 var buffer = [UInt8](repeating: 0, count: 4096)
                 let bytesRead = read(clientFD, &buffer, buffer.count)
