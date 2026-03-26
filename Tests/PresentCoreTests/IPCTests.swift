@@ -64,7 +64,7 @@ struct IPCTests {
         let socketPath = "/tmp/p-perms-\(UUID().uuidString).sock"
         defer { try? FileManager.default.removeItem(atPath: socketPath) }
 
-        let server = IPCServer(socketPath: socketPath) { _ in }
+        let server = try IPCServer(socketPath: socketPath) { _ in }
         try server.start()
         defer { server.stop() }
 
@@ -79,7 +79,7 @@ struct IPCTests {
         let socketPath = "/tmp/p-start-\(UUID().uuidString).sock"
         defer { try? FileManager.default.removeItem(atPath: socketPath) }
 
-        let server = IPCServer(socketPath: socketPath) { _ in }
+        let server = try IPCServer(socketPath: socketPath) { _ in }
         try server.start()
         defer { server.stop() }
 
@@ -90,7 +90,7 @@ struct IPCTests {
         let socketPath = "/tmp/p-stop-\(UUID().uuidString).sock"
         defer { try? FileManager.default.removeItem(atPath: socketPath) }
 
-        let server = IPCServer(socketPath: socketPath) { _ in }
+        let server = try IPCServer(socketPath: socketPath) { _ in }
         try server.start()
         #expect(FileManager.default.fileExists(atPath: socketPath))
 
@@ -101,7 +101,7 @@ struct IPCTests {
     @Test func serverDoubleStopIsSafe() throws {
         let socketPath = "/tmp/p-dblstop-\(UUID().uuidString).sock"
 
-        let server = IPCServer(socketPath: socketPath) { _ in }
+        let server = try IPCServer(socketPath: socketPath) { _ in }
         try server.start()
         server.stop()
         // Second stop should not crash or throw
@@ -117,7 +117,7 @@ struct IPCTests {
         FileManager.default.createFile(atPath: socketPath, contents: nil)
         #expect(FileManager.default.fileExists(atPath: socketPath))
 
-        let server = IPCServer(socketPath: socketPath) { _ in }
+        let server = try IPCServer(socketPath: socketPath) { _ in }
         try server.start()
         defer { server.stop() }
 
@@ -125,9 +125,9 @@ struct IPCTests {
         #expect(FileManager.default.fileExists(atPath: socketPath))
     }
 
-    @Test func serverPathTooLongThrows() {
+    @Test func serverPathTooLongThrows() throws {
         let longPath = "/tmp/" + String(repeating: "a", count: 200) + ".sock"
-        let server = IPCServer(socketPath: longPath) { _ in }
+        let server = try IPCServer(socketPath: longPath) { _ in }
         #expect(throws: IPCError.self) {
             try server.start()
         }

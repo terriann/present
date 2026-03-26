@@ -14,7 +14,7 @@ enum CLIServiceFactory {
 
     static func makeService() throws -> PresentService {
         if let override = serviceOverride { return override }
-        let dbManager = try DatabaseManager(path: DatabaseManager.defaultDatabasePath)
+        let dbManager = try DatabaseManager(path: DatabaseManager.defaultDatabasePath())
         return PresentService(databasePool: dbManager.writer)
     }
 }
