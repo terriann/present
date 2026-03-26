@@ -3,10 +3,13 @@ import Foundation
 @testable import PresentCLI
 @testable import PresentCore
 
-/// Integration tests that execute CLI command `run()` methods against an in-memory database.
-/// Verifies service state changes, error handling, and command workflows.
-@Suite("CLI Integration Tests", .serialized)
-struct CLIIntegrationTests {
+/// Parent suite serializing all tests that use CLIServiceFactory.serviceOverride.
+/// Prevents races between integration tests and output format tests.
+@Suite("CLI Service Override Tests", .serialized)
+struct CLIServiceOverrideTests {
+
+    @Suite("CLI Integration Tests")
+    struct IntegrationTests {
 
     private func makeService() throws -> PresentService {
         let dbManager = try DatabaseManager(inMemory: true)
@@ -420,4 +423,5 @@ struct CLIIntegrationTests {
     // calls fatalError when thrown outside ArgumentParser's command runner.
     // These error paths are covered by SessionTypeParsingTests, OutputFormatTests,
     // and CSVEscapingTests instead.
+    }
 }
