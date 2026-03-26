@@ -5,29 +5,31 @@ import Foundation
 
 /// Parent suite serializing all tests that use CLIServiceFactory.serviceOverride.
 /// Prevents races between integration tests and output format tests.
+/// Parent suite serializing all tests that use CLIServiceFactory.serviceOverride.
+/// Prevents races between integration tests and output format tests.
 @Suite("CLI Service Override Tests", .serialized)
 struct CLIServiceOverrideTests {
 
-    @Suite("CLI Integration Tests")
-    struct IntegrationTests {
-
-    private func makeService() throws -> PresentService {
+    static func makeService() throws -> PresentService {
         let dbManager = try DatabaseManager(inMemory: true)
         return PresentService(databasePool: dbManager.writer)
     }
 
     /// Install an in-memory service override, run the closure, then clear it.
-    private func withTestService(_ body: (PresentService) async throws -> Void) async throws {
+    static func withTestService(_ body: (PresentService) async throws -> Void) async throws {
         let service = try makeService()
         CLIServiceFactory.serviceOverride = service
         defer { CLIServiceFactory.serviceOverride = nil }
         try await body(service)
     }
 
+    @Suite("CLI Integration Tests")
+    struct IntegrationTests {
+
     // MARK: - Activity CRUD
 
     @Test func activityAddCreatesActivity() async throws {
-        try await withTestService { service in
+        try await CLIServiceOverrideTests.withTestService { service in
             var cmd = try ActivityAddCommand.parse(["Test Activity"])
             try await cmd.run()
 
@@ -38,7 +40,7 @@ struct CLIServiceOverrideTests {
     }
 
     @Test func activityAddWithOptions() async throws {
-        try await withTestService { service in
+        try await CLIServiceOverrideTests.withTestService { service in
             var cmd = try ActivityAddCommand.parse([
                 "Linked Task", "--link", "https://example.com", "--external-id", "EXT-1"
             ])
@@ -52,7 +54,7 @@ struct CLIServiceOverrideTests {
     }
 
     @Test func activityListReturnsActivities() async throws {
-        try await withTestService { service in
+        try await CLIServiceOverrideTests.withTestService { service in
             _ = try await service.createActivity(CreateActivityInput(title: "Alpha"))
             _ = try await service.createActivity(CreateActivityInput(title: "Beta"))
 
@@ -63,7 +65,7 @@ struct CLIServiceOverrideTests {
     }
 
     @Test func activityGetReturnsActivity() async throws {
-        try await withTestService { service in
+        try await CLIServiceOverrideTests.withTestService { service in
             let activity = try await service.createActivity(CreateActivityInput(title: "Fetch Me"))
             let id = try #require(activity.id)
 
@@ -76,7 +78,7 @@ struct CLIServiceOverrideTests {
     // ArgumentParser's runner. Error paths tested at the service layer instead.
 
     @Test func activityUpdateChangesTitle() async throws {
-        try await withTestService { service in
+        try await CLIServiceOverrideTests.withTestService { service in
             let activity = try await service.createActivity(CreateActivityInput(title: "Old Name"))
             let id = try #require(activity.id)
 
@@ -89,7 +91,7 @@ struct CLIServiceOverrideTests {
     }
 
     @Test func activityArchiveAndUnarchive() async throws {
-        try await withTestService { service in
+        try await CLIServiceOverrideTests.withTestService { service in
             let activity = try await service.createActivity(CreateActivityInput(title: "Archivable"))
             let id = try #require(activity.id)
 
@@ -108,7 +110,7 @@ struct CLIServiceOverrideTests {
     }
 
     @Test func activityDeleteRemovesActivity() async throws {
-        try await withTestService { service in
+        try await CLIServiceOverrideTests.withTestService { service in
             let activity = try await service.createActivity(CreateActivityInput(title: "Deletable"))
             let id = try #require(activity.id)
 
@@ -124,7 +126,7 @@ struct CLIServiceOverrideTests {
     // MARK: - Session Lifecycle
 
     @Test func sessionStartCreatesRunningSession() async throws {
-        try await withTestService { service in
+        try await CLIServiceOverrideTests.withTestService { service in
             _ = try await service.createActivity(CreateActivityInput(title: "Work Task"))
 
             var cmd = try SessionStartCommand.parse(["Work Task"])
@@ -138,7 +140,7 @@ struct CLIServiceOverrideTests {
     }
 
     @Test func sessionStartCreatesActivityIfNeeded() async throws {
-        try await withTestService { service in
+        try await CLIServiceOverrideTests.withTestService { service in
             var cmd = try SessionStartCommand.parse(["Brand New Activity"])
             try await cmd.run()
 
@@ -148,7 +150,7 @@ struct CLIServiceOverrideTests {
     }
 
     @Test func sessionStartWithTypeAndTimer() async throws {
-        try await withTestService { service in
+        try await CLIServiceOverrideTests.withTestService { service in
             var cmd = try SessionStartCommand.parse([
                 "Timed Task", "--type", "timebound", "--minutes", "25"
             ])
@@ -161,7 +163,7 @@ struct CLIServiceOverrideTests {
     }
 
     @Test func sessionStopCompletesSession() async throws {
-        try await withTestService { service in
+        try await CLIServiceOverrideTests.withTestService { service in
             let activity = try await service.createActivity(CreateActivityInput(title: "Stoppable"))
             let activityId = try #require(activity.id)
             _ = try await service.startSession(activityId: activityId, type: .work)
@@ -178,7 +180,7 @@ struct CLIServiceOverrideTests {
     // outside ArgumentParser's runner. Error path tested at the service layer.
 
     @Test func sessionPauseAndResume() async throws {
-        try await withTestService { service in
+        try await CLIServiceOverrideTests.withTestService { service in
             let activity = try await service.createActivity(CreateActivityInput(title: "Pausable"))
             let activityId = try #require(activity.id)
             _ = try await service.startSession(activityId: activityId, type: .work)
@@ -198,7 +200,7 @@ struct CLIServiceOverrideTests {
     }
 
     @Test func sessionCancelDeletesSession() async throws {
-        try await withTestService { service in
+        try await CLIServiceOverrideTests.withTestService { service in
             let activity = try await service.createActivity(CreateActivityInput(title: "Cancellable"))
             let activityId = try #require(activity.id)
             _ = try await service.startSession(activityId: activityId, type: .work)
@@ -212,7 +214,7 @@ struct CLIServiceOverrideTests {
     }
 
     @Test func sessionCurrentStatusWithActiveSession() async throws {
-        try await withTestService { service in
+        try await CLIServiceOverrideTests.withTestService { service in
             let activity = try await service.createActivity(CreateActivityInput(title: "Status Check"))
             let activityId = try #require(activity.id)
             _ = try await service.startSession(activityId: activityId, type: .work)
@@ -223,7 +225,7 @@ struct CLIServiceOverrideTests {
     }
 
     @Test func sessionCurrentStatusWithNoSession() async throws {
-        try await withTestService { _ in
+        try await CLIServiceOverrideTests.withTestService { _ in
             var cmd = try SessionCurrentStatusCommand.parse([])
             try await cmd.run()
         }
@@ -232,7 +234,7 @@ struct CLIServiceOverrideTests {
     // MARK: - Session Add (Backdated)
 
     @Test func sessionAddCreatesCompletedSession() async throws {
-        try await withTestService { service in
+        try await CLIServiceOverrideTests.withTestService { service in
             let activity = try await service.createActivity(CreateActivityInput(title: "Backdated"))
             let actId = try #require(activity.id)
 
@@ -255,7 +257,7 @@ struct CLIServiceOverrideTests {
     // MARK: - Session List
 
     @Test func sessionListWithDateFilter() async throws {
-        try await withTestService { service in
+        try await CLIServiceOverrideTests.withTestService { service in
             let activity = try await service.createActivity(CreateActivityInput(title: "Listed"))
             let actId = try #require(activity.id)
 
@@ -285,7 +287,7 @@ struct CLIServiceOverrideTests {
     // MARK: - Tag CRUD
 
     @Test func tagAddCreatesTag() async throws {
-        try await withTestService { service in
+        try await CLIServiceOverrideTests.withTestService { service in
             var cmd = try TagAddCommand.parse(["urgent"])
             try await cmd.run()
 
@@ -295,7 +297,7 @@ struct CLIServiceOverrideTests {
     }
 
     @Test func tagGetReturnsTag() async throws {
-        try await withTestService { service in
+        try await CLIServiceOverrideTests.withTestService { service in
             let tag = try await service.createTag(name: "important")
             let id = try #require(tag.id)
 
@@ -305,7 +307,7 @@ struct CLIServiceOverrideTests {
     }
 
     @Test func tagUpdateChangesName() async throws {
-        try await withTestService { service in
+        try await CLIServiceOverrideTests.withTestService { service in
             let tag = try await service.createTag(name: "old-name")
             let id = try #require(tag.id)
 
@@ -319,7 +321,7 @@ struct CLIServiceOverrideTests {
     }
 
     @Test func tagDeleteRemovesTag() async throws {
-        try await withTestService { service in
+        try await CLIServiceOverrideTests.withTestService { service in
             let tag = try await service.createTag(name: "deletable")
             let id = try #require(tag.id)
 
@@ -332,7 +334,7 @@ struct CLIServiceOverrideTests {
     }
 
     @Test func tagListReturnsTags() async throws {
-        try await withTestService { service in
+        try await CLIServiceOverrideTests.withTestService { service in
             _ = try await service.createTag(name: "alpha")
             _ = try await service.createTag(name: "beta")
 
@@ -344,7 +346,7 @@ struct CLIServiceOverrideTests {
     // MARK: - Activity Tags
 
     @Test func activityTagAddAndList() async throws {
-        try await withTestService { service in
+        try await CLIServiceOverrideTests.withTestService { service in
             let activity = try await service.createActivity(CreateActivityInput(title: "Tagged"))
             let tag = try await service.createTag(name: "focus")
             let actId = try #require(activity.id)
@@ -362,7 +364,7 @@ struct CLIServiceOverrideTests {
     }
 
     @Test func activityTagRemove() async throws {
-        try await withTestService { service in
+        try await CLIServiceOverrideTests.withTestService { service in
             let activity = try await service.createActivity(CreateActivityInput(title: "Untaggable"))
             let tag = try await service.createTag(name: "remove-me")
             let actId = try #require(activity.id)
@@ -381,14 +383,14 @@ struct CLIServiceOverrideTests {
     // MARK: - Report
 
     @Test func reportRunsWithDefaults() async throws {
-        try await withTestService { _ in
+        try await CLIServiceOverrideTests.withTestService { _ in
             var cmd = try ReportCommand.parse([])
             try await cmd.run()
         }
     }
 
     @Test func reportRunsWithDateRange() async throws {
-        try await withTestService { _ in
+        try await CLIServiceOverrideTests.withTestService { _ in
             var cmd = try ReportCommand.parse(["--after", "2026-01-01", "--before", "2026-01-31"])
             try await cmd.run()
         }
@@ -397,14 +399,14 @@ struct CLIServiceOverrideTests {
     // MARK: - Config
 
     @Test func configListRuns() async throws {
-        try await withTestService { _ in
+        try await CLIServiceOverrideTests.withTestService { _ in
             var cmd = try ConfigListCommand.parse([])
             try await cmd.run()
         }
     }
 
     @Test func configSetAndGet() async throws {
-        try await withTestService { service in
+        try await CLIServiceOverrideTests.withTestService { service in
             var setCmd = try ConfigSetCommand.parse(["soundEffectsEnabled", "0"])
             try await setCmd.run()
 

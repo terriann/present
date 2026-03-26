@@ -13,22 +13,10 @@ extension CLIServiceOverrideTests {
     @Suite("CLI Output Format Tests")
     struct OutputFormatTests {
 
-        private func makeService() throws -> PresentService {
-            let dbManager = try DatabaseManager(inMemory: true)
-            return PresentService(databasePool: dbManager.writer)
-        }
-
-        private func withTestService(_ body: (PresentService) async throws -> Void) async throws {
-            let service = try makeService()
-            CLIServiceFactory.serviceOverride = service
-            defer { CLIServiceFactory.serviceOverride = nil }
-            try await body(service)
-        }
-
     // MARK: - Activity List
 
     @Test func activityListJSON() async throws {
-        try await withTestService { service in
+        try await CLIServiceOverrideTests.withTestService { service in
             _ = try await service.createActivity(CreateActivityInput(title: "Alpha"))
             _ = try await service.createActivity(CreateActivityInput(title: "Beta"))
 
@@ -52,7 +40,7 @@ extension CLIServiceOverrideTests {
     }
 
     @Test func activityListText() async throws {
-        try await withTestService { service in
+        try await CLIServiceOverrideTests.withTestService { service in
             _ = try await service.createActivity(CreateActivityInput(title: "Text Test"))
 
             let output = try await captureStdout {
@@ -65,7 +53,7 @@ extension CLIServiceOverrideTests {
     }
 
     @Test func activityListCSV() async throws {
-        try await withTestService { service in
+        try await CLIServiceOverrideTests.withTestService { service in
             _ = try await service.createActivity(CreateActivityInput(title: "CSV Test"))
 
             let output = try await captureStdout {
@@ -81,7 +69,7 @@ extension CLIServiceOverrideTests {
     }
 
     @Test func activityListCSVEscapesSpecialCharacters() async throws {
-        try await withTestService { service in
+        try await CLIServiceOverrideTests.withTestService { service in
             _ = try await service.createActivity(CreateActivityInput(
                 title: "Say \"hello\", world"
             ))
@@ -99,7 +87,7 @@ extension CLIServiceOverrideTests {
     // MARK: - Activity Get with --field
 
     @Test func activityGetFieldExtractsTitle() async throws {
-        try await withTestService { service in
+        try await CLIServiceOverrideTests.withTestService { service in
             let activity = try await service.createActivity(CreateActivityInput(title: "Field Test"))
             let id = try #require(activity.id)
 
@@ -113,7 +101,7 @@ extension CLIServiceOverrideTests {
     }
 
     @Test func activityGetFieldExtractsId() async throws {
-        try await withTestService { service in
+        try await CLIServiceOverrideTests.withTestService { service in
             let activity = try await service.createActivity(CreateActivityInput(title: "ID Test"))
             let id = try #require(activity.id)
 
@@ -129,7 +117,7 @@ extension CLIServiceOverrideTests {
     // MARK: - Session Current Status
 
     @Test func sessionCurrentStatusJSON() async throws {
-        try await withTestService { service in
+        try await CLIServiceOverrideTests.withTestService { service in
             let activity = try await service.createActivity(CreateActivityInput(title: "Status JSON"))
             let actId = try #require(activity.id)
             _ = try await service.startSession(activityId: actId, type: .work)
@@ -149,7 +137,7 @@ extension CLIServiceOverrideTests {
     }
 
     @Test func sessionCurrentStatusText() async throws {
-        try await withTestService { service in
+        try await CLIServiceOverrideTests.withTestService { service in
             let activity = try await service.createActivity(CreateActivityInput(title: "Status Text"))
             let actId = try #require(activity.id)
             _ = try await service.startSession(activityId: actId, type: .work)
@@ -166,7 +154,7 @@ extension CLIServiceOverrideTests {
     }
 
     @Test func sessionCurrentStatusNoSessionJSON() async throws {
-        try await withTestService { _ in
+        try await CLIServiceOverrideTests.withTestService { _ in
             let output = try await captureStdout {
                 var cmd = try SessionCurrentStatusCommand.parse(["-f", "json"])
                 try await cmd.run()
@@ -180,7 +168,7 @@ extension CLIServiceOverrideTests {
     }
 
     @Test func sessionCurrentStatusNoSessionText() async throws {
-        try await withTestService { _ in
+        try await CLIServiceOverrideTests.withTestService { _ in
             let output = try await captureStdout {
                 var cmd = try SessionCurrentStatusCommand.parse(["-f", "text"])
                 try await cmd.run()
@@ -193,10 +181,10 @@ extension CLIServiceOverrideTests {
     // MARK: - Session List
 
     @Test func sessionListJSON() async throws {
-        try await withTestService { service in
+        try await CLIServiceOverrideTests.withTestService { service in
             let activity = try await service.createActivity(CreateActivityInput(title: "List JSON"))
             let actId = try #require(activity.id)
-            let session = try await service.startSession(activityId: actId, type: .work)
+            _ = try await service.startSession(activityId: actId, type: .work)
             _ = try await service.stopSession()
 
             let today = DateFormatter()
@@ -220,10 +208,10 @@ extension CLIServiceOverrideTests {
     }
 
     @Test func sessionListCSV() async throws {
-        try await withTestService { service in
+        try await CLIServiceOverrideTests.withTestService { service in
             let activity = try await service.createActivity(CreateActivityInput(title: "List CSV"))
             let actId = try #require(activity.id)
-            let session = try await service.startSession(activityId: actId, type: .work)
+            _ = try await service.startSession(activityId: actId, type: .work)
             _ = try await service.stopSession()
 
             let today = DateFormatter()
@@ -244,7 +232,7 @@ extension CLIServiceOverrideTests {
     // MARK: - Report
 
     @Test func reportJSON() async throws {
-        try await withTestService { _ in
+        try await CLIServiceOverrideTests.withTestService { _ in
             let output = try await captureStdout {
                 var cmd = try ReportCommand.parse(["-f", "json"])
                 try await cmd.run()
@@ -260,7 +248,7 @@ extension CLIServiceOverrideTests {
     }
 
     @Test func reportCSV() async throws {
-        try await withTestService { service in
+        try await CLIServiceOverrideTests.withTestService { service in
             let activity = try await service.createActivity(CreateActivityInput(title: "Report CSV"))
             let actId = try #require(activity.id)
             let now = Date()
@@ -288,7 +276,7 @@ extension CLIServiceOverrideTests {
     // MARK: - Tag List
 
     @Test func tagListJSON() async throws {
-        try await withTestService { service in
+        try await CLIServiceOverrideTests.withTestService { service in
             _ = try await service.createTag(name: "json-tag")
 
             let output = try await captureStdout {
@@ -304,7 +292,7 @@ extension CLIServiceOverrideTests {
     }
 
     @Test func tagListCSV() async throws {
-        try await withTestService { service in
+        try await CLIServiceOverrideTests.withTestService { service in
             _ = try await service.createTag(name: "csv-tag")
 
             let output = try await captureStdout {
@@ -321,7 +309,7 @@ extension CLIServiceOverrideTests {
     // MARK: - Config List
 
     @Test func configListJSON() async throws {
-        try await withTestService { _ in
+        try await CLIServiceOverrideTests.withTestService { _ in
             let output = try await captureStdout {
                 var cmd = try ConfigListCommand.parse(["-f", "json"])
                 try await cmd.run()
@@ -337,7 +325,7 @@ extension CLIServiceOverrideTests {
     }
 
     @Test func configListCSV() async throws {
-        try await withTestService { _ in
+        try await CLIServiceOverrideTests.withTestService { _ in
             let output = try await captureStdout {
                 var cmd = try ConfigListCommand.parse(["-f", "csv"])
                 try await cmd.run()
