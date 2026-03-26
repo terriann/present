@@ -62,7 +62,7 @@ struct CLIIntegrationTests {
     @Test func activityGetReturnsActivity() async throws {
         try await withTestService { service in
             let activity = try await service.createActivity(CreateActivityInput(title: "Fetch Me"))
-            guard let id = activity.id else { return }
+            let id = try #require(activity.id)
 
             var cmd = try ActivityGetCommand.parse(["\(id)"])
             try await cmd.run()
@@ -75,7 +75,7 @@ struct CLIIntegrationTests {
     @Test func activityUpdateChangesTitle() async throws {
         try await withTestService { service in
             let activity = try await service.createActivity(CreateActivityInput(title: "Old Name"))
-            guard let id = activity.id else { return }
+            let id = try #require(activity.id)
 
             var cmd = try ActivityUpdateCommand.parse(["\(id)", "--title", "New Name"])
             try await cmd.run()
@@ -88,7 +88,7 @@ struct CLIIntegrationTests {
     @Test func activityArchiveAndUnarchive() async throws {
         try await withTestService { service in
             let activity = try await service.createActivity(CreateActivityInput(title: "Archivable"))
-            guard let id = activity.id else { return }
+            let id = try #require(activity.id)
 
             var archiveCmd = try ActivityArchiveCommand.parse(["\(id)", "--force"])
             try await archiveCmd.run()
@@ -107,7 +107,7 @@ struct CLIIntegrationTests {
     @Test func activityDeleteRemovesActivity() async throws {
         try await withTestService { service in
             let activity = try await service.createActivity(CreateActivityInput(title: "Deletable"))
-            guard let id = activity.id else { return }
+            let id = try #require(activity.id)
 
             var cmd = try ActivityDeleteCommand.parse(["\(id)"])
             try await cmd.run()
@@ -160,7 +160,8 @@ struct CLIIntegrationTests {
     @Test func sessionStopCompletesSession() async throws {
         try await withTestService { service in
             let activity = try await service.createActivity(CreateActivityInput(title: "Stoppable"))
-            _ = try await service.startSession(activityId: activity.id!, type: .work)
+            let activityId = try #require(activity.id)
+            _ = try await service.startSession(activityId: activityId, type: .work)
 
             var cmd = try SessionStopCommand.parse([])
             try await cmd.run()
@@ -176,7 +177,8 @@ struct CLIIntegrationTests {
     @Test func sessionPauseAndResume() async throws {
         try await withTestService { service in
             let activity = try await service.createActivity(CreateActivityInput(title: "Pausable"))
-            _ = try await service.startSession(activityId: activity.id!, type: .work)
+            let activityId = try #require(activity.id)
+            _ = try await service.startSession(activityId: activityId, type: .work)
 
             var pauseCmd = try SessionPauseCommand.parse([])
             try await pauseCmd.run()
@@ -195,7 +197,8 @@ struct CLIIntegrationTests {
     @Test func sessionCancelDeletesSession() async throws {
         try await withTestService { service in
             let activity = try await service.createActivity(CreateActivityInput(title: "Cancellable"))
-            _ = try await service.startSession(activityId: activity.id!, type: .work)
+            let activityId = try #require(activity.id)
+            _ = try await service.startSession(activityId: activityId, type: .work)
 
             var cmd = try SessionCancelCommand.parse([])
             try await cmd.run()
@@ -208,7 +211,8 @@ struct CLIIntegrationTests {
     @Test func sessionCurrentStatusWithActiveSession() async throws {
         try await withTestService { service in
             let activity = try await service.createActivity(CreateActivityInput(title: "Status Check"))
-            _ = try await service.startSession(activityId: activity.id!, type: .work)
+            let activityId = try #require(activity.id)
+            _ = try await service.startSession(activityId: activityId, type: .work)
 
             var cmd = try SessionCurrentStatusCommand.parse([])
             try await cmd.run()
@@ -227,7 +231,7 @@ struct CLIIntegrationTests {
     @Test func sessionAddCreatesCompletedSession() async throws {
         try await withTestService { service in
             let activity = try await service.createActivity(CreateActivityInput(title: "Backdated"))
-            guard let actId = activity.id else { return }
+            let actId = try #require(activity.id)
 
             var cmd = try SessionAddCommand.parse([
                 "\(actId)",
@@ -250,14 +254,17 @@ struct CLIIntegrationTests {
     @Test func sessionListWithDateFilter() async throws {
         try await withTestService { service in
             let activity = try await service.createActivity(CreateActivityInput(title: "Listed"))
-            guard let actId = activity.id else { return }
+            let actId = try #require(activity.id)
 
             // Create a backdated session
+            let now = Date()
+            let startedAt = try #require(Calendar.current.date(byAdding: .hour, value: -2, to: now))
+            let endedAt = try #require(Calendar.current.date(byAdding: .hour, value: -1, to: now))
             _ = try await service.createBackdatedSession(CreateBackdatedSessionInput(
                 activityId: actId,
                 sessionType: .work,
-                startedAt: Calendar.current.date(byAdding: .hour, value: -2, to: Date())!,
-                endedAt: Calendar.current.date(byAdding: .hour, value: -1, to: Date())!
+                startedAt: startedAt,
+                endedAt: endedAt
             ))
 
             let today = Date()
@@ -287,7 +294,7 @@ struct CLIIntegrationTests {
     @Test func tagGetReturnsTag() async throws {
         try await withTestService { service in
             let tag = try await service.createTag(name: "important")
-            guard let id = tag.id else { return }
+            let id = try #require(tag.id)
 
             var cmd = try TagGetCommand.parse(["\(id)"])
             try await cmd.run()
@@ -297,7 +304,7 @@ struct CLIIntegrationTests {
     @Test func tagUpdateChangesName() async throws {
         try await withTestService { service in
             let tag = try await service.createTag(name: "old-name")
-            guard let id = tag.id else { return }
+            let id = try #require(tag.id)
 
             var cmd = try TagUpdateCommand.parse(["\(id)", "--name", "new-name"])
             try await cmd.run()
@@ -311,7 +318,7 @@ struct CLIIntegrationTests {
     @Test func tagDeleteRemovesTag() async throws {
         try await withTestService { service in
             let tag = try await service.createTag(name: "deletable")
-            guard let id = tag.id else { return }
+            let id = try #require(tag.id)
 
             var cmd = try TagDeleteCommand.parse(["\(id)"])
             try await cmd.run()
@@ -337,7 +344,8 @@ struct CLIIntegrationTests {
         try await withTestService { service in
             let activity = try await service.createActivity(CreateActivityInput(title: "Tagged"))
             let tag = try await service.createTag(name: "focus")
-            guard let actId = activity.id, let tagId = tag.id else { return }
+            let actId = try #require(activity.id)
+            let tagId = try #require(tag.id)
 
             var addCmd = try ActivityTagAddCommand.parse(["\(actId)", "\(tagId)"])
             try await addCmd.run()
@@ -354,7 +362,8 @@ struct CLIIntegrationTests {
         try await withTestService { service in
             let activity = try await service.createActivity(CreateActivityInput(title: "Untaggable"))
             let tag = try await service.createTag(name: "remove-me")
-            guard let actId = activity.id, let tagId = tag.id else { return }
+            let actId = try #require(activity.id)
+            let tagId = try #require(tag.id)
 
             try await service.tagActivity(activityId: actId, tagId: tagId)
 
