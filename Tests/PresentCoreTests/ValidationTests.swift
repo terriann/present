@@ -135,9 +135,8 @@ struct ValidationTests {
     // MARK: - validatePreferenceKey()
 
     @Test func validateKnownPreferenceKey() throws {
-        if let firstKey = Validation.knownPreferenceKeys.first {
-            try Validation.validatePreferenceKey(firstKey)
-        }
+        let firstKey = try #require(Validation.knownPreferenceKeys.first)
+        try Validation.validatePreferenceKey(firstKey)
     }
 
     @Test func validateUnknownPreferenceKeyThrows() {

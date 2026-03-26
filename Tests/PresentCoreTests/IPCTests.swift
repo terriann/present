@@ -88,6 +88,7 @@ struct IPCTests {
 
     @Test func serverStopRemovesSocket() throws {
         let socketPath = "/tmp/p-stop-\(UUID().uuidString).sock"
+        defer { try? FileManager.default.removeItem(atPath: socketPath) }
 
         let server = IPCServer(socketPath: socketPath) { _ in }
         try server.start()
