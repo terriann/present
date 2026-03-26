@@ -73,6 +73,65 @@ struct IPCTests {
         #expect(perms == 0o600)
     }
 
+    // MARK: - Server Lifecycle
+
+    @Test func serverStartCreatesSocket() throws {
+        let socketPath = "/tmp/p-start-\(UUID().uuidString).sock"
+        defer { try? FileManager.default.removeItem(atPath: socketPath) }
+
+        let server = IPCServer(socketPath: socketPath) { _ in }
+        try server.start()
+        defer { server.stop() }
+
+        #expect(FileManager.default.fileExists(atPath: socketPath))
+    }
+
+    @Test func serverStopRemovesSocket() throws {
+        let socketPath = "/tmp/p-stop-\(UUID().uuidString).sock"
+
+        let server = IPCServer(socketPath: socketPath) { _ in }
+        try server.start()
+        #expect(FileManager.default.fileExists(atPath: socketPath))
+
+        server.stop()
+        #expect(!FileManager.default.fileExists(atPath: socketPath))
+    }
+
+    @Test func serverDoubleStopIsSafe() throws {
+        let socketPath = "/tmp/p-dblstop-\(UUID().uuidString).sock"
+
+        let server = IPCServer(socketPath: socketPath) { _ in }
+        try server.start()
+        server.stop()
+        // Second stop should not crash or throw
+        server.stop()
+        #expect(!FileManager.default.fileExists(atPath: socketPath))
+    }
+
+    @Test func serverStartCleansUpExistingSocket() throws {
+        let socketPath = "/tmp/p-cleanup-\(UUID().uuidString).sock"
+        defer { try? FileManager.default.removeItem(atPath: socketPath) }
+
+        // Create a stale socket file
+        FileManager.default.createFile(atPath: socketPath, contents: nil)
+        #expect(FileManager.default.fileExists(atPath: socketPath))
+
+        let server = IPCServer(socketPath: socketPath) { _ in }
+        try server.start()
+        defer { server.stop() }
+
+        // Server should have replaced the stale file with a real socket
+        #expect(FileManager.default.fileExists(atPath: socketPath))
+    }
+
+    @Test func serverPathTooLongThrows() {
+        let longPath = "/tmp/" + String(repeating: "a", count: 200) + ".sock"
+        let server = IPCServer(socketPath: longPath) { _ in }
+        #expect(throws: IPCError.self) {
+            try server.start()
+        }
+    }
+
     // MARK: - Client Fails Silently
 
     @Test func clientFailsSilentlyWhenNoServer() {
