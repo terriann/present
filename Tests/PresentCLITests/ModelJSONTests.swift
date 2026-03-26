@@ -81,6 +81,7 @@ struct ModelJSONTests {
         )
         let dict = session.toJSONDict()
 
+        // Sessions use "sessionId" at top level (not "id") to avoid ambiguity with nested activity IDs
         #expect(dict["sessionId"] as? Int64 == 99)
         #expect(dict["type"] as? String == "work")
         #expect(dict["state"] as? String == "running")
