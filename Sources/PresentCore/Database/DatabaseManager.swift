@@ -10,6 +10,20 @@ public final class DatabaseManager: Sendable {
         let pool = try DatabasePool(path: path, configuration: config)
         self.writer = pool
         try Self.migrate(pool)
+
+        // Restrict database files to owner-only access (0600)
+        Self.setRestrictivePermissions(path)
+    }
+
+    /// Set 0600 permissions on the database file and its WAL/SHM companions.
+    private static func setRestrictivePermissions(_ path: String) {
+        let fm = FileManager.default
+        for suffix in ["", "-wal", "-shm"] {
+            let filePath = path + suffix
+            if fm.fileExists(atPath: filePath) {
+                try? fm.setAttributes([.posixPermissions: 0o600], ofItemAtPath: filePath)
+            }
+        }
     }
 
     /// In-memory database for testing
@@ -21,12 +35,12 @@ public final class DatabaseManager: Sendable {
         try Self.migrate(queue)
     }
 
-    public static var defaultDatabasePath: String {
+    public static func defaultDatabasePath() throws -> String {
         guard let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
-            fatalError("Application Support directory unavailable")
+            throw PresentError.environmentUnavailable("Application Support directory unavailable.")
         }
         let presentDir = appSupport.appendingPathComponent("Present", isDirectory: true)
-        try? FileManager.default.createDirectory(at: presentDir, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: presentDir, withIntermediateDirectories: true)
         return presentDir.appendingPathComponent("present.sqlite").path
     }
 

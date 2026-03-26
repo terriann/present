@@ -136,7 +136,7 @@ final class AppState {
 
     init() {
         do {
-            dbManager = try DatabaseManager(path: DatabaseManager.defaultDatabasePath)
+            dbManager = try DatabaseManager(path: DatabaseManager.defaultDatabasePath())
         } catch {
             Self.showDatabaseErrorAndTerminate(error)
         }
@@ -622,7 +622,7 @@ final class AppState {
             You can reset the database to start fresh (all existing data will be lost), or quit and investigate manually.
 
             Error: \(error.localizedDescription)
-            Location: \(DatabaseManager.defaultDatabasePath)
+            Location: \((try? DatabaseManager.defaultDatabasePath()) ?? "unknown")
             """
         alert.alertStyle = .critical
         alert.addButton(withTitle: "Reset and Relaunch")
@@ -634,7 +634,7 @@ final class AppState {
         switch response {
         case .alertFirstButtonReturn:
             // Reset: remove database files and relaunch
-            let path = DatabaseManager.defaultDatabasePath
+            guard let path = try? DatabaseManager.defaultDatabasePath() else { exit(1) }
             let fm = FileManager.default
             for suffix in ["", "-wal", "-shm"] {
                 try? fm.removeItem(atPath: path + suffix)
@@ -649,8 +649,10 @@ final class AppState {
 
         case .alertSecondButtonReturn:
             // Reveal in Finder, then show the alert again
-            let dbURL = URL(fileURLWithPath: DatabaseManager.defaultDatabasePath).deletingLastPathComponent()
-            NSWorkspace.shared.open(dbURL)
+            if let dbPath = try? DatabaseManager.defaultDatabasePath() {
+                let dbURL = URL(fileURLWithPath: dbPath).deletingLastPathComponent()
+                NSWorkspace.shared.open(dbURL)
+            }
             // Re-show the alert so they can still choose reset or quit
             Self.showDatabaseErrorAndTerminate(error)
 

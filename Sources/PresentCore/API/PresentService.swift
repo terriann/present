@@ -18,6 +18,7 @@ public enum PresentError: Error, LocalizedError, Sendable {
     case sessionOverlap
     case cannotModifySystemActivity
     case rhythmNotAllowedForSystemActivity
+    case environmentUnavailable(String)
 
     public var errorDescription: String? {
         switch self {
@@ -36,6 +37,7 @@ public enum PresentError: Error, LocalizedError, Sendable {
         case .sessionOverlap: "Session overlaps with an existing session."
         case .cannotModifySystemActivity: "System activities cannot be modified or deleted."
         case .rhythmNotAllowedForSystemActivity: "Rhythm sessions cannot be started on system activities. Use a work or timebound session instead."
+        case .environmentUnavailable(let msg): msg
         }
     }
 }

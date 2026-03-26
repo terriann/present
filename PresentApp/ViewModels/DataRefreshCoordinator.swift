@@ -218,12 +218,12 @@ final class DataRefreshCoordinator {
     // MARK: - IPC
 
     func startIPCServer() {
-        ipcServer = IPCServer { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.scheduleRefresh()
-            }
-        }
         do {
+            ipcServer = try IPCServer { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    self?.scheduleRefresh()
+                }
+            }
             try ipcServer?.start()
         } catch {
             Self.logger.error("IPC server failed to start: \(error.localizedDescription, privacy: .public)")
