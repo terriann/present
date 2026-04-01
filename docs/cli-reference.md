@@ -238,7 +238,12 @@ $ present-cli activity get 1 -f text
 
 List activities.
 
-Lists all activities, including archived ones. Use the output format options to control how results are displayed.
+Lists all activities, including archived ones. Results are paginated (max 100 per page).
+
+**Options**
+
+`[--page=<page>]`
+: Page number (1-indexed, max 100 results per page). Default: `1`.
 
 **Flags**
 
@@ -248,7 +253,7 @@ Lists all activities, including archived ones. Use the output format options to 
 **Examples**
 
 ```bash
-# List all activities as JSON (default)
+# List activities as JSON (default, page 1)
 $ present-cli activity list
 
 # List in text format
@@ -256,6 +261,9 @@ $ present-cli activity list -f text
 
 # Export as CSV
 $ present-cli activity list -f csv
+
+# Get page 2
+$ present-cli activity list --page 2
 ```
 
 **Global Options**
@@ -1108,6 +1116,8 @@ $ present-cli session get 42 -f text
 List sessions with filters.
 
 List and filter sessions by date range, type, or activity name. Results are paginated (max 100 per page). All filters are optional and can be combined.
+
+When no date filter is provided, defaults to the last 30 days. Use --after and --before for a custom range.
 
 Dates use YYYY-MM-DD format and are inclusive on both ends.
 
