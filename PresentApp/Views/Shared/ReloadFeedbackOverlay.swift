@@ -13,10 +13,12 @@ struct ReloadFeedbackOverlay: ViewModifier {
                 HStack(spacing: Constants.spacingCompact) {
                     Image(systemName: "arrow.clockwise")
                         .font(.controlIconSmall)
+                        .accessibilityHidden(true)
                     Text("Data reloaded")
                         .font(.caption)
                         .fontWeight(.medium)
                 }
+                .accessibilityLabel("Data reloaded")
                 .padding(.horizontal, Constants.spacingCard)
                 .padding(.vertical, Constants.spacingTight)
                 .background(.ultraThinMaterial, in: Capsule())

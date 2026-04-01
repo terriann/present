@@ -212,10 +212,10 @@ final class AppState {
         dataRefresh.restartObservations()
         await refreshAll()
 
-        // Brief visual feedback
+        // Brief visual feedback — defer ensures state resets even if cancelled
         isShowingReloadFeedback = true
-        try? await Task.sleep(for: .milliseconds(600))
-        isShowingReloadFeedback = false
+        defer { isShowingReloadFeedback = false }
+        try? await Task.sleep(for: .milliseconds(Constants.reloadFeedbackDurationMs))
     }
 
     // MARK: - Session Actions

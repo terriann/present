@@ -86,6 +86,11 @@ public enum Constants {
     /// Milliseconds between pulse animation state updates (~6.7fps).
     public static let activePulseInterval: Int = 150
 
+    // MARK: - Feedback
+
+    /// Duration (milliseconds) the "Data reloaded" feedback overlay is shown after Command+R.
+    public static let reloadFeedbackDurationMs: Int = 600
+
     // MARK: - Inline Editing
 
     /// Debounce delay (milliseconds) for batching inline time field changes into a single save.
