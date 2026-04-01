@@ -46,6 +46,7 @@ struct PresentApp: App {
                 .environment(themeManager)
                 .tint(themeManager.accent)
                 .preferredColorScheme(themeManager.preferredColorScheme)
+                .reloadFeedback(isVisible: appState.isShowingReloadFeedback)
                 .modifier(ErrorAlertModifier(appState: appState, scene: .mainWindow))
                 .onAppear {
                     appState.showDockIcon(true)
@@ -66,6 +67,12 @@ struct PresentApp: App {
         .defaultLaunchBehavior(.suppressed)
         .defaultSize(width: 900, height: 600)
         .commands {
+            CommandGroup(after: .toolbar) {
+                Button("Reload Data") {
+                    Task { await appState.forceReload() }
+                }
+                .keyboardShortcut("r", modifiers: .command)
+            }
             CommandGroup(before: .toolbar) {
                 Button("Zoom In") { appState.zoomIn() }
                     .keyboardShortcut("+", modifiers: .command)

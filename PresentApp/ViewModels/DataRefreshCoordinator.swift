@@ -130,6 +130,12 @@ final class DataRefreshCoordinator {
     /// Each detected change is debounced (100ms) before triggering a refresh,
     /// so rapid mutations (e.g. stop session = segment + session update)
     /// collapse into a single refresh cycle.
+    /// Cancel and restart all database observations. Used by force-reload (Command+R).
+    func restartObservations() {
+        observationTask?.cancel()
+        startObservations()
+    }
+
     func startObservations() {
         let stream = changeNotifier.changes(tracking: Self.trackedTables)
 
