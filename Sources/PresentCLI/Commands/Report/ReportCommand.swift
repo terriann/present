@@ -72,9 +72,17 @@ struct ReportCommand: AsyncParsableCommand {
 
         // Include active/paused session if it falls within the date range
         var hasActiveSession = false
+        let now = Date()
         if let (session, activity) = try await service.currentSession() {
-            if session.startedAt < toDate && (session.endedAt ?? Date()) > fromDate {
-                let elapsed = Int(Date().timeIntervalSince(session.startedAt)) - session.totalPausedSeconds
+            if session.startedAt < toDate && (session.endedAt ?? now) > fromDate {
+                // Wall clock minus completed pauses. If currently paused, also subtract
+                // time since the current pause began (totalPausedSeconds only reflects
+                // completed pause intervals).
+                var elapsed = Int(now.timeIntervalSince(session.startedAt)) - session.totalPausedSeconds
+                if session.state == .paused, let pausedAt = session.lastPausedAt {
+                    elapsed -= Int(now.timeIntervalSince(pausedAt))
+                }
+                elapsed = max(0, elapsed)
                 hasActiveSession = true
 
                 if let idx = activities.firstIndex(where: { $0.activity.id == activity.id }) {

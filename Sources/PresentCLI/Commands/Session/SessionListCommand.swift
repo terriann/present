@@ -120,7 +120,7 @@ struct SessionListCommand: AsyncParsableCommand {
         // Paginate
         let pageSize = 100
         guard page >= 1 else {
-            print("Page number must be at least 1.")
+            CLIError.print("Page number must be at least 1.")
             throw ExitCode.failure
         }
         let validPage = page
@@ -129,7 +129,7 @@ struct SessionListCommand: AsyncParsableCommand {
         let totalPages = max(1, (totalCount + pageSize - 1) / pageSize)
 
         guard startIndex < totalCount || totalCount == 0 else {
-            print("Page \(validPage) is out of range. Total pages: \(totalPages).")
+            CLIError.print("Page \(validPage) is out of range. Total pages: \(totalPages).")
             throw ExitCode.failure
         }
 
