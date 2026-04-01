@@ -10,7 +10,7 @@ public protocol PresentAPI: Sendable {
     func currentSession() async throws -> (Session, Activity)?
     func getSession(id: Int64) async throws -> (Session, Activity)
     func createBackdatedSession(_ input: CreateBackdatedSessionInput) async throws -> Session
-    func listSessions(from: Date, to: Date, type: SessionType?, activityId: Int64?, includeArchived: Bool, query: String?) async throws -> [(Session, Activity)]
+    func listSessions(from: Date, to: Date, type: SessionType?, activityId: Int64?, includeArchived: Bool, includeActive: Bool, query: String?) async throws -> [(Session, Activity)]
     func lastCompletedSession(since: Date) async throws -> (Session, Activity)?
     func lastCompletedNonSystemSession(since: Date) async throws -> (Session, Activity)?
     func datesWithSessions(from: Date, to: Date) async throws -> Set<Date>
@@ -89,8 +89,8 @@ public extension PresentAPI {
         try await switchSession(to: activityId, type: type, timerMinutes: timerMinutes, breakMinutes: breakMinutes)
     }
 
-    func listSessions(from: Date, to: Date, type: SessionType? = nil, activityId: Int64? = nil, includeArchived: Bool = true) async throws -> [(Session, Activity)] {
-        try await listSessions(from: from, to: to, type: type, activityId: activityId, includeArchived: includeArchived, query: nil)
+    func listSessions(from: Date, to: Date, type: SessionType? = nil, activityId: Int64? = nil, includeArchived: Bool = true, includeActive: Bool = false) async throws -> [(Session, Activity)] {
+        try await listSessions(from: from, to: to, type: type, activityId: activityId, includeArchived: includeArchived, includeActive: includeActive, query: nil)
     }
 
     func archiveActivity(id: Int64) async throws -> ArchiveResult {

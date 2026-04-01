@@ -774,7 +774,7 @@ public final class PresentService: PresentAPI, Sendable {
         }
     }
 
-    public func listSessions(from startDate: Date, to endDate: Date, type: SessionType? = nil, activityId: Int64? = nil, includeArchived: Bool = true, query: String? = nil) async throws -> [(Session, Activity)] {
+    public func listSessions(from startDate: Date, to endDate: Date, type: SessionType? = nil, activityId: Int64? = nil, includeArchived: Bool = true, includeActive: Bool = false, query: String? = nil) async throws -> [(Session, Activity)] {
         // Validate query if provided
         if let query, !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             _ = try Validation.sanitize(query, fieldName: "Search query", maxLength: Constants.maxSearchQueryLength)
@@ -787,12 +787,14 @@ public final class PresentService: PresentAPI, Sendable {
                 : Session.activity.filter(Activity.Columns.isArchived == false)
 
             // Overlap: session started before range end AND ended after range start (or still running)
-            let closedRaw = SessionState.closedStateRawValues
+            let stateFilter = includeActive
+                ? SessionState.allCases.map(\.rawValue)
+                : SessionState.closedStateRawValues
             var request = Session
                 .including(required: activityAssoc)
                 .filter(Session.Columns.startedAt < endDate)
                 .filter(Session.Columns.endedAt > startDate || Session.Columns.endedAt == nil)
-                .filter(closedRaw.contains(Session.Columns.state))
+                .filter(stateFilter.contains(Session.Columns.state))
                 .order(Session.Columns.startedAt.desc)
 
             if let type {

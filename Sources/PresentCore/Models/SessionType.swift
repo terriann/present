@@ -6,7 +6,7 @@ public enum SessionType: String, Codable, Sendable, CaseIterable {
     case timebound
 }
 
-public enum SessionState: String, Codable, Sendable {
+public enum SessionState: String, Codable, Sendable, CaseIterable {
     case running
     case paused
     case completed
