@@ -68,7 +68,38 @@ struct ReportCommand: AsyncParsableCommand {
         }
 
         let service = try CLIServiceFactory.makeService()
-        let activities = try await service.activitySummary(from: fromDate, to: toDate, includeArchived: true)
+        var activities = try await service.activitySummary(from: fromDate, to: toDate, includeArchived: true)
+
+        // Include active/paused session if it falls within the date range
+        var hasActiveSession = false
+        let now = Date()
+        if let (session, activity) = try await service.currentSession() {
+            if session.startedAt < toDate && (session.endedAt ?? now) > fromDate {
+                // Wall clock minus completed pauses. If currently paused, also subtract
+                // time since the current pause began (totalPausedSeconds only reflects
+                // completed pause intervals).
+                var elapsed = Int(now.timeIntervalSince(session.startedAt)) - session.totalPausedSeconds
+                if session.state == .paused, let pausedAt = session.lastPausedAt {
+                    elapsed -= Int(now.timeIntervalSince(pausedAt))
+                }
+                elapsed = max(0, elapsed)
+                hasActiveSession = true
+
+                if let idx = activities.firstIndex(where: { $0.activity.id == activity.id }) {
+                    activities[idx] = ActivitySummary(
+                        activity: activities[idx].activity,
+                        totalSeconds: activities[idx].totalSeconds + elapsed,
+                        sessionCount: activities[idx].sessionCount + 1
+                    )
+                } else {
+                    activities.append(ActivitySummary(
+                        activity: activity,
+                        totalSeconds: elapsed,
+                        sessionCount: 1
+                    ))
+                }
+            }
+        }
 
         let totalSeconds = activities.reduce(0) { $0 + $1.totalSeconds }
         let sessionCount = activities.reduce(0) { $0 + $1.sessionCount }
@@ -83,13 +114,16 @@ struct ReportCommand: AsyncParsableCommand {
 
         switch outputOptions.format {
         case .json:
-            let dict: [String: Any] = [
+            var dict: [String: Any] = [
                 "from": fromStr,
                 "to": toStr,
                 "totalSeconds": totalSeconds,
                 "sessionCount": sessionCount,
                 "activities": activities.map { $0.toJSONDict() },
             ]
+            if hasActiveSession {
+                dict["includesActiveSession"] = true
+            }
             try outputOptions.printJSON(dict)
 
         case .text:

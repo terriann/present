@@ -425,5 +425,82 @@ struct CLIServiceOverrideTests {
     // calls fatalError when thrown outside ArgumentParser's command runner.
     // These error paths are covered by SessionTypeParsingTests, OutputFormatTests,
     // and CSVEscapingTests instead.
+
+    // MARK: - Activity List Pagination
+
+    @Test func activityListPaginationPage1() async throws {
+        try await CLIServiceOverrideTests.withTestService { service in
+            // Create enough activities to span pages (pageSize = 100, but we just verify the shape)
+            for i in 1...3 {
+                _ = try await service.createActivity(CreateActivityInput(title: "Page Test \(i)"))
+            }
+
+            var cmd = try ActivityListCommand.parse(["--page", "1"])
+            try await cmd.run()
+        }
+    }
+
+    // MARK: - Session List Default Date Range
+
+    @Test func sessionListDefaultsToLast30Days() async throws {
+        try await CLIServiceOverrideTests.withTestService { service in
+            let activity = try await service.createActivity(CreateActivityInput(title: "Recent"))
+            let actId = try #require(activity.id)
+
+            // Create a session from 10 days ago (within 30-day window)
+            let now = Date()
+            let recentStart = try #require(Calendar.current.date(byAdding: .day, value: -10, to: now))
+            let recentEnd = try #require(Calendar.current.date(byAdding: .day, value: -10, to: now)?.addingTimeInterval(3600))
+            _ = try await service.createBackdatedSession(CreateBackdatedSessionInput(
+                activityId: actId, sessionType: .work, startedAt: recentStart, endedAt: recentEnd
+            ))
+
+            // No --after/--before → should default to last 30 days and include the session
+            var cmd = try SessionListCommand.parse([])
+            try await cmd.run()
+        }
+    }
+
+    // MARK: - Active Sessions in Session List
+
+    @Test func sessionListIncludesActiveSession() async throws {
+        try await CLIServiceOverrideTests.withTestService { service in
+            let activity = try await service.createActivity(CreateActivityInput(title: "Active List"))
+            let actId = try #require(activity.id)
+            _ = try await service.startSession(activityId: actId, type: .work)
+
+            let today = DateFormatter()
+            today.dateFormat = "yyyy-MM-dd"
+            let dateStr = today.string(from: Date())
+
+            var cmd = try SessionListCommand.parse(["--after", dateStr])
+            try await cmd.run()
+
+            // Verify the active session is in the service results
+            let sessions = try await service.listSessions(
+                from: Calendar.current.startOfDay(for: Date()),
+                to: Date.distantFuture,
+                includeActive: true
+            )
+            let hasRunning = sessions.contains { $0.0.state == .running }
+            #expect(hasRunning)
+        }
+    }
+
+    // MARK: - Report with Active Session
+
+    @Test func reportIncludesActiveSession() async throws {
+        try await CLIServiceOverrideTests.withTestService { service in
+            let activity = try await service.createActivity(CreateActivityInput(title: "Active Report"))
+            let actId = try #require(activity.id)
+            _ = try await service.startSession(activityId: actId, type: .work)
+
+            // Wait briefly so elapsed > 0
+            try await Task.sleep(for: .milliseconds(50))
+
+            var cmd = try ReportCommand.parse([])
+            try await cmd.run()
+        }
+    }
     }
 }

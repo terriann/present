@@ -25,10 +25,13 @@ extension CLIServiceOverrideTests {
                 try await cmd.run()
             }
 
-            // Should be valid JSON array
+            // Should be valid JSON with pagination
             let data = try #require(output.data(using: .utf8))
             let json = try JSONSerialization.jsonObject(with: data)
-            let array = try #require(json as? [[String: Any]])
+            let dict = try #require(json as? [String: Any])
+            #expect(dict["page"] as? Int == 1)
+            #expect(dict["totalCount"] as? Int ?? 0 >= 2)
+            let array = try #require(dict["activities"] as? [[String: Any]])
             #expect(array.count >= 2)
 
             // Check field names
@@ -334,6 +337,90 @@ extension CLIServiceOverrideTests {
             let lines = output.trimmingCharacters(in: .whitespacesAndNewlines).components(separatedBy: "\n")
             #expect(lines.first == "Key,Value")
             #expect(lines.count > 1)
+        }
+    }
+
+    // MARK: - Activity List Pagination Output
+
+    @Test func activityListPaginationJSON() async throws {
+        try await CLIServiceOverrideTests.withTestService { service in
+            _ = try await service.createActivity(CreateActivityInput(title: "Paginated"))
+
+            let output = try await captureStdout {
+                var cmd = try ActivityListCommand.parse(["-f", "json", "--page", "1"])
+                try await cmd.run()
+            }
+
+            let data = try #require(output.data(using: .utf8))
+            let json = try JSONSerialization.jsonObject(with: data)
+            let dict = try #require(json as? [String: Any])
+            #expect(dict["page"] as? Int == 1)
+            #expect(dict["totalPages"] as? Int == 1)
+            #expect(dict["totalCount"] as? Int ?? 0 >= 1)
+            #expect(dict["activities"] != nil)
+        }
+    }
+
+    @Test func activityListTextShowsPagination() async throws {
+        try await CLIServiceOverrideTests.withTestService { service in
+            _ = try await service.createActivity(CreateActivityInput(title: "Text Page"))
+
+            let output = try await captureStdout {
+                var cmd = try ActivityListCommand.parse(["-f", "text"])
+                try await cmd.run()
+            }
+
+            #expect(output.contains("Activities (page"))
+        }
+    }
+
+    // MARK: - Session List with Active Session Output
+
+    @Test func sessionListJSONIncludesActiveSession() async throws {
+        try await CLIServiceOverrideTests.withTestService { service in
+            let activity = try await service.createActivity(CreateActivityInput(title: "Active Output"))
+            let actId = try #require(activity.id)
+            _ = try await service.startSession(activityId: actId, type: .work)
+
+            let today = DateFormatter()
+            today.dateFormat = "yyyy-MM-dd"
+            let dateStr = today.string(from: Date())
+
+            let output = try await captureStdout {
+                var cmd = try SessionListCommand.parse(["--after", dateStr, "-f", "json"])
+                try await cmd.run()
+            }
+
+            let data = try #require(output.data(using: .utf8))
+            let json = try JSONSerialization.jsonObject(with: data)
+            let dict = try #require(json as? [String: Any])
+            let sessions = try #require(dict["sessions"] as? [[String: Any]])
+            let hasRunning = sessions.contains { ($0["state"] as? String) == "running" }
+            #expect(hasRunning)
+        }
+    }
+
+    // MARK: - Report with Active Session Output
+
+    @Test func reportJSONIncludesActiveSessionFlag() async throws {
+        try await CLIServiceOverrideTests.withTestService { service in
+            let activity = try await service.createActivity(CreateActivityInput(title: "Report Active"))
+            let actId = try #require(activity.id)
+            _ = try await service.startSession(activityId: actId, type: .work)
+
+            try await Task.sleep(for: .milliseconds(50))
+
+            let output = try await captureStdout {
+                var cmd = try ReportCommand.parse(["-f", "json"])
+                try await cmd.run()
+            }
+
+            let data = try #require(output.data(using: .utf8))
+            let json = try JSONSerialization.jsonObject(with: data)
+            let dict = try #require(json as? [String: Any])
+            #expect(dict["includesActiveSession"] as? Bool == true)
+            // totalSeconds may be 0 if session just started (Int truncation)
+            #expect(dict["totalSeconds"] != nil)
         }
     }
     }

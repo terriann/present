@@ -774,7 +774,7 @@ public final class PresentService: PresentAPI, Sendable {
         }
     }
 
-    public func listSessions(from startDate: Date, to endDate: Date, type: SessionType? = nil, activityId: Int64? = nil, includeArchived: Bool = true, query: String? = nil) async throws -> [(Session, Activity)] {
+    public func listSessions(from startDate: Date, to endDate: Date, type: SessionType? = nil, activityId: Int64? = nil, includeArchived: Bool = true, includeActive: Bool = false, query: String? = nil) async throws -> [(Session, Activity)] {
         // Validate query if provided
         if let query, !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             _ = try Validation.sanitize(query, fieldName: "Search query", maxLength: Constants.maxSearchQueryLength)
@@ -787,12 +787,14 @@ public final class PresentService: PresentAPI, Sendable {
                 : Session.activity.filter(Activity.Columns.isArchived == false)
 
             // Overlap: session started before range end AND ended after range start (or still running)
-            let closedRaw = SessionState.closedStateRawValues
+            let stateFilter = includeActive
+                ? SessionState.allCases.map(\.rawValue)
+                : SessionState.closedStateRawValues
             var request = Session
                 .including(required: activityAssoc)
                 .filter(Session.Columns.startedAt < endDate)
                 .filter(Session.Columns.endedAt > startDate || Session.Columns.endedAt == nil)
-                .filter(closedRaw.contains(Session.Columns.state))
+                .filter(stateFilter.contains(Session.Columns.state))
                 .order(Session.Columns.startedAt.desc)
 
             if let type {
@@ -1179,7 +1181,7 @@ public final class PresentService: PresentAPI, Sendable {
         }
     }
 
-    public func listActivities(includeArchived: Bool, includeSystem: Bool) async throws -> [Activity] {
+    public func listActivities(includeArchived: Bool, includeSystem: Bool, limit: Int? = nil, offset: Int? = nil) async throws -> [Activity] {
         try await dbWriter.read { db in
             var request = Activity.all()
 
@@ -1197,7 +1199,25 @@ public final class PresentService: PresentAPI, Sendable {
                 request = request.order(Activity.Columns.title.asc)
             }
 
+            if let limit {
+                request = request.limit(limit, offset: offset)
+            }
+
             return try request.fetchAll(db)
+        }
+    }
+
+    /// Returns the total count of activities matching the given filters.
+    public func countActivities(includeArchived: Bool, includeSystem: Bool) async throws -> Int {
+        try await dbWriter.read { db in
+            var request = Activity.all()
+            if !includeArchived {
+                request = request.filter(Activity.Columns.isArchived == false)
+            }
+            if !includeSystem {
+                request = request.filter(Activity.Columns.isSystem == false)
+            }
+            return try request.fetchCount(db)
         }
     }
 

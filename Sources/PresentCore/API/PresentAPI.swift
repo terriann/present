@@ -10,7 +10,7 @@ public protocol PresentAPI: Sendable {
     func currentSession() async throws -> (Session, Activity)?
     func getSession(id: Int64) async throws -> (Session, Activity)
     func createBackdatedSession(_ input: CreateBackdatedSessionInput) async throws -> Session
-    func listSessions(from: Date, to: Date, type: SessionType?, activityId: Int64?, includeArchived: Bool, query: String?) async throws -> [(Session, Activity)]
+    func listSessions(from: Date, to: Date, type: SessionType?, activityId: Int64?, includeArchived: Bool, includeActive: Bool, query: String?) async throws -> [(Session, Activity)]
     func lastCompletedSession(since: Date) async throws -> (Session, Activity)?
     func lastCompletedNonSystemSession(since: Date) async throws -> (Session, Activity)?
     func datesWithSessions(from: Date, to: Date) async throws -> Set<Date>
@@ -27,7 +27,8 @@ public protocol PresentAPI: Sendable {
     func archiveActivity(id: Int64, force: Bool) async throws -> ArchiveResult
     func deleteActivity(id: Int64) async throws
     func unarchiveActivity(id: Int64) async throws -> Activity
-    func listActivities(includeArchived: Bool, includeSystem: Bool) async throws -> [Activity]
+    func listActivities(includeArchived: Bool, includeSystem: Bool, limit: Int?, offset: Int?) async throws -> [Activity]
+    func countActivities(includeArchived: Bool, includeSystem: Bool) async throws -> Int
     func getActivity(id: Int64) async throws -> Activity
     func searchActivities(query: String) async throws -> [Activity]
     func recentActivities(limit: Int) async throws -> [Activity]
@@ -89,16 +90,16 @@ public extension PresentAPI {
         try await switchSession(to: activityId, type: type, timerMinutes: timerMinutes, breakMinutes: breakMinutes)
     }
 
-    func listSessions(from: Date, to: Date, type: SessionType? = nil, activityId: Int64? = nil, includeArchived: Bool = true) async throws -> [(Session, Activity)] {
-        try await listSessions(from: from, to: to, type: type, activityId: activityId, includeArchived: includeArchived, query: nil)
+    func listSessions(from: Date, to: Date, type: SessionType? = nil, activityId: Int64? = nil, includeArchived: Bool = true, includeActive: Bool = false) async throws -> [(Session, Activity)] {
+        try await listSessions(from: from, to: to, type: type, activityId: activityId, includeArchived: includeArchived, includeActive: includeActive, query: nil)
     }
 
     func archiveActivity(id: Int64) async throws -> ArchiveResult {
         try await archiveActivity(id: id, force: false)
     }
 
-    func listActivities(includeArchived: Bool) async throws -> [Activity] {
-        try await listActivities(includeArchived: includeArchived, includeSystem: false)
+    func listActivities(includeArchived: Bool, includeSystem: Bool = false, limit: Int? = nil, offset: Int? = nil) async throws -> [Activity] {
+        try await listActivities(includeArchived: includeArchived, includeSystem: includeSystem, limit: limit, offset: offset)
     }
 
     func dailySummary(date: Date, includeArchived: Bool) async throws -> DailySummary {
