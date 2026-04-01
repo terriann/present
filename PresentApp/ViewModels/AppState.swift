@@ -201,6 +201,23 @@ final class AppState {
         }
     }
 
+    // MARK: - Force Reload
+
+    /// Whether a reload feedback indicator is currently visible.
+    var isShowingReloadFeedback = false
+
+    /// Tears down and re-establishes all database observations, then re-fetches
+    /// all data from scratch. Called by Command+R.
+    func forceReload() async {
+        dataRefresh.restartObservations()
+        await refreshAll()
+
+        // Brief visual feedback — defer ensures state resets even if cancelled
+        isShowingReloadFeedback = true
+        defer { isShowingReloadFeedback = false }
+        try? await Task.sleep(for: .milliseconds(Constants.reloadFeedbackDurationMs))
+    }
+
     // MARK: - Session Actions
 
     func startSession(activityId: Int64, type: SessionType, timerMinutes: Int? = nil, breakMinutes: Int? = nil) async {
