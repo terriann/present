@@ -34,26 +34,26 @@ struct ActivityListCommand: AsyncParsableCommand {
     func run() async throws {
         try outputOptions.validateOptions()
         let service = try CLIServiceFactory.makeService()
-        let allActivities = try await service.listActivities(includeArchived: true)
 
-        // Paginate
+        // SQL-level pagination
         let pageSize = 100
         guard page >= 1 else {
             CLIError.print("Page number must be at least 1.")
             throw ExitCode.failure
         }
-        let startIndex = (page - 1) * pageSize
-        let totalCount = allActivities.count
+        let offset = (page - 1) * pageSize
+        let totalCount = try await service.countActivities(includeArchived: true, includeSystem: false)
         let totalPages = max(1, (totalCount + pageSize - 1) / pageSize)
 
-        guard startIndex < totalCount || totalCount == 0 else {
+        guard offset < totalCount || totalCount == 0 else {
             CLIError.print("Page \(page) is out of range. Total pages: \(totalPages).")
             throw ExitCode.failure
         }
 
-        let activities = totalCount > 0
-            ? Array(allActivities[startIndex..<min(startIndex + pageSize, totalCount)])
-            : []
+        let activities = try await service.listActivities(
+            includeArchived: true, includeSystem: false,
+            limit: pageSize, offset: offset
+        )
 
         let activityIds = activities.compactMap(\.id)
         let tagsByActivity = try await service.tagsForActivities(activityIds: activityIds)

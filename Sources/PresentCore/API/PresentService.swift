@@ -1181,7 +1181,7 @@ public final class PresentService: PresentAPI, Sendable {
         }
     }
 
-    public func listActivities(includeArchived: Bool, includeSystem: Bool) async throws -> [Activity] {
+    public func listActivities(includeArchived: Bool, includeSystem: Bool, limit: Int? = nil, offset: Int? = nil) async throws -> [Activity] {
         try await dbWriter.read { db in
             var request = Activity.all()
 
@@ -1199,7 +1199,25 @@ public final class PresentService: PresentAPI, Sendable {
                 request = request.order(Activity.Columns.title.asc)
             }
 
+            if let limit {
+                request = request.limit(limit, offset: offset)
+            }
+
             return try request.fetchAll(db)
+        }
+    }
+
+    /// Returns the total count of activities matching the given filters.
+    public func countActivities(includeArchived: Bool, includeSystem: Bool) async throws -> Int {
+        try await dbWriter.read { db in
+            var request = Activity.all()
+            if !includeArchived {
+                request = request.filter(Activity.Columns.isArchived == false)
+            }
+            if !includeSystem {
+                request = request.filter(Activity.Columns.isSystem == false)
+            }
+            return try request.fetchCount(db)
         }
     }
 

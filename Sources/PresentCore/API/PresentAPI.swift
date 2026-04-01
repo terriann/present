@@ -27,7 +27,8 @@ public protocol PresentAPI: Sendable {
     func archiveActivity(id: Int64, force: Bool) async throws -> ArchiveResult
     func deleteActivity(id: Int64) async throws
     func unarchiveActivity(id: Int64) async throws -> Activity
-    func listActivities(includeArchived: Bool, includeSystem: Bool) async throws -> [Activity]
+    func listActivities(includeArchived: Bool, includeSystem: Bool, limit: Int?, offset: Int?) async throws -> [Activity]
+    func countActivities(includeArchived: Bool, includeSystem: Bool) async throws -> Int
     func getActivity(id: Int64) async throws -> Activity
     func searchActivities(query: String) async throws -> [Activity]
     func recentActivities(limit: Int) async throws -> [Activity]
@@ -97,8 +98,8 @@ public extension PresentAPI {
         try await archiveActivity(id: id, force: false)
     }
 
-    func listActivities(includeArchived: Bool) async throws -> [Activity] {
-        try await listActivities(includeArchived: includeArchived, includeSystem: false)
+    func listActivities(includeArchived: Bool, includeSystem: Bool = false, limit: Int? = nil, offset: Int? = nil) async throws -> [Activity] {
+        try await listActivities(includeArchived: includeArchived, includeSystem: includeSystem, limit: limit, offset: offset)
     }
 
     func dailySummary(date: Date, includeArchived: Bool) async throws -> DailySummary {
