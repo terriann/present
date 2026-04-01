@@ -25,10 +25,13 @@ extension CLIServiceOverrideTests {
                 try await cmd.run()
             }
 
-            // Should be valid JSON array
+            // Should be valid JSON with pagination
             let data = try #require(output.data(using: .utf8))
             let json = try JSONSerialization.jsonObject(with: data)
-            let array = try #require(json as? [[String: Any]])
+            let dict = try #require(json as? [String: Any])
+            #expect(dict["page"] as? Int == 1)
+            #expect(dict["totalCount"] as? Int ?? 0 >= 2)
+            let array = try #require(dict["activities"] as? [[String: Any]])
             #expect(array.count >= 2)
 
             // Check field names
