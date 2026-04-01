@@ -11,6 +11,9 @@ struct SessionListCommand: AsyncParsableCommand {
             Results are paginated (max 100 per page). All filters are optional \
             and can be combined.
 
+            When no date filter is provided, defaults to the last 30 days. \
+            Use --after and --before for a custom range.
+
             Dates use YYYY-MM-DD format and are inclusive on both ends.
 
             ## Examples
@@ -59,6 +62,9 @@ struct SessionListCommand: AsyncParsableCommand {
         let fromDate: Date
         if let after {
             fromDate = calendar.startOfDay(for: try DateParsing.parseDateOrFail(after, label: "--after"))
+        } else if before == nil {
+            // Default to last 30 days when no date filters provided
+            fromDate = calendar.startOfDay(for: calendar.date(byAdding: .day, value: -30, to: Date()) ?? Date())
         } else {
             fromDate = Date.distantPast
         }
@@ -67,7 +73,7 @@ struct SessionListCommand: AsyncParsableCommand {
         if let before {
             let parsed = try DateParsing.parseDateOrFail(before, label: "--before")
             guard let nextDay = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: parsed)) else {
-                print("Failed to compute date range.")
+                CLIError.print("Failed to compute date range.")
                 throw ExitCode.failure
             }
             toDate = nextDay
@@ -101,6 +107,7 @@ struct SessionListCommand: AsyncParsableCommand {
             type: sessionType,
             activityId: activityId,
             includeArchived: true,
+            includeActive: true,
             query: query
         )
 
