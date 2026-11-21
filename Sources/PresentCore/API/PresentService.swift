@@ -774,7 +774,7 @@ public final class PresentService: PresentAPI, Sendable {
         }
     }
 
-    public func listSessions(from startDate: Date, to endDate: Date, type: SessionType? = nil, activityId: Int64? = nil, includeArchived: Bool = true, includeActive: Bool = false, query: String? = nil) async throws -> [(Session, Activity)] {
+    public func listSessions(from startDate: Date, to endDate: Date, type: SessionType? = nil, activityId: Int64? = nil, activityIds: [Int64]? = nil, includeArchived: Bool = true, includeActive: Bool = false, query: String? = nil, limit: Int? = nil, offset: Int? = nil) async throws -> [(Session, Activity)] {
         // Validate query if provided
         if let query, !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             _ = try Validation.sanitize(query, fieldName: "Search query", maxLength: Constants.maxSearchQueryLength)
@@ -786,32 +786,70 @@ public final class PresentService: PresentAPI, Sendable {
                 ? Session.activity
                 : Session.activity.filter(Activity.Columns.isArchived == false)
 
-            // Overlap: session started before range end AND ended after range start (or still running)
-            let stateFilter = includeActive
-                ? SessionState.allCases.map(\.rawValue)
-                : SessionState.closedStateRawValues
-            var request = Session
-                .including(required: activityAssoc)
-                .filter(Session.Columns.startedAt < endDate)
-                .filter(Session.Columns.endedAt > startDate || Session.Columns.endedAt == nil)
-                .filter(stateFilter.contains(Session.Columns.state))
-                .order(Session.Columns.startedAt.desc)
+            var request = Self.sessionFilterRequest(
+                from: startDate, to: endDate, type: type, activityId: activityId,
+                activityIds: activityIds, includeActive: includeActive, query: query
+            )
+            .including(required: activityAssoc)
+            .order(Session.Columns.startedAt.desc, Session.Columns.id.desc)
 
-            if let type {
-                request = request.filter(Session.Columns.sessionType == type.rawValue)
-            }
-            if let activityId {
-                request = request.filter(Session.Columns.activityId == activityId)
-            }
-            if let query, !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                request = request.filter(
-                    SQL("rowid IN (SELECT rowid FROM session_fts WHERE session_fts MATCH \(query + "*"))")
-                )
+            if let limit {
+                request = request.limit(limit, offset: offset)
             }
 
             let results = try SessionInfo.fetchAll(db, request)
             return results.map { ($0.session, $0.activity) }
         }
+    }
+
+    /// Returns the total count of sessions matching the given filters.
+    /// Used alongside `listSessions` for SQL-level pagination.
+    public func countSessions(from startDate: Date, to endDate: Date, type: SessionType? = nil, activityId: Int64? = nil, activityIds: [Int64]? = nil, includeArchived: Bool = true, includeActive: Bool = false, query: String? = nil) async throws -> Int {
+        if let query, !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            _ = try Validation.sanitize(query, fieldName: "Search query", maxLength: Constants.maxSearchQueryLength)
+        }
+
+        return try await dbWriter.read { db in
+            var request = Self.sessionFilterRequest(
+                from: startDate, to: endDate, type: type, activityId: activityId,
+                activityIds: activityIds, includeActive: includeActive, query: query
+            )
+
+            if !includeArchived {
+                request = request.joining(required: Session.activity.filter(Activity.Columns.isArchived == false))
+            }
+
+            return try request.fetchCount(db)
+        }
+    }
+
+    /// Shared filters for `listSessions` and `countSessions` so both always match the same rows.
+    private static func sessionFilterRequest(from startDate: Date, to endDate: Date, type: SessionType?, activityId: Int64?, activityIds: [Int64]?, includeActive: Bool, query: String?) -> QueryInterfaceRequest<Session> {
+        let stateFilter = includeActive
+            ? SessionState.allCases.map(\.rawValue)
+            : SessionState.closedStateRawValues
+
+        // Overlap: session started before range end AND ended after range start (or still running)
+        var request = Session
+            .filter(Session.Columns.startedAt < endDate)
+            .filter(Session.Columns.endedAt > startDate || Session.Columns.endedAt == nil)
+            .filter(stateFilter.contains(Session.Columns.state))
+
+        if let type {
+            request = request.filter(Session.Columns.sessionType == type.rawValue)
+        }
+        if let activityId {
+            request = request.filter(Session.Columns.activityId == activityId)
+        }
+        if let activityIds {
+            request = request.filter(activityIds.contains(Session.Columns.activityId))
+        }
+        if let query, !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            request = request.filter(
+                SQL("rowid IN (SELECT rowid FROM session_fts WHERE session_fts MATCH \(query + "*"))")
+            )
+        }
+        return request
     }
 
     public func datesWithSessions(from startDate: Date, to endDate: Date) async throws -> Set<Date> {
