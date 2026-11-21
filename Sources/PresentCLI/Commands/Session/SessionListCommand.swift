@@ -84,8 +84,8 @@ struct SessionListCommand: AsyncParsableCommand {
         // Parse session type
         let sessionType = try type.map(SessionType.parseOrFail)
 
-        // Resolve activity name to ID
-        var activityId: Int64?
+        // Resolve activity name to matching IDs (substring match)
+        var activityIds: [Int64]?
         if let activityName = activity {
             let activities = try await service.listActivities(includeArchived: true)
             let matches = activities.filter { $0.title.localizedCaseInsensitiveContains(activityName) }
@@ -93,49 +93,35 @@ struct SessionListCommand: AsyncParsableCommand {
                 print("No activity found matching \"\(activityName)\".")
                 throw ExitCode.failure
             }
-            if matches.count == 1 {
-                activityId = matches.first?.id
-            } else {
-                activityId = nil
-            }
+            activityIds = matches.compactMap(\.id)
         }
 
-        // Fetch sessions
-        let allSessions = try await service.listSessions(
-            from: fromDate,
-            to: toDate,
-            type: sessionType,
-            activityId: activityId,
-            includeArchived: true,
-            includeActive: true,
-            query: query
-        )
-
-        // Post-filter by activity name if multiple matches
-        var sessions = allSessions
-        if let activityName = activity, activityId == nil {
-            sessions = sessions.filter { $0.1.title.localizedCaseInsensitiveContains(activityName) }
-        }
-
-        // Paginate
         let pageSize = 100
         guard page >= 1 else {
             CLIError.print("Page number must be at least 1.")
             throw ExitCode.failure
         }
         let validPage = page
-        let startIndex = (validPage - 1) * pageSize
-        let totalCount = sessions.count
+        let offset = (validPage - 1) * pageSize
+
+        let totalCount = try await service.countSessions(
+            from: fromDate, to: toDate, type: sessionType,
+            activityId: nil, activityIds: activityIds,
+            includeArchived: true, includeActive: true, query: query
+        )
+        let pageResults = try await service.listSessions(
+            from: fromDate, to: toDate, type: sessionType,
+            activityId: nil, activityIds: activityIds,
+            includeArchived: true, includeActive: true,
+            query: query, limit: pageSize, offset: offset
+        )
+
         let totalPages = max(1, (totalCount + pageSize - 1) / pageSize)
 
-        guard startIndex < totalCount || totalCount == 0 else {
+        guard offset < totalCount || totalCount == 0 else {
             CLIError.print("Page \(validPage) is out of range. Total pages: \(totalPages).")
             throw ExitCode.failure
         }
-
-        let pageResults = totalCount > 0
-            ? Array(sessions[startIndex..<min(startIndex + pageSize, totalCount)])
-            : []
 
         switch outputOptions.format {
         case .json:
