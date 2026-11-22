@@ -13,12 +13,11 @@ public final class IPCServer: @unchecked Sendable {
     }
 
     public static func defaultSocketPath() throws -> String {
-        guard let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
+        do {
+            return try DatabaseManager.dataDirectory().appendingPathComponent("present.sock").path
+        } catch {
             throw IPCError.socketCreationFailed
         }
-        let presentDir = appSupport.appendingPathComponent("Present", isDirectory: true)
-        try FileManager.default.createDirectory(at: presentDir, withIntermediateDirectories: true)
-        return presentDir.appendingPathComponent("present.sock").path
     }
 
     public func start() throws {
