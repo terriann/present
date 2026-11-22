@@ -35,13 +35,41 @@ public final class DatabaseManager: Sendable {
         try Self.migrate(queue)
     }
 
-    public static func defaultDatabasePath() throws -> String {
+    /// Environment variable that points Present at a different database file.
+    /// Useful for demos, screenshots, and testing against throwaway data.
+    public static let databasePathEnvironmentKey = "PRESENT_DB_PATH"
+
+    /// Directory that holds the database and the IPC socket.
+    /// Defaults to `~/Library/Application Support/Present`. When
+    /// `PRESENT_DB_PATH` is set, it is the parent directory of that file, so
+    /// an override instance never shares a socket with the real app.
+    public static func dataDirectory() throws -> URL {
+        if let override = overridePath() {
+            let dir = URL(fileURLWithPath: override).deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            return dir
+        }
         guard let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
             throw PresentError.environmentUnavailable("Application Support directory unavailable.")
         }
         let presentDir = appSupport.appendingPathComponent("Present", isDirectory: true)
         try FileManager.default.createDirectory(at: presentDir, withIntermediateDirectories: true)
-        return presentDir.appendingPathComponent("present.sqlite").path
+        return presentDir
+    }
+
+    public static func defaultDatabasePath() throws -> String {
+        if let override = overridePath() {
+            _ = try dataDirectory()
+            return override
+        }
+        return try dataDirectory().appendingPathComponent("present.sqlite").path
+    }
+
+    /// The expanded `PRESENT_DB_PATH` value, or nil when unset or empty.
+    private static func overridePath() -> String? {
+        guard let raw = ProcessInfo.processInfo.environment[databasePathEnvironmentKey],
+              !raw.isEmpty else { return nil }
+        return (raw as NSString).expandingTildeInPath
     }
 
     private static func migrate(_ writer: any DatabaseWriter) throws {

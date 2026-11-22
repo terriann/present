@@ -54,6 +54,20 @@ Configuration:
 
 The path is resolved in `DatabaseManager.defaultDatabasePath`.
 
+### Using a different database
+
+Set `PRESENT_DB_PATH` to point the app and CLI at another file. The IPC socket
+(`present.sock`) is created in the same directory, so an override instance does
+not interfere with your real data.
+
+```bash
+export PRESENT_DB_PATH=~/present-demo/present.sqlite
+present-cli activity list
+
+# Launch the app against the same file (the app does not inherit your shell)
+open --env PRESENT_DB_PATH="$HOME/present-demo/present.sqlite" -a Present
+```
+
 ## Connecting with the SQLite CLI
 
 ```bash
